@@ -1,3 +1,4 @@
+
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { AuthenticateUseCase } from '@/use-cases/auth-users/authenticate.js'
@@ -17,23 +18,30 @@ export async function authenticate(
   try {
     const usersRepository = new PrismaUsersRepository()
     const authenticateUseCase = new AuthenticateUseCase(usersRepository)
+    const { user } = await authenticateUseCase.execute({ email, password })
 
-    const { user } = await authenticateUseCase.execute({
-      email,
-      password,
-    })
-
-    const token = await reply.jwtSign(
+    
+    const accessToken = await reply.jwtSign(
       {},
-      {
-        sign: {
-          sub: user.id,
-        },
-      },
+      { sign: { sub: user.id, expiresIn: '10m' } }
+    )
+    const refreshToken = await reply.jwtSign(
+      {},
+      { sign: { sub: user.id, expiresIn: '7d' } }
     )
 
-    return reply.status(200).send({ token })
+    return reply
+      .setCookie('refreshToken', refreshToken, {
+        path: '/',
+        httpOnly: true,
+        secure: false, 
+        sameSite: 'lax',
+      })
+      .status(200)
+      .send({ token: accessToken })
   } catch (err: any) {
-    return reply.status(400).send({ message: err.message || 'Erro ao autenticar' })
+    return reply
+      .status(400)
+      .send({ message: err.message || 'Erro ao autenticar' })
   }
 }
