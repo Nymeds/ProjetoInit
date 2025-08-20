@@ -8,6 +8,8 @@ import { deleteTodo } from "@/controllers/todo/delete.js";
 import { updateTodo } from "@/controllers/todo/update-todo.js";
 import { completeTodo } from "@/controllers/todo/complete.js";
 import { refresh } from "@/controllers/auth/refresh.js";
+import { deleteUser } from "@/controllers/auth/delete.js";
+import { verifyUserRole } from "@/middlewares/verify-user-role.js";
 export async function appRoutes(app:FastifyInstance){
     
     app.post('/users',register)
@@ -18,5 +20,9 @@ export async function appRoutes(app:FastifyInstance){
     app.delete<{ Params: { id: number  } }>('/todo/:id',{ preHandler: [verifyJwt] },deleteTodo)
     app.put<{ Params: { id: string } }>('/todo/:id', { preHandler: [verifyJwt] }, updateTodo)
     app.patch<{ Params: { id: string } }>('/todo/:id/complete', { preHandler: [verifyJwt] }, completeTodo)
-
-}
+    app.delete<{ Params: { id: string } }>(
+        '/users/:id',
+        { preHandler: [verifyJwt, verifyUserRole('ADMIN')] },
+        deleteUser
+      )
+    }

@@ -22,19 +22,20 @@ export async function authenticate(
 
     
     const accessToken = await reply.jwtSign(
-      {},
-      { sign: { sub: user.id, expiresIn: '10m' } }
+      { role: user.role },
+      { sign: { sub: user.id } }
     )
+    
     const refreshToken = await reply.jwtSign(
-      {},
-      { sign: { sub: user.id, expiresIn: '7d' } }
+      { role: user.role },
+      { sign: { sub: user.id } }
     )
-
+    
     return reply
       .setCookie('refreshToken', refreshToken, {
         path: '/',
         httpOnly: true,
-        secure: false, 
+        secure: false,
         sameSite: 'lax',
       })
       .status(200)
