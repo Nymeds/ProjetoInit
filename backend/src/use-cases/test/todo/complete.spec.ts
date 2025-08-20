@@ -1,20 +1,23 @@
+
 import { describe, it, expect, beforeEach } from 'vitest'
+import { CompleteTodoUseCase } from '@/use-cases/todo/complete-todo.js'
 import { CreateTodoUseCase } from '@/use-cases/todo/create.js'
 import { InMemoryTodosRepository } from '@/repositories/in-memory/memory-todo-repository.js'
 
-describe('CreateTodoUseCase', () => {
+describe('CompleteTodoUseCase', () => {
   let todosRepository: InMemoryTodosRepository
 
   beforeEach(() => {
     todosRepository = new InMemoryTodosRepository()
   })
 
-  it('should create a new todo', async () => {
+  it('should mark a todo as completed', async () => {
     const createUseCase = new CreateTodoUseCase(todosRepository)
-    const { todo } = await createUseCase.execute({ title: 'Test Todo', userId: 'user1' })
+    const { todo } = await createUseCase.execute({ title: 'To Complete', userId: 'user1' })
 
-    expect(todo).toHaveProperty('id')
-    expect(todo.title).toBe('Test Todo')
-    expect(todo.completed).toBe(false)
+    const completeUseCase = new CompleteTodoUseCase(todosRepository)
+    const { todo: completed } = await completeUseCase.execute({ todoId: todo.id, userId: 'user1' })
+
+    expect(completed.completed).toBe(true)
   })
 })
