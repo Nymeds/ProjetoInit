@@ -1,9 +1,9 @@
-import type { Task } from '../../generated/prisma.'
+import type { Todo } from '@prisma/client'
 
-export interface TasksRepository {
-  create(data: { title: string; description?: string; userId: string }): Promise<Task>
-  findById(id: string): Promise<Task | null>
-  findManyByUser(userId: string): Promise<Task[]>
-  update(id: string, data: { title?: string; description?: string; completed?: boolean }): Promise<Task>
-  delete(id: string): Promise<void>
+export interface TodosRepository {
+  create(data: { title: string; userId: string }): Promise<Todo>
+  findById(id: number): Promise<Todo | null>
+  findManyByUser(userId: string): Promise<Todo[]>
+  update(id: number, data: { title?: string; completed?: boolean }): Promise<Todo>
+  delete(id: number): Promise<void>
 }
