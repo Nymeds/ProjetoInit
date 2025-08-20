@@ -1,32 +1,57 @@
-# ProjetoInit
+# 📝 ProjetoInit – Backend To-Do List
 
-📌 Projeto Backend – To-Do List
 
-Este é o backend de uma aplicação To-Do List desenvolvido em Node.js, utilizando Fastify, Prisma e JWT para autenticação.
 
-Ele oferece endpoints para cadastro, autenticação de usuários e gerenciamento de tarefas.
+![DER do projeto](images/image.png)
 
-🚀 Tecnologias utilizadas
 
-Node.js
- – Ambiente de execução JavaScript.
 
-Fastify
- – Framework web rápido e minimalista.
 
-Prisma ORM
- – ORM para banco de dados.
+📌 **Projeto Backend – To-Do List**
 
-JWT (JSON Web Token)
- – Autenticação segura baseada em tokens.
+Este é o backend de uma aplicação **To-Do List** desenvolvido em **Node.js**, utilizando **Fastify**, **Prisma** e **JWT** para autenticação, além de **Vitest** para testes.
 
-Zod
- – Validação de dados.
+Cada **task** é vinculada a um **usuário**.  
+A aplicação possui tanto integração com banco real (**SQLite via Prisma**) quanto um banco **em memória** para testes, o que significa que **dados de teste não são persistidos** no banco real.
 
-TypeScript
- – Superset do JavaScript com tipagem estática.
+O projeto também utiliza **Zod** para validação de dados.  
+⚠️ Em caso de alterações, é importante observar os **schemas** de validação.
 
-📂 Estrutura de pastas
+Este projeto está em constante evolução, pois é um objeto de estudo 🚀.
+
+---
+
+## 📖 Visão Geral
+
+A arquitetura deste backend segue os princípios da **Clean Architecture**, com influências de **DDD (Domain-Driven Design)** e **Repository Pattern**.  
+
+### Estrutura por camadas:
+- **Use Cases** (`src/use-cases/`): Regras de negócio da aplicação.  
+- **Repositórios** (`src/repositories/`): Interfaces e implementações de acesso a dados (Prisma e memória).  
+- **Controllers** (`src/controllers/`): Entrada das requisições HTTP, orquestrando os casos de uso.  
+- **Middlewares** (`src/middlewares/`): Funções intermediárias, como autenticação JWT.  
+- **Infraestrutura** (`src/repositories/prisma/`): Implementações específicas do banco de dados.  
+- **Validação e Tipagem**: Feitas com **Zod** e **TypeScript**.
+
+Essa separação facilita **testes, manutenção e evolução** do sistema.
+
+---
+
+## ⚡ Tecnologias Utilizadas
+
+- **Node.js** – Ambiente de execução JavaScript.  
+- **Fastify** – Framework web rápido e minimalista.  
+- **Prisma ORM** – ORM para banco de dados.  
+- **JWT (JSON Web Token)** – Autenticação baseada em tokens.  
+- **Zod** – Validação de dados.  
+- **TypeScript** – Superset do JavaScript com tipagem estática.  
+- **Vitest** – Testes unitários e de integração.  
+
+---
+
+## 📂 Estrutura de Pastas
+
+```
 backend/
 │── prisma/              # Configurações e migrations do Prisma
 │   └── schema.prisma
@@ -34,7 +59,7 @@ backend/
 │── src/
 │   ├── controllers/     # Lógica de entrada das rotas (Register, Login, Todo)
 │   ├── middlewares/     # Middlewares (ex: verifyJwt)
-│   ├── repositories/    # Implementação de acesso ao banco
+│   ├── repositories/    # Interfaces e implementações (Prisma, memória)
 │   ├── use-cases/       # Regras de negócio (RegisterUser, Authenticate, etc.)
 │   ├── routes.ts        # Definição das rotas
 │   └── server.ts        # Ponto de entrada do backend
@@ -42,64 +67,83 @@ backend/
 │── package.json
 │── tsconfig.json
 │── README.md
+```
 
-⚙️ Como rodar o projeto
-1. Clone o repositório
-git clone https://github.com/seu-usuario/seu-repo.git
-cd backend
+---
 
-2. Instale as dependências
-npm install
+## ⚙️ Como Rodar o Projeto
 
-3. Configure o banco de dados
-
-No arquivo .env, adicione sua URL de conexão com o banco, por exemplo:
-
-DATABASE_URL="postgresql://user:password@localhost:5432/todolist"
-
-4. Rode as migrations
-npx prisma migrate dev
-
-5. Inicie o servidor em modo desenvolvimento
-npm run dev
+1. **Clone o repositório e entre na pasta backend**
+   
+   cd backend
 
 
-O backend estará rodando em:
-👉 http://localhost:3333
+2. **Instale as dependências**
+   
+   npm i
+   
 
-🔑 Autenticação
+3. **Configure o banco de dados**
+   
+   npx prisma generate
+   
 
-O backend utiliza JWT para autenticação.
+4. **Inicie o servidor em modo desenvolvimento**
+   
+   npm run dev
 
-Após realizar login (POST /sessions), o cliente deve usar o token recebido no header Authorization para acessar rotas protegidas.
 
-Exemplo:
+5. **Rodando testes**
+   
+   npm run test
+   
 
-Authorization: Bearer seu_token_aqui
+👉 Sugestões:
+- `npm run test:ui` → abre a interface visual do Vitest.  
+- `npx prisma studio` → abre o Prisma Studio para visualizar os dados.  
 
-📌 Endpoints principais
-👤 Usuário
+---
 
-POST /users → Registrar novo usuário
+## 🌐 Servidor
 
-POST /sessions → Login e geração de token JWT
+O backend roda em:
+```
+http://localhost:3333
+```
 
-✅ Todos
+---
 
-GET /todo → Listar todos os todos (requer token)
+## 🔑 Autenticação
 
-POST /todo → Criar novo todo (requer token)
+A autenticação é feita com **JWT**.  
 
-PATCH /todo/:id/complete → Marcar como concluído (requer token)
+- Após o login (`POST /sessions`), o token recebido deve ser enviado no **header**:
+  ```
+  Authorization: Bearer <token>
+  ```
 
-DELETE /todo/:id → Excluir todo (requer token)
+---
 
-🛠 Próximos passos
+## 📌 Endpoints Principais
 
- Adicionar testes unitários para cada use case.
+### 👤 Usuário
+- `POST /users` → Registrar novo usuário.  
+- `POST /sessions` → Login e geração de token JWT.  
 
- Implementar refresh token.
+### ✅ Todos
+- `GET /todo` → Listar todos os *todos* (requer token).  
+- `POST /todo` → Criar novo *todo* (requer token).  
+- `PATCH /todo/:id/complete` → Marcar como concluído (requer token).  
+- `DELETE /todo/:id` → Excluir *todo* (requer token).  
 
- Adicionar tratamento de erros mais detalhado.
+---
 
- Configurar Docker para rodar banco e API.
+## 🛠 Próximos Passos
+
+- ✅ Aumentar cobertura de testes nos **use-cases**.  
+- ✅ Implementar um **Front-End**.  
+- ✅ Adicionar funcionalidades de **administração**.  
+
+---
+
+✍️ Projeto em constante evolução – feito para estudos e aprendizado!

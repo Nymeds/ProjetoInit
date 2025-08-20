@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
-import { DeleteTodoUseCase } from '@/use-cases/todo/delete.js'
+import { DeleteTodoUseCase } from '@/use-cases/todo/delete-todo.js'
 
 interface DeleteTodoRequestParams {
   id: number

@@ -1,7 +1,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { SelectTodosUseCase } from '@/use-cases/todo/select-todo.js'
-import { CreateTodoUseCase } from '@/use-cases/todo/create.js'
+import { CreateTodoUseCase } from '@/use-cases/todo/create-todo.js'
 import { InMemoryTodosRepository } from '@/repositories/in-memory/memory-todo-repository.js'
 
 describe('SelectTodosUseCase', () => {
