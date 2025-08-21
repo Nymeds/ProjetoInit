@@ -10,11 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
 model User {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   name     String
-  email    String @unique
+  email    String  @unique
   password String
+
+  
+  role     Role    @default(MEMBER)
+
   todos    Todo[]
 }
 
@@ -23,6 +33,8 @@ model Todo {
   title     String
   completed Boolean  @default(false)
   createdAt DateTime @default(now())
+
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
