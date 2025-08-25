@@ -142,7 +142,7 @@ A autenticação é feita com **JWT**.
 
 - ✅ Aumentar cobertura de testes nos **use-cases**.  
 - ✅ Implementar um **Front-End**.  
-- ✅ Adicionar funcionalidades de **administração**.  
+
 
 ---
 
