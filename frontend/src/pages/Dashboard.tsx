@@ -3,14 +3,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTodos } from '../hooks/useTodos';
-import { DashboardHeader } from '../components/DashboardHeader';
-import { StatsCard } from '../components/StatsCard';
-import { TaskList } from '../components/TaskList';
+import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
+import { StatsCard } from '../components/buildedComponents/StatsCard';
+import { TaskList } from '../components/buildedComponents/TaskList';
 // import NewTaskForm from '../components/NewTaskForm';
-import NewTaskModal from '../components/NewTaskModal';
+import NewTaskModal from '../components/buildedComponents/NewTaskModal';
 import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 
-import { Text } from '../components/text';
+import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
 

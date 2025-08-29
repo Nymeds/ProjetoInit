@@ -1,5 +1,5 @@
 
-import NewTaskForm from '../components/NewTaskForm';
+import NewTaskForm from '../buildedComponents/NewTaskForm';
 
 export default function NewTaskModal({
   open,

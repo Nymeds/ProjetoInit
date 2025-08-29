@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle, Clock, Calendar, Trash2 } from 'lucide-react';
-import Card from './baseComponents/card';
-import { Text } from './text';
-import { Button } from './baseComponents/button';
-import { deleteTodo } from '../api/todos';
+import Card from '../baseComponents/card';
+import { Text } from '../baseComponents/text';
+import { Button } from '../baseComponents/button';
+import { deleteTodo } from '../../api/todos';
 
 type Todo = {
   createdAt: string | number | Date;

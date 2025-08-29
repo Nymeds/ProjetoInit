@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 import Card from "../components/baseComponents/card";
-import { Text } from "../components/text";
+import { Text } from "../components/baseComponents/text";
 import { Button } from "../components/baseComponents/button";
 
 interface LoginFormData {

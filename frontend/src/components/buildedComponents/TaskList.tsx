@@ -1,5 +1,5 @@
 import {TaskCard} from './TaskCard';
-import { Text } from './text';
+import { Text } from '../baseComponents/text';
 import { CheckCircle } from 'lucide-react';
 
 

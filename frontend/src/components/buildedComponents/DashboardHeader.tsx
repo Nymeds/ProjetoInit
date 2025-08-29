@@ -1,8 +1,8 @@
 import { User, LogOut } from 'lucide-react';
-import { Button } from './baseComponents/button';
-import { Text } from './text';
-import type { User as UserType } from '../context/AuthContext';
-import Card from './baseComponents/card';
+import { Button } from '../baseComponents/button';
+import { Text } from '../baseComponents/text';
+import type { User as UserType } from '../../context/AuthContext';
+import Card from '../baseComponents/card';
 
 interface DashboardHeaderProps {
   user: UserType;

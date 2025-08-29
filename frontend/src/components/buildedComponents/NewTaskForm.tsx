@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
-import { createTodo } from '../api/todos';
-import { Button } from './baseComponents/button';
-import { Text } from './text';
-import Card from './baseComponents/card';
+import React, { useState } from "react";
+import { createTodo } from "../../api/todos";
+import Card from "../baseComponents/card";
+import { Button } from "../baseComponents/button";
+import { Text } from "../baseComponents/text";
 
 type Props = {
   onCreated?: () => void;
