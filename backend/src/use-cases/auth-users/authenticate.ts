@@ -8,8 +8,14 @@ interface AuthenticateUseCaseRequest {
   password: string
 }
 
+
 interface AuthenticateUseCaseResponse {
-  user: User
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: "ADMIN" | "MEMBER"; 
+  };
 }
 
 export class AuthenticateUseCase {
@@ -31,7 +37,12 @@ export class AuthenticateUseCase {
     }
 
     return {
-      user,
-    }
-  }
-}
+  user: {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  },
+};
+
+}}

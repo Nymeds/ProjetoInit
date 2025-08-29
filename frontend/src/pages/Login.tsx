@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import  Card  from "../components/card";
+
+import Card from "../components/card";
 import { Text } from "../components/text";
 import { Button } from "../components/button";
 
@@ -34,33 +35,55 @@ export function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-900">
+    <div className="flex items-center justify-center h-screen bg-background-primary">
       <Card variant="primary" size="lg" className="flex flex-col gap-6 w-96">
-        <Text size="xl" weight="bold" className="text-center">Login</Text>
+        <Text variant="heading-medium" className="text-center">
+          Login
+        </Text>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <input
-            {...register("email", { required: "Email obrigatório" })}
-            type="email"
-            placeholder="Email"
-            className="p-2 rounded bg-gray-800 focus:outline-none"
-          />
-          {errors.email && <Text color="danger">{errors.email.message}</Text>}
+          <div className="flex flex-col gap-1">
+            <Text variant="label-small">Email</Text>
+            <input
+              {...register("email", { required: "Email obrigatório" })}
+              type="email"
+              placeholder="Digite seu email"
+              className="p-2 rounded bg-background-secondary focus:outline-none"
+            />
+            {errors.email && (
+              <Text variant="paragraph-small" className="text-danger">
+                {errors.email.message}
+              </Text>
+            )}
+          </div>
 
-          <input
-            {...register("password", { required: "Senha obrigatória" })}
-            type="password"
-            placeholder="Senha"
-            className="p-2 rounded bg-gray-800 focus:outline-none"
-          />
-          {errors.password && <Text color="danger">{errors.password.message}</Text>}
+          <div className="flex flex-col gap-1">
+            <Text variant="label-small">Senha</Text>
+            <input
+              {...register("password", { required: "Senha obrigatória" })}
+              type="password"
+              placeholder="Digite sua senha"
+              className="p-2 rounded bg-background-secondary focus:outline-none"
+            />
+            {errors.password && (
+              <Text variant="paragraph-small" className="text-danger">
+                {errors.password.message}
+              </Text>
+            )}
+          </div>
 
-          {errorMessage && <Text color="danger" className="text-center">{errorMessage}</Text>}
+          {errorMessage && (
+            <Text variant="paragraph-small" className="text-danger text-center">
+              {errorMessage}
+            </Text>
+          )}
 
           <Button type="submit" variant="primary" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>
+          
         </form>
+       
       </Card>
     </div>
   );

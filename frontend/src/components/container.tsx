@@ -1,32 +1,38 @@
-import { type VariantProps, tv } from "tailwind-variants";
+import React from "react";
+import { tv, type VariantProps } from "tailwind-variants";
+
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const containerVariants = tv({
-  base: "mx-auto px-4 w-full",
-  variants: {
-    size: {
-      sm: "max-w-sm",
-      md: "max-w-md",
-      lg: "max-w-lg",
-      xl: "max-w-7xl",
-    },
-    padding: {
-      none: "",
-      sm: "py-2",
-      md: "py-4",
-      lg: "py-6",
-    },
-  },
-  defaultVariants: {
-    size: "lg",
-    padding: "md",
-  },
+	base: "mx-auto",
+	variants: {
+		size: {
+			md: "max-w-[62rem] px-2",
+		},
+	},
+	defaultVariants: {
+		size: "md",
+	},
 });
 
 interface ContainerProps
-  extends VariantProps<typeof containerVariants>,
-          React.HTMLAttributes<HTMLDivElement> {}
+	extends VariantProps<typeof containerVariants>,
+		React.ComponentProps<"div"> {
+	as?: keyof React.JSX.IntrinsicElements;
+}
 
-export function Container({ children, ...props }: ContainerProps) {
-  return <div className={containerVariants(props)} {...props}>{children}</div>;
+export default function Container({
+	as = "div",
+	children,
+	className,
+	...props
+}: ContainerProps) {
+	return React.createElement(
+		as,
+		{
+			className: containerVariants({size: "md", className}),
+			...props,
+		},
+		children
+	);
 }

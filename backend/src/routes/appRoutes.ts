@@ -10,11 +10,13 @@ import { completeTodo } from "@/controllers/todo/complete.js";
 import { refresh } from "@/controllers/auth/refresh.js";
 import { deleteUser } from "@/controllers/auth/delete.js";
 import { verifyUserRole } from "@/middlewares/verify-user-role.js";
+import { me } from "@/controllers/auth/auth-me.js";
 export async function appRoutes(app:FastifyInstance){
     
     app.post('/users',register)
     app.post('/sessions', authenticate)
     app.patch('/token/refresh', refresh)
+    app.get("/sessions/me", { preHandler: [verifyJwt] }, me);
     app.post('/todo', { preHandler: [verifyJwt] }, create)
     app.get('/todo', { preHandler: [verifyJwt] }, selectTodos)
     app.delete<{ Params: { id: number  } }>('/todo/:id',{ preHandler: [verifyJwt] },deleteTodo)

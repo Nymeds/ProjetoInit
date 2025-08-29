@@ -1,28 +1,48 @@
-import { type VariantProps, tv } from "tailwind-variants";
+import React from "react";
+import { tv, type VariantProps } from "tailwind-variants"
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const textVariants = tv({
-    base: "transition-colors",
+    base: "font-sans text-white",
     variants: {
-      size: { sm: "text-sm", md: "text-base", lg: "text-lg", xl: "text-xl" },
-      textColor: {
-        dark: "text-text-dark",
-        light: "text-text-light",
-        primary: "text-primary",
-        secondary: "text-secondary",
-        danger: "text-danger",
-        success: "text-success",
-      },
-      weight: { normal: "font-normal", medium: "font-medium", bold: "font-bold" },
+        variant:{
+            "heading-large": "text-2xl leading-[130%] font-bold",
+			"heading-medium": "text-xl leading-[130%] font-bold",
+			"heading-small": "text-base leading-[130%] font-bold",
+			"paragraph-large": "text-base leading-[150%] font-medium",
+			"paragraph-medium": "text-sm leading-[150%] font-medium",
+			"paragraph-small": "text-xs leading-[150%] font-medium",
+			"label-medium": "text-base leading-[150%] font-semibold",
+			"label-small": "text-xs leading-[150%] font-semibold",
+        },
     },
-    defaultVariants: { size: "md", textColor: "dark", weight: "normal" },
-  });
-  
-interface TextProps
-  extends VariantProps<typeof textVariants>,
-          React.HTMLAttributes<HTMLParagraphElement> {}
+    defaultVariants: {
+        variant: "paragraph-medium",
+    },
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function Text({ children, className, ...props }: TextProps) {
-  return <p className={textVariants(props)} {...props}>{children}</p>;
+    
+})
+
+interface TextProps extends VariantProps<typeof textVariants> {
+	as?: keyof React.JSX.IntrinsicElements; 
+	className?: string; 
+	children?: React.ReactNode; 
+}
+
+export function Text({
+    as = "span",
+	variant,
+	className,
+	children,
+	...props}:TextProps){
+
+    return React.createElement(
+        as,
+        {
+            className: textVariants({variant,className}),
+            ...props
+        },
+        children
+    )
+
 }

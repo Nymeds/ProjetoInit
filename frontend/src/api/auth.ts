@@ -1,24 +1,21 @@
-interface LoginResponse {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  token?: string;
-}
+import axios from "axios";
 
-export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
-  const res = await fetch("http://localhost:3333/sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
 
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.message || "Erro ao logar");
+export const api = axios.create({
+  baseURL: "http://localhost:3333", 
+});
+
+export async function loginRequest(email: string, password: string) {
+  try {
+    const response = await api.post("/sessions", { email, password });
+    return response.data; 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      throw new Error("Credenciais inválidas");
+    }else if (error.response?.status == 400){
+      throw new Error("Usuario não encontrado")
+    }
+    throw new Error("Erro ao conectar ao servidor");
   }
-
-  return res.json();
 }

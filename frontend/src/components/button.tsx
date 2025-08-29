@@ -26,6 +26,10 @@ interface ButtonProps
   extends VariantProps<typeof buttonVariants>,
           React.ButtonHTMLAttributes<HTMLButtonElement> {}
 
-export function Button({ children, ...props }: ButtonProps) {
-  return <button className={buttonVariants(props)} {...props}>{children}</button>;
+export function Button({ children, variant, size, ...props }: ButtonProps) {
+  return (
+    <button className={buttonVariants({ variant, size })} {...props}>
+      {children}
+    </button>
+  );
 }
