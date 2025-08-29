@@ -35,13 +35,28 @@ export function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background-primary p-6">
-      <Card floating className="flex flex-col gap-6 w-full max-w-md p-8">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background-primary p-6 gap-6">
+      
+      {/* Logo */}
+      <img
+        src="/logo.png"
+        alt="Logo da empresa"
+        className="w-28 h-28 object-contain mb-2 drop-shadow-lg"
+      />
+
+      
+      <Text variant="paragraph-medium" className="text-accent-paragraph mb-6">
+        Dashboard do Rafael 2.0
+      </Text>
+
+      <Card floating className="flex flex-col gap-6 w-full max-w-md p-8 items-center">
+        
         <Text variant="heading-medium" className="text-center">
           Login
         </Text>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" autoComplete="on" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 w-full" autoComplete="on" noValidate>
+
           <div className="flex flex-col gap-1">
             <label htmlFor="email">
               <Text variant="label-small">Email</Text>
