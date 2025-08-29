@@ -1,148 +1,166 @@
-# 📝 ProjetoInit – Backend To-Do List
-
-
+# 📝 ProjetoInit – To‑Do List (Backend + Frontend)
 
 ![DER do projeto](images/image.png)
 
-
-
-
-📌 **Projeto Backend – To-Do List**
-
-Este é o backend de uma aplicação **To-Do List** desenvolvido em **Node.js**, utilizando **Fastify**, **Prisma** e **JWT** para autenticação, além de **Vitest** para testes.
-
-Cada **task** é vinculada a um **usuário**.  
-A aplicação possui tanto integração com banco real (**SQLite via Prisma**) quanto um banco **em memória** para testes, o que significa que **dados de teste não são persistidos** no banco real.
-
-O projeto também utiliza **Zod** para validação de dados.  
-⚠️ Em caso de alterações, é importante observar os **schemas** de validação.
-
-Este projeto está em constante evolução, pois é um objeto de estudo 🚀.
+Projeto de estudo: backend em Node.js (Fastify, Prisma, JWT) e frontend em React + Vite + TypeScript. Inclui criação e exclusão de tarefas com autenticação via JWT e modal para criar tarefas.
 
 ---
 
 ## 📖 Visão Geral
 
-A arquitetura deste backend segue os princípios da **Clean Architecture**, com influências de **DDD (Domain-Driven Design)** e **Repository Pattern**.  
-
-### Estrutura por camadas:
-- **Use Cases** (`src/use-cases/`): Regras de negócio da aplicação.  
-- **Repositórios** (`src/repositories/`): Interfaces e implementações de acesso a dados (Prisma e memória).  
-- **Controllers** (`src/controllers/`): Entrada das requisições HTTP, orquestrando os casos de uso.  
-- **Middlewares** (`src/middlewares/`): Funções intermediárias, como autenticação JWT.  
-- **Infraestrutura** (`src/repositories/prisma/`): Implementações específicas do banco de dados.  
-- **Validação e Tipagem**: Feitas com **Zod** e **TypeScript**.
-
-Essa separação facilita **testes, manutenção e evolução** do sistema.
+Arquitetura com separação por camadas (controllers, use-cases, repositories, middlewares). Backend com Prisma para persistência (SQLite por padrão) e repositórios em memória para testes. Frontend em React com Vite e componentes reutilizáveis.
 
 ---
 
-## ⚡ Tecnologias Utilizadas
+## ⚡ Tecnologias
 
-- **Node.js** – Ambiente de execução JavaScript.  
-- **Fastify** – Framework web rápido e minimalista.  
-- **Prisma ORM** – ORM para banco de dados.  
-- **JWT (JSON Web Token)** – Autenticação baseada em tokens.  
-- **Zod** – Validação de dados.  
-- **TypeScript** – Superset do JavaScript com tipagem estática.  
-- **Vitest** – Testes unitários e de integração.  
+- Backend: Node.js, Fastify, Prisma, Zod, TypeScript, JWT
+- Frontend: React, Vite, TypeScript, Tailwind / CSS custom
+- Testes: Vitest
 
 ---
 
-## 📂 Estrutura de Pastas
+## 📂 Estrutura (resumida)
 
-```
-backend/
-│── prisma/              # Configurações e migrations do Prisma
-│   └── schema.prisma
-│
-│── src/
-│   ├── controllers/     # Lógica de entrada das rotas (Register, Login, Todo)
-│   ├── middlewares/     # Middlewares (ex: verifyJwt)
-│   ├── repositories/    # Interfaces e implementações (Prisma, memória)
-│   ├── use-cases/       # Regras de negócio (RegisterUser, Authenticate, etc.)
-│   ├── routes.ts        # Definição das rotas
-│   └── server.ts        # Ponto de entrada do backend
-│
-│── package.json
-│── tsconfig.json
-│── README.md
-```
+- backend/
+  - src/ (controllers, routes, use-cases, repositories, middlewares)
+  - app.ts (Fastify + CORS + plugins)
+- frontend/
+  - src/ (components, pages, api, hooks, context)
+  - vite.config.ts
 
 ---
 
-## ⚙️ Como Rodar o Projeto
+## 🔧 Instalação (Windows)
 
-1. **Clone o repositório e entre na pasta backend**
-   
-   cd backend
+1. Clonar repositório (raiz do projeto)
+   - git clone <repo> && cd ProjetoInit
 
+2. Backend
+   - cd backend
+   - npm install
+   - npx prisma generate
+   - copiar/ajustar .env a partir de .env.example (defina JWT_SECRET)
+   - npm run dev
+   - backend roda em: http://localhost:3333
 
-2. **Instale as dependências**
-   
-   npm i
-   
+3. Frontend
+   - cd frontend
+   - npm install
+   - (opcional) configurar .env VITE_API_URL se backend estiver em outra URL
+   - npm run dev
+   - frontend roda em: http://localhost:5173
 
-3. **Configure o banco de dados**
-   
-   npx prisma generate
-   
+Comandos rápidos:
+- cd c:\Users\rafael.moraes\Desktop\JS\ProjetoInit\backend
+- npm install
+- npx prisma generate
+- npm run dev
 
-4. **Inicie o servidor em modo desenvolvimento**
-   
-   npm run dev
-
-
-5. **Rodando testes**
-   
-   npm run test
-   
-
-👉 Sugestões:
-- `npm run test:ui` → abre a interface visual do Vitest.  
-- `npx prisma studio` → abre o Prisma Studio para visualizar os dados.  
-
----
-
-## 🌐 Servidor
-
-O backend roda em:
-```
-http://localhost:3333
-```
+- cd c:\Users\rafael.moraes\Desktop\JS\ProjetoInit\frontend
+- npm install
+- npm run dev
 
 ---
 
-## 🔑 Autenticação
+## 🔑 Variáveis de ambiente importantes
 
-A autenticação é feita com **JWT**.  
-
-- Após o login (`POST /sessions`), o token recebido deve ser enviado no **header**:
-  ```
-  Authorization: Bearer <token>
-  ```
+-/.env
+  - JWT_SECRET=seu_seguro_secret
+- frontend (opcional)
+  - VITE_API_URL=http://localhost:3333
 
 ---
 
-## 📌 Endpoints Principais
+## 🔗 Como o Frontend integra com o Backend
 
-### 👤 Usuário
-- `POST /users` → Registrar novo usuário.  
-- `POST /sessions` → Login e geração de token JWT.  
+- Autenticação:
+  - Após login (POST /sessions) o backend retorna JWT.
+  - Frontend armazena token em localStorage (procurado em chaves comuns: `token`, `@app:token`, `@ignite:token`, `access_token`) — ajuste se preferir outra chave.
+  - Todas requisições autenticadas enviam header:
+    Authorization: Bearer <token>
 
-### ✅ Todos
-- `GET /todo` → Listar todos os *todos* (requer token).  
-- `POST /todo` → Criar novo *todo* (requer token).  
-- `PATCH /todo/:id/complete` → Marcar como concluído (requer token).  
-- `DELETE /todo/:id` → Excluir *todo* (requer token).  
+- Endpoints usados pelo frontend:
+  - GET  /todo            → listar tarefas
+  - POST /todo            → criar (body: { title: "..." })
+  - DELETE /todo/:id      → deletar (envia JWT no header)
+  - PATCH /todo/:id/complete → marcar concluída
+
+- Observações de implementação:
+  - A exclusão é feita com optimstic update: a task é removida imediatamente da UI e depois a API é chamada; em caso de erro é feito refetch.
+  - O formulário de criação abre em modal com backdrop desfocado; botão “Criar primeira tarefa” chama o mesmo modal.
+  - Para evitar CORS em dev você pode usar proxy no vite.config.ts apontando `/todo` → `http://localhost:3333`.
 
 ---
+
+## 📡 Endpoints principais (backend)
+
+Usuário:
+- POST /users — criar usuário
+- POST /sessions — login (retorna JWT)
+
+Todos:
+- GET /todo — listar todos (requer JWT)
+- POST /todo — criar todo (requer JWT) — Body: { "title": "texto" }
+- DELETE /todo/:id — deletar todo (requer JWT)
+
+---
+
+## 🛠 Notas importantes / Troubleshooting
+
+1. CORS / preflight (OPTIONS)
+   - Navegador executa preflight antes de DELETE; backend deve permitir:
+     - Access-Control-Allow-Methods incluindo DELETE
+     - Access-Control-Allow-Headers incluindo Authorization
+   - No Fastify registre @fastify/cors com allowedHeaders e methods apropriados (o projeto já inclui exemplo).
+
+2. Token ausente / 401
+   - Verifique localStorage no DevTools e confirme a chave com o JWT.
+   - No Network → Request Headers veja se `Authorization` está presente.
+
+3. 404 ao criar/deletar
+   - Confirme URL correta: http://localhost:3333/todo
+   - Confirme rota correspondente no backend (controllers/todo).
+
+4. HMR / import errors
+   - Se aparecer "does not provide an export named 'X'", ajuste import/export (default vs named) e reinicie o dev server.
+
+5. Proxy Vite (alternativa ao CORS)
+   - Em frontend/vite.config.ts adicione:
+    server.proxy = { '/todo': 'http://localhost:3333', '/auth': 'http://localhost:3333' }
+
+---
+
+## 🧪 Testes
+
+- Backend: cd backend && npm run test (Vitest)
+- Frontend: adicionar testes conforme necessidade
+
+---
+
+## ✅ O que foi implementado 
+
+- Backend:
+  - Fastify + Prisma + JWT
+  - Endpoints CRUD para tarefas e autenticação
+  - Middleware verify-jwt
+
+- Frontend:
+  - React + Vite + TypeScript
+  - Modal para criar tarefas com backdrop desfocado
+  - Grid responsivo de tasks (itens lado a lado)
+  - Criação de tarefa via POST /todo (title obrigatório)
+  - Exclusão otimista via DELETE /todo/:id com JWT
+  - UI updates imediatos e refetch em caso de erro
+
 
 ## 🛠 Próximos Passos
 
 - ✅ Aumentar cobertura de testes nos **use-cases**.  
-- ✅ Implementar um **Front-End**.  
-
+- ✅ Implementar update de todos.  
+- ✅ Implementar update de status de todos.
+- ✅ Implementar pagina principal.
+- ✅ Implementar pagina e dashboard de adm.
 
 ---
 
