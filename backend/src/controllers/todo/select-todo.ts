@@ -4,7 +4,7 @@ import { SelectTodosUseCase } from '@/use-cases/todo/select-todo.js'
 
 export async function selectTodos(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const userId = (request.user as any).sub // ou tipar o request.user corretamente
+    const userId = (request.user as any).sub 
 
     const todosRepository = new PrismaTodosRepository()
     const selectTodosUseCase = new SelectTodosUseCase(todosRepository)
