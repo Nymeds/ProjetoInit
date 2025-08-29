@@ -1,48 +1,51 @@
-import React from "react";
-import { tv, type VariantProps } from "tailwind-variants"
+import React, { type JSX } from "react";
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const textVariants = tv({
-    base: "font-sans text-white",
-    variants: {
-        variant:{
-            "heading-large": "text-2xl leading-[130%] font-bold",
-			"heading-medium": "text-xl leading-[130%] font-bold",
-			"heading-small": "text-base leading-[130%] font-bold",
-			"paragraph-large": "text-base leading-[150%] font-medium",
-			"paragraph-medium": "text-sm leading-[150%] font-medium",
-			"paragraph-small": "text-xs leading-[150%] font-medium",
-			"label-medium": "text-base leading-[150%] font-semibold",
-			"label-small": "text-xs leading-[150%] font-semibold",
-        },
-    },
-    defaultVariants: {
-        variant: "paragraph-medium",
-    },
+type Variant =
+  | "heading-large"
+  | "heading-medium"
+  | "heading-small"
+  | "paragraph-medium"
+  | "paragraph-small"
+  | "label-small";
 
-    
-})
+type TextProps = React.HTMLAttributes<HTMLElement> & {
+  variant?: Variant;
+  as?: keyof JSX.IntrinsicElements;
+  children?: React.ReactNode;
+};
 
-interface TextProps extends VariantProps<typeof textVariants> {
-	as?: keyof React.JSX.IntrinsicElements; 
-	className?: string; 
-	children?: React.ReactNode; 
-}
+const variantTagMap: Record<Variant, keyof JSX.IntrinsicElements> = {
+  "heading-large": "h1",
+  "heading-medium": "h2",
+  "heading-small": "h3",
+  "paragraph-medium": "p",
+  "paragraph-small": "p",
+  "label-small": "span",
+};
+
+const variantClassMap: Record<Variant, string> = {
+  "heading-large": "text-2xl font-semibold",
+  "heading-medium": "text-xl font-semibold",
+  "heading-small": "text-lg font-semibold",
+  "paragraph-medium": "text-base",
+  "paragraph-small": "text-sm",
+  "label-small": "text-xs uppercase tracking-wide",
+};
 
 export function Text({
-    as = "span",
-	variant,
-	className,
-	children,
-	...props}:TextProps){
+  variant = "paragraph-medium",
+  as,
+  children,
+  className = "",
+  ...props
+}: TextProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Tag = (as || variantTagMap[variant] || "span") as any;
+  const classes = `${variantClassMap[variant] || ""} ${className}`.trim();
 
-    return React.createElement(
-        as,
-        {
-            className: textVariants({variant,className}),
-            ...props
-        },
-        children
-    )
-
+  return (
+    <Tag className={classes || undefined} {...props}>
+      {children}
+    </Tag>
+  );
 }

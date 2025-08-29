@@ -35,55 +35,65 @@ export function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-background-primary">
-      <Card variant="primary" size="lg" className="flex flex-col gap-6 w-96">
+    <div className="flex items-center justify-center min-h-screen bg-background-primary p-6">
+      <Card floating className="flex flex-col gap-6 w-full max-w-md p-8">
         <Text variant="heading-medium" className="text-center">
           Login
         </Text>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" autoComplete="on" noValidate>
           <div className="flex flex-col gap-1">
-            <Text variant="label-small">Email</Text>
+            <label htmlFor="email">
+              <Text variant="label-small">Email</Text>
+            </label>
             <input
+              id="email"
               {...register("email", { required: "Email obrigatório" })}
               type="email"
-              placeholder="Digite seu email"
-              className="p-2 rounded bg-background-secondary focus:outline-none"
+              autoComplete="email"
+              placeholder="seu@exemplo.com"
+              aria-invalid={errors.email ? "true" : "false"}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              className="p-3 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand transition"
             />
             {errors.email && (
-              <Text variant="paragraph-small" className="text-danger">
+              <Text id="email-error" variant="paragraph-small" className="text-danger" role="alert">
                 {errors.email.message}
               </Text>
             )}
           </div>
 
           <div className="flex flex-col gap-1">
-            <Text variant="label-small">Senha</Text>
+            <label htmlFor="password">
+              <Text variant="label-small">Senha</Text>
+            </label>
             <input
+              id="password"
               {...register("password", { required: "Senha obrigatória" })}
               type="password"
-              placeholder="Digite sua senha"
-              className="p-2 rounded bg-background-secondary focus:outline-none"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              aria-invalid={errors.password ? "true" : "false"}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              className="p-3 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand transition"
             />
             {errors.password && (
-              <Text variant="paragraph-small" className="text-danger">
+              <Text id="password-error" variant="paragraph-small" className="text-danger" role="alert">
                 {errors.password.message}
               </Text>
             )}
           </div>
 
           {errorMessage && (
-            <Text variant="paragraph-small" className="text-danger text-center">
+            <Text variant="paragraph-small" className="text-danger text-center" role="alert">
               {errorMessage}
             </Text>
           )}
 
-          <Button type="submit" variant="primary" disabled={loading}>
+          <Button type="submit" variant="primary" disabled={loading} className="w-full">
             {loading ? "Entrando..." : "Entrar"}
           </Button>
-          
         </form>
-       
       </Card>
     </div>
   );

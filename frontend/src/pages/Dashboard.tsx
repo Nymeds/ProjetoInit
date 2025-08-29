@@ -9,6 +9,7 @@ import { TaskList } from '../components/TaskList';
 import { BarChart3, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 
 import { Text } from '../components/text';
+import Card from '../components/card';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -45,8 +46,9 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background-primary text-label font-sans">
-      <hr></hr>
+     
       <div className="max-w-7xl mx-auto px-6 py-8 lg:px-12 lg:py-12">
+         <Card  className="bg-background-quaternary p-6 border-b-2 border-border-primary " >
         <DashboardHeader user={user} onLogout={handleLogout} />
 
         <div className="mb-16 text-center">
@@ -78,7 +80,9 @@ export function Dashboard() {
 
           <TaskList todos={todos} isLoading={todosLoading} />
         </div>
+        </Card>
       </div>
+      
     </div>
   );
 }

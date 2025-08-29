@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useState, useEffect } from "react";
 import { loginRequest, api } from "../api/auth";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;

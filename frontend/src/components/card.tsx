@@ -1,4 +1,4 @@
-import {type VariantProps, tv} from "tailwind-variants";
+import {tv} from "tailwind-variants";
 import React from "react";
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -10,6 +10,7 @@ export const cardVariants = tv({
 		variant: {
 			default: "border border-solid border-border-primary bg-transparent",
 			primary: "bg-background-primary",
+      secundary: "bg-background-secundary",
 		},
 		size: {
 			none: "",
@@ -23,26 +24,40 @@ export const cardVariants = tv({
 	},
 });
 
-interface CardProps
-	extends VariantProps<typeof cardVariants>,
-		React.ComponentProps<"div"> {
-	as?: keyof React.JSX.IntrinsicElements;
-}
+type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+ sName?: string;
+ 
+  floating?: boolean;
+};
 
 export default function Card({
-	as = "div",
-	size,
-	variant,
-	children,
-	className,
-	...props
+  header,
+  footer,
+  children,
+  bodyClassName = '',
+  floating = false,
+  className = '',
+  ...props
 }: CardProps) {
-	return React.createElement(
-		as,
-		{
-			className: cardVariants({size, variant, className}),
-			...props,
-		},
-		children
-	);
+  const floatingClasses = floating
+    ? 'backdrop-blur-sm bg-[rgba(255,255,255,0.02)] border-[rgba(255,255,255,0.04)] shadow-lg'
+    : '';
+
+  return (
+    <div
+      className={`card-surface ${floatingClasses} ${className}`}
+      {...props}
+    >
+      {header ? <div className="mb-4">{header}</div> : null}
+
+      <div className={`min-h-[44px] ${bodyClassName}`}>
+        {children}
+      </div>
+
+      {footer ? <div className="mt-4">{footer}</div> : null}
+    </div>
+  );
 }

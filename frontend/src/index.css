@@ -7,6 +7,7 @@
 	--color-background-primary: #040d18;
 	--color-background-secondary: #262337;
 	--color-background-tertiary: #3c3857;
+	--color-background-quaternary: #3c3857;
 	--color-border-primary: #2c2c35;
 	--color-border-active: #4c4c5d;
 	--color-accent-brand: #1ccfc3;
@@ -20,4 +21,61 @@
 	--color-label-inverse: #040d18;
 
 	--font-sans: "Mulish", sans-serif;
+}
+
+/* Variáveis de tema */
+:root{
+  --font-sans: "Mulish", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --bg-900: #040d18;
+  --bg-800: #0b1630;
+  --card-bg: rgba(255,255,255,0.03);
+  --glass-border: rgba(255,255,255,0.04);
+  --accent: #1ccfc3;
+  --accent-2: #66eae1;
+  --danger: #f54a26;
+  --text: #e7eef8;
+}
+
+/* Resets / base */
+html,body,#root{
+  height:100%;
+}
+body{
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: linear-gradient(180deg,var(--bg-900) 0%, var(--bg-800) 100%);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.4;
+}
+
+/* Utilities pequenos para componentes */
+.card-surface {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(3,8,18,0.6);
+  padding: 1rem;
+}
+
+.stat-icon {
+  width:48px;
+  height:48px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Responsive container tweak */
+.app-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
 }
