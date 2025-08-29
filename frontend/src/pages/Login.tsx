@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
-import Card from "../components/card";
+import Card from "../components/baseComponents/card";
 import { Text } from "../components/text";
-import { Button } from "../components/button";
+import { Button } from "../components/baseComponents/button";
 
 interface LoginFormData {
   email: string;

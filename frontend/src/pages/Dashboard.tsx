@@ -11,8 +11,8 @@ import NewTaskModal from '../components/NewTaskModal';
 import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 
 import { Text } from '../components/text';
-import Card from '../components/card';
-import { Button } from '../components/button';
+import Card from '../components/baseComponents/card';
+import { Button } from '../components/baseComponents/button';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -103,13 +103,14 @@ export function Dashboard() {
               open={isCreateOpen}
               onClose={() => setIsCreateOpen(false)}
               onCreated={() => {
-                // atualiza a lista sem reload quando possível
+                
                 refetch?.();
                 setIsCreateOpen(false);
               }}
             />
 
-            <TaskList todos={todos} isLoading={todosLoading} />
+    
+            <TaskList todos={todos} isLoading={todosLoading} onDeleted={() => refetch?.()} />
           </div>
         </Card>
       </div>

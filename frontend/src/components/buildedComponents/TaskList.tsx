@@ -1,15 +1,19 @@
-import { TaskCard } from './TaskCard';
-import { Button } from './button';
+import {TaskCard} from './TaskCard';
 import { Text } from './text';
 import { CheckCircle } from 'lucide-react';
 
-interface TaskListProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  todos: any[];
-  isLoading: boolean;
-}
 
-export function TaskList({ todos, isLoading }: TaskListProps) {
+export function TaskList({
+  todos,
+  isLoading,
+  onDeleted,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  todos?: any[];
+  isLoading?: boolean;
+  onDeleted?: () => void;
+  onCreateClick?: () => void;
+}) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -35,17 +39,15 @@ export function TaskList({ todos, isLoading }: TaskListProps) {
             Que tal começar criando sua primeira tarefa?
           </Text>
         </div>
-        <Button className="bg-accent-brand hover:bg-accent-brand-light transition-colors px-6 py-3">
-          Criar Primeira Tarefa
-        </Button>
+       
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {todos.map(todo => (
-        <TaskCard key={todo.id} title={todo.title} completed={todo.completed} createdAt={todo.createdAt} />
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {todos.map((t) => (
+        <TaskCard key={t.id} todo={t} onDeleted={onDeleted} />
       ))}
     </div>
   );

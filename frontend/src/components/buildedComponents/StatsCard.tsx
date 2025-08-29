@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text } from './text';
-import Card from './card';
+import Card from './baseComponents/card';
 
 type StatsCardProps = {
   title: string;

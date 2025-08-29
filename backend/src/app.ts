@@ -3,7 +3,8 @@ import { appRoutes } from "./routes/appRoutes.js";
 import fastifyJwt from '@fastify/jwt'
 import fastifyCookie from '@fastify/cookie'
 import { env } from "./env/index.js";
-import fastifyCors from "@fastify/cors";
+import cors from '@fastify/cors';
+
 export const app = Fastify()
 
 app.register(fastifyJwt, {
@@ -16,9 +17,16 @@ app.register(fastifyJwt, {
     expiresIn: '10m',
   },
 })
-app.register(fastifyCors, {
-  origin: 'http://localhost:5173',
-  credentials: true, 
+
+await app.register(cors, {
+  origin: (origin, cb) => {
+    cb(null, true); 
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+  credentials: true,
 })
+
 app.register(fastifyCookie)
 app.register(appRoutes)
