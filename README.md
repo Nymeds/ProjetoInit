@@ -4,6 +4,16 @@
 
 Projeto de estudo: backend em Node.js (Fastify, Prisma, JWT) e frontend em React + Vite + TypeScript. Inclui criação e exclusão de tarefas com autenticação via JWT e modal para criar tarefas.
 
+
+## ‼️ATENÇÃO
+
+- Para login no backend enquanto eu não criei a pagina de registrar use como login
+ 
+- **email** - desenvolvedor@dev.com.
+- **password** - 123456.
+- Esse perfil é de membro e não tem tasks ativas para você testar e ver como o sistema esta funcionando.
+- ps **( as descrições das tasks ainda são meramente ilustrativas)**
+
 ---
 
 ## 📖 Visão Geral
@@ -19,6 +29,7 @@ Arquitetura com separação por camadas (controllers, use-cases, repositories, m
 - Testes: Vitest
 
 ---
+
 
 ## 📂 Estrutura (resumida)
 
