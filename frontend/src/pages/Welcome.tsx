@@ -51,7 +51,7 @@ export default function Welcome() {
 
             <div className="mt-6">
               <Button
-                className="bg-accent-brand hover:bg-accent-brand-light text-white px-8 py-3 rounded-xl shadow-lg transition transform hover:scale-105"
+                variant="primary"
                 onClick={() => navigate("/login")}
               >
                 Começar Agora

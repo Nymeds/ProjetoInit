@@ -1,19 +1,21 @@
-import { type VariantProps, tv } from "tailwind-variants";
-import React from "react";
+import { tv, type VariantProps } from "tailwind-variants";
+import type { ButtonHTMLAttributes } from "react";
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const buttonVariants = tv({
-  base: "rounded font-medium transition-colors focus:outline-none",
+const buttonVariants = tv({
+  base: "px-4 py-2 rounded font-medium transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
   variants: {
     variant: {
-      primary: "bg-primary text-white hover:bg-primary-dark",
-      secondary: "bg-secondary text-white hover:bg-blue-400",
-      danger: "bg-background-danger text-white hover:bg-red-600",
+      primary:
+        "bg-accent-brand text-white hover:bg-accent-brand-light",
+      secondary:
+        "bg-background-secondary text-white hover:bg-background-tertiary",
+      danger:
+        "bg-background-danger text-white hover:bg-accent-red",
     },
     size: {
-      sm: "px-3 py-1 text-sm",
-      md: "px-4 py-2 text-base",
-      lg: "px-6 py-3 text-lg",
+      sm: "text-sm px-3 py-1.5",
+      md: "text-base px-4 py-2",
+      lg: "text-lg px-6 py-3",
     },
   },
   defaultVariants: {
@@ -23,13 +25,9 @@ export const buttonVariants = tv({
 });
 
 interface ButtonProps
-  extends VariantProps<typeof buttonVariants>,
-          React.ButtonHTMLAttributes<HTMLButtonElement> {}
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {}
 
-export function Button({ children, variant, size, ...props }: ButtonProps) {
-  return (
-    <button className={buttonVariants({ variant, size })} {...props}>
-      {children}
-    </button>
-  );
+export function Button({ variant, size, className, ...props }: ButtonProps) {
+  return <button className={buttonVariants({ variant, size, className })} {...props} />;
 }

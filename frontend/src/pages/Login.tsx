@@ -144,7 +144,7 @@ export function Login() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <Button type="submit" variant="danger" disabled={loading} className="w-full py-4 text-lg">
+                <Button type="submit" variant="primary" disabled={loading} className="w-full py-4 text-lg">
                   {loading ? "Entrando..." : "Entrar"}
                 </Button>
               </motion.div>
