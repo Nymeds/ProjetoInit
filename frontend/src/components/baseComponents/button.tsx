@@ -8,7 +8,7 @@ export const buttonVariants = tv({
     variant: {
       primary: "bg-primary text-white hover:bg-primary-dark",
       secondary: "bg-secondary text-white hover:bg-blue-400",
-      danger: "bg-danger text-white hover:bg-red-600",
+      danger: "bg-background-danger text-white hover:bg-red-600",
     },
     size: {
       sm: "px-3 py-1 text-sm",

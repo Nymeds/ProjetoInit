@@ -8,6 +8,7 @@
 	--color-background-secondary: #262337;
 	--color-background-tertiary: #3c3857;
 	--color-background-quaternary: #3c3857;
+  --color-background-danger:#f54a26;
 	--color-border-primary: #2c2c35;
 	--color-border-active: #4c4c5d;
 	--color-accent-brand: #1ccfc3;
@@ -28,7 +29,6 @@
   --font-sans: "Mulish", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   --bg-900: #040d18;
   --bg-800: #0b1630;
-  --bg-danger: var(--danger);
   --card-bg: rgba(255,255,255,0.03);
   --glass-border: rgba(255,255,255,0.04);
   --accent: #1ccfc3;
