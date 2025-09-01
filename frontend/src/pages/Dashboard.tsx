@@ -6,7 +6,6 @@ import { useTodos } from '../hooks/useTodos';
 import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
 import { StatsCard } from '../components/buildedComponents/StatsCard';
 import { TaskList } from '../components/buildedComponents/TaskList';
-// import NewTaskForm from '../components/NewTaskForm';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
 import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 
@@ -87,7 +86,7 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* Se não tiver tarefas, mostra CTA com botão */}
+         
             {totalTasks === 0 ? (
               <Card className="p-8 text-center" floating>
                 <Text variant="heading-small" className="mb-2">Você ainda não tem tarefas</Text>
