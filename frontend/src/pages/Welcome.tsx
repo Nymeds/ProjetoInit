@@ -57,6 +57,14 @@ export default function Welcome() {
                 Começar Agora
               </Button>
             </div>
+            <div className="mt-6">
+              <Button
+                variant="primary"
+                onClick={() => navigate("/register")}
+              >
+                Criar usuario
+              </Button>
+            </div>
           </Card>
         </motion.div>
       </div>
