@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +20,7 @@ export function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(data: LoginFormData) {
     setLoading(true);
@@ -38,8 +38,8 @@ export function Login() {
 
   return (
     <div className="flex flex-col justify-between min-h-screen bg-background-primary p-6">
-
-    
+      
+      {/* LOGO E TÍTULO */}
       <div className="flex flex-col items-center gap-6 mt-8">
         <motion.img
           src="/logo.png"
@@ -49,29 +49,32 @@ export function Login() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         />
-
         <Text variant="paragraph-medium" className="text-accent-paragraph mb-6">
           Dashboard do Rafael 2.0
         </Text>
 
+        {/* CARD DO FORMULÁRIO */}
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <Card floating className="flex flex-col gap-8 w-full max-w-md md:max-w-lg p-8 items-center">
-            
+
             <Text variant="heading-medium" className="text-center">
               Login
             </Text>
 
+            {/* FORMULÁRIO */}
             <form 
-              onSubmit={handleSubmit(onSubmit)} 
+              onSubmit={handleSubmit(onSubmit)}
               className="flex flex-col gap-6 w-full max-w-md"
-              autoComplete="on" 
+              autoComplete="on"
               noValidate
             >
-              <motion.div className="flex flex-col gap-2" 
+
+              {/* EMAIL */}
+              <motion.div className="flex flex-col gap-2"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
@@ -83,10 +86,7 @@ export function Login() {
                   id="email"
                   {...register("email", {
                     required: "Email obrigatório",
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Email inválido"
-                    }
+                    pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email inválido" }
                   })}
                   type="email"
                   autoComplete="email"
@@ -102,6 +102,7 @@ export function Login() {
                 )}
               </motion.div>
 
+              {/* SENHA */}
               <motion.div className="flex flex-col gap-2"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -110,22 +111,31 @@ export function Login() {
                 <label htmlFor="password">
                   <Text variant="label-small">Senha</Text>
                 </label>
-                <input
-                  id="password"
-                  {...register("password", { 
-                    required: "Senha obrigatória",
-                    minLength: {
-                      value: 6,
-                      message: "Senha precisa ter no mínimo 6 caracteres"
-                    }
-                  })}
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  aria-invalid={errors.password ? "true" : "false"}
-                  aria-describedby={errors.password ? "password-error" : undefined}
-                  className="p-4 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand transition text-lg"
-                />
+
+                <div className="relative w-full">
+                  <input
+                    id="password"
+                    {...register("password", { 
+                      required: "Senha obrigatória",
+                      minLength: { value: 6, message: "Senha precisa ter no mínimo 6 caracteres" }
+                    })}
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    aria-invalid={errors.password ? "true" : "false"}
+                    aria-describedby={errors.password ? "password-error" : undefined}
+                    className="p-4 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand transition text-lg w-full pr-10"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-accent cursor-pointer"
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+
                 {errors.password && (
                   <Text id="password-error" variant="paragraph-small" className="text-danger" role="alert">
                     {errors.password.message}
@@ -133,12 +143,14 @@ export function Login() {
                 )}
               </motion.div>
 
+              {/* MENSAGEM DE ERRO */}
               {errorMessage && (
                 <Text variant="paragraph-small" className="text-danger text-center" role="alert">
                   {errorMessage}
                 </Text>
               )}
 
+              {/* BOTÃO DE ENTRAR */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -148,12 +160,13 @@ export function Login() {
                   {loading ? "Entrando..." : "Entrar"}
                 </Button>
               </motion.div>
+
             </form>
           </Card>
         </motion.div>
       </div>
 
-    
+      {/* FOOTER */}
       <Footer />
     </div>
   );
