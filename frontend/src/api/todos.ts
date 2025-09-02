@@ -1,22 +1,17 @@
 export interface CreateTodoData {
   title: string;
   description?: string;
+  groupId?: string; 
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BASE = (import.meta.env as any).VITE_API_URL || 'http://localhost:3333';
 
 export async function createTodo(data: CreateTodoData) {
-  const token =
-    localStorage.getItem('token') ||
-    localStorage.getItem('@app:token') ||
-    localStorage.getItem('@ignite:token') ||
-    localStorage.getItem('access_token') ||
-    sessionStorage.getItem('token') ||
-    '';
-
+  const token = localStorage.getItem('token') || '';
   const payload: Record<string, unknown> = { title: data.title };
   if (data.description) payload.description = data.description;
+  if (data.groupId) payload.groupId = data.groupId; 
 
   const url = `${BASE}/todo`;
   const res = await fetch(url, {
@@ -35,6 +30,7 @@ export async function createTodo(data: CreateTodoData) {
 
   return res.json();
 }
+
 
 export async function deleteTodo(id: string) {
   if (!id) throw new Error('ID da tarefa é obrigatório');

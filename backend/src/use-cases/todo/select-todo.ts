@@ -14,7 +14,6 @@ export class SelectTodosUseCase {
 
   async execute({ userId }: SelectTodosUseCaseRequest): Promise<SelectTodosUseCaseResponse> {
     const todos = await this.todosRepository.findManyByUser(userId)
-
     return { todos }
   }
 }

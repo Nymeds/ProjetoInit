@@ -1,8 +1,17 @@
 
 export interface Todo {
-  id: number;
+  id: number; 
   title: string;
-  completed: boolean;
-  createdAt: string; 
-  userId: string;
+  description?: string;
+  completed?: boolean;
+  createdAt: string | number | Date;
+  group?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface Group {
+  id: string;
+  name: string;
 }

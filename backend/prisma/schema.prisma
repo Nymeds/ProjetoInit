@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,7 +6,6 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
 
 enum Role {
   ADMIN
@@ -21,20 +17,43 @@ model User {
   name     String
   email    String  @unique
   password String
-
-  
   role     Role    @default(MEMBER)
 
   todos    Todo[]
+  groups   UserGroup[] 
 }
 
 model Todo {
-  id        Int      @id @default(autoincrement())
-  title     String
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
-  userId    String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String?   
+  group       Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+}
+
+model Group {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+  members     UserGroup[]
+  todos       Todo[]      
+}
+
+model UserGroup {
+  userId  String
+  groupId String
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  roleInGroup Role? 
+
+  @@id([userId, groupId])
 }

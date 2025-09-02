@@ -1,19 +1,15 @@
-import {TaskCard} from './TaskCard';
+import { TaskCard } from './TaskCard';
 import { Text } from '../baseComponents/text';
 import { CheckCircle } from 'lucide-react';
+import type { Todo } from '../../types/types';
 
-
-export function TaskList({
-  todos,
-  isLoading,
-  onDeleted,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  todos?: any[];
+interface TaskListProps {
+  todos?: Todo[];
   isLoading?: boolean;
   onDeleted?: () => void;
-  onCreateClick?: () => void;
-}) {
+}
+
+export function TaskList({ todos, isLoading, onDeleted }: TaskListProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -39,15 +35,14 @@ export function TaskList({
             Que tal começar criando sua primeira tarefa?
           </Text>
         </div>
-       
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {todos.map((t) => (
-        <TaskCard key={t.id} todo={t} onDeleted={onDeleted} />
+      {todos.map((todo) => (
+        <TaskCard key={todo.id} todo={todo} onDeleted={onDeleted} />
       ))}
     </div>
   );

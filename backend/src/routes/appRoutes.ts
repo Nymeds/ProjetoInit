@@ -10,7 +10,9 @@ import { completeTodo } from "@/controllers/todo/complete.js";
 import { refresh } from "@/controllers/auth/refresh.js";
 import { deleteUser } from "@/controllers/auth/delete.js";
 import { verifyUserRole } from "@/middlewares/verify-user-role.js";
+import { createGroup } from "@/controllers/group/create.js";
 import { me } from "@/controllers/auth/auth-me.js";
+import { listGroups } from "@/controllers/group/list.js";
 export async function appRoutes(app:FastifyInstance){
     
     app.post('/users',register)
@@ -27,4 +29,7 @@ export async function appRoutes(app:FastifyInstance){
         { preHandler: [verifyJwt, verifyUserRole('ADMIN')] },
         deleteUser
       )
-    }
+    app.post('/groups', { preHandler: [verifyJwt] }, createGroup);
+    app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
+
+  }

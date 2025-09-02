@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -7,19 +6,19 @@ import { DashboardHeader } from '../components/buildedComponents/DashboardHeader
 import { StatsCard } from '../components/buildedComponents/StatsCard';
 import { TaskList } from '../components/buildedComponents/TaskList';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
+import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
 import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
-
 import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
+import type { Todo } from '../types/types';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const { data: todos, isLoading: todosLoading, refetch } =  useTodos({
-  enabled: !!user,
-});
+  const { data: todos, isLoading: todosLoading, refetch } = useTodos({ enabled: !!user });
   const navigate = useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -31,8 +30,8 @@ export function Dashboard() {
   }
 
   // Estatísticas
-  const completedTasks = todos?.filter((todo: { completed: any }) => todo.completed).length || 0;
-  const pendingTasks = todos?.filter((todo: { completed: any }) => !todo.completed).length || 0;
+  const completedTasks = todos?.filter((todo: Todo) => todo.completed).length || 0;
+  const pendingTasks = todos?.filter((todo: Todo) => !todo.completed).length || 0;
   const totalTasks = todos?.length || 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -41,9 +40,7 @@ export function Dashboard() {
       <div className="flex items-center justify-center h-screen bg-background-primary">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <Text variant="heading-medium" className="text-heading">
-            Carregando usuário...
-          </Text>
+          <Text variant="heading-medium" className="text-heading">Carregando usuário...</Text>
         </div>
       </div>
     );
@@ -52,20 +49,14 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-background-primary text-label font-sans">
       <div className="max-w-7xl mx-auto px-6 py-8 lg:px-12 lg:py-12">
-        <Card className="bg-background-quaternary p-6 border-b-2 border-border-primary ">
+        <Card className="bg-background-quaternary p-6 border-b-2 border-border-primary">
           <DashboardHeader user={user} onLogout={handleLogout} />
 
           <div className="mb-16 text-center">
-            <div>
-              <Text variant="heading-medium" className="text-heading mb-3">
-                Resumo das Atividades
-              </Text>
-            </div>
-            <div>
-              <Text variant="paragraph-medium" className="text-accent-paragraph">
-                Acompanhe seu progresso e produtividade
-              </Text>
-            </div>
+            <Text variant="heading-medium" className="text-heading mb-3">Resumo das Atividades</Text>
+            <Text variant="paragraph-medium" className="text-accent-paragraph">
+              Acompanhe seu progresso e produtividade
+            </Text>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
@@ -77,40 +68,51 @@ export function Dashboard() {
 
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <Text variant="heading-medium" className="text-heading mb-2">
-                Suas Tarefas
-              </Text>
+              <Text variant="heading-medium" className="text-heading mb-2">Suas Tarefas</Text>
 
-              <div>
+              <div className="flex flex-col md:flex-row gap-2">
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" className="flex items-center gap-2">
                   <Plus size={16} /> Nova Tarefa
+                </Button>
+                <Button onClick={() => setIsCreateGroupOpen(true)} variant="primary" className="flex items-center gap-2">
+                  <Plus size={16} /> Novo Grupo
                 </Button>
               </div>
             </div>
 
-         
-            {totalTasks === 0 ? (
+            {totalTasks === 0 && (
               <Card className="p-8 text-center" floating>
                 <Text variant="heading-small" className="mb-2">Você ainda não tem tarefas</Text>
-                <Text variant="paragraph-small" className="text-accent-paragraph mb-4">Crie sua primeira tarefa para começar a organizar suas atividades.</Text>
+                <Text variant="paragraph-small" className="text-accent-paragraph mb-4">
+                  Crie sua primeira tarefa para começar a organizar suas atividades.
+                </Text>
                 <div className="flex justify-center">
                   <Button onClick={() => setIsCreateOpen(true)} variant="primary">Criar primeira tarefa</Button>
                 </div>
               </Card>
-            ) : null}
+            )}
 
-            {/* Modal de criação */}
+            {/* Modal de criação de tarefa */}
             <NewTaskModal
               open={isCreateOpen}
               onClose={() => setIsCreateOpen(false)}
               onCreated={() => {
-                
                 refetch?.();
                 setIsCreateOpen(false);
               }}
             />
 
-    
+            {/* Modal de criação de grupo */}
+            <NewUserGroupForm
+              open={isCreateGroupOpen}
+              onClose={() => setIsCreateGroupOpen(false)}
+              onCreated={() => {
+                refetch?.();
+                setIsCreateGroupOpen(false);
+              }}
+            />
+
+            {/* Lista de tarefas */}
             <TaskList todos={todos} isLoading={todosLoading} onDeleted={() => refetch?.()} />
           </div>
         </Card>

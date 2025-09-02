@@ -1,98 +1,62 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from "react";
-import { createTodo } from "../../api/todos";
-import Card from "../baseComponents/card";
-import { Button } from "../baseComponents/button";
-import { Text } from "../baseComponents/text";
+import { useState } from 'react';
+import type { Group } from '../../types/types'; 
+import { createTodo } from '../../api/todos'; 
+interface Props {
+  groups: Group[];
+  selectedGroup?: string;
+  onGroupChange: (groupId?: string) => void;
+  onCreated: () => void;
+  onCancel: () => void;
+}
 
-type Props = {
-  onCreated?: () => void;
-  onCancel?: () => void;
-};
-
-export default function NewTaskForm({ onCreated, onCancel }: Props) {
+export default function NewTaskForm({ groups, selectedGroup, onGroupChange, onCreated, onCancel }: Props) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) {
-      setError('Título obrigatório');
-      return;
-    }
-    setLoading(true);
-    setError(null);
 
     try {
-      await createTodo({ title: title.trim(), description: description.trim() || undefined });
+      await createTodo({ title, groupId: selectedGroup });
+      onCreated();
       setTitle('');
-      setDescription('');
-      onCreated?.();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao criar tarefa');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Erro ao criar tarefa', err);
     }
-  }
+  };
 
   return (
-    <Card className="p-4" floating>
-      <div className="flex items-start justify-between mb-4">
-        <Text variant="heading-small">Nova Tarefa</Text>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Fechar"
-            className="text-accent-paragraph hover:text-white rounded-md p-1"
-          >
-            ✕
-          </button>
-        )}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        type="text"
+        placeholder="Título da tarefa"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="w-full p-2 rounded border"
+        required
+      />
+
+      <select
+        value={selectedGroup || ''}
+        onChange={(e) => onGroupChange(e.target.value || undefined)}
+        className="w-full p-2 rounded border"
+      >
+        <option value="">Selecione um grupo (opcional)</option>
+        {(groups || []).map((group) => (
+          <option key={group.id} value={group.id}>
+            {group.name}
+          </option>
+        ))}
+      </select>
+
+
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded bg-gray-500 text-white">
+          Cancelar
+        </button>
+        <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white">
+          Criar
+        </button>
       </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div>
-          <label htmlFor="new-task-title">
-            <Text variant="label-small">Título</Text>
-          </label>
-          <input
-            id="new-task-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Comprar leite"
-            className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="new-task-desc">
-            <Text variant="label-small">Descrição (opcional)</Text>
-          </label>
-          <textarea
-            id="new-task-desc"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Detalhes da tarefa"
-            className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
-            rows={3}
-          />
-        </div>
-
-        {error && (
-          <Text variant="paragraph-small" className="text-danger">
-            {error}
-          </Text>
-        )}
-
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? 'Salvando...' : 'Adicionar tarefa'}
-          </Button>
-        </div>
-      </form>
-    </Card>
+    </form>
   );
 }

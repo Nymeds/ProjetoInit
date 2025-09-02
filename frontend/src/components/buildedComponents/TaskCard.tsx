@@ -4,14 +4,7 @@ import Card from '../baseComponents/card';
 import { Text } from '../baseComponents/text';
 import { Button } from '../baseComponents/button';
 import { deleteTodo } from '../../api/todos';
-
-type Todo = {
-  createdAt: string | number | Date;
-  id: string;
-  title: string;
-  description?: string;
-  completed?: boolean;
-};
+import type { Todo } from '../../types/types';
 
 interface TaskCardProps {
   todo: Todo;
@@ -19,22 +12,17 @@ interface TaskCardProps {
   className?: string;
 }
 
-export function TaskCard({
-  todo,
-  onDeleted,
-  className = '',
-}: TaskCardProps) {
+export function TaskCard({ todo, onDeleted, className = '' }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
-    const ok = window.confirm('Deseja realmente excluir esta tarefa?');
-    if (!ok) return;
+    if (!window.confirm('Deseja realmente excluir esta tarefa?')) return;
 
     setDeleting(true);
     setError(null);
     try {
-      await deleteTodo(todo.id);
+      await deleteTodo(todo.id.toString()); 
       onDeleted?.();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -59,7 +47,7 @@ export function TaskCard({
             )}
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between">
           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
             todo.completed 
@@ -69,23 +57,28 @@ export function TaskCard({
             {todo.completed ? "✅ Concluída" : "⏳ Pendente"}
           </span>
         </div>
-        
+
         <div className="flex items-center pt-3 border-t border-border-primary space-x-2">
-        
           <Calendar className="w-4 h-4 text-accent-span" />
           <Text variant="paragraph-small" className="text-accent-span">
             {new Date(todo.createdAt).toLocaleDateString('pt-BR')}
           </Text>
         </div>
-        
+
         {todo.description && (
           <Text variant="paragraph-small" className="text-accent-paragraph">
             {todo.description}
           </Text>
         )}
-        
+
+        {todo.group && (
+          <Text variant="paragraph-small" className="text-accent-paragraph mt-1">
+            Grupo: {todo.group.name}
+          </Text>
+        )}
+
         {error && <Text variant="paragraph-small" className="text-danger mt-2">{error}</Text>}
-        
+
         <div className="flex flex-col items-end gap-2">
           <Button onClick={handleDelete} variant="danger" disabled={deleting}>
             <Trash2 size={14} />

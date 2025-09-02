@@ -1,32 +1,25 @@
-
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-
 import { CreateTodoUseCase } from '@/use-cases/todo/create-todo.js'
 import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
 
 export async function create(request: FastifyRequest, reply: FastifyReply) {
-  const registerBodySchema = z.object({
-    title : z.string(),
+  const schema = z.object({
+    title: z.string(),
+    groupId: z.string().optional(), // novo
   })
-  const userId = request.user.sub 
-  const { title } = registerBodySchema.parse(request.body)
+
+  const { title, groupId } = schema.parse(request.body)
+  const userId = (request.user as any).sub
 
   try {
-    const todoRepository = new PrismaTodosRepository()
-    const createUseCase = new CreateTodoUseCase(todoRepository)
+    const repository = new PrismaTodosRepository()
+    const useCase = new CreateTodoUseCase(repository)
 
-    await createUseCase.execute({
-      title,
-      userId,
-    })
+    const { todo } = await useCase.execute({ title, userId, groupId , })
 
-    return reply.status(201).send({ message: 'Todo registered successfully' })
-  } catch (err) {
-    if (err ) {
-      return reply.status(409).send({ message: err})
-    }
-
-    throw err
+    return reply.status(201).send({ todo })
+  } catch (err: any) {
+    return reply.status(400).send({ message: err.message || 'Erro ao criar todo' })
   }
 }
