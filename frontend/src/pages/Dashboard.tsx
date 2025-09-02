@@ -15,7 +15,9 @@ import { Button } from '../components/baseComponents/button';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const { data: todos, isLoading: todosLoading, refetch } = useTodos();
+  const { data: todos, isLoading: todosLoading, refetch } =  useTodos({
+  enabled: !!user,
+});
   const navigate = useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 

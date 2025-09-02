@@ -60,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await api.get("/sessions/me");
       setUser(data.user);
       setToken(token);
+      
+
     } catch (err) {
       console.error("Erro ao logar:", err);
       setUser(null);
