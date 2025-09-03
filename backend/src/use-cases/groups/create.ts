@@ -6,7 +6,6 @@ export interface CreateGroupRequest {
   description?: string;
   userEmails: string[]; 
 }
-
 export class CreateGroupUseCase {
   constructor(
     private groupsRepository: GroupsRepository,
@@ -26,12 +25,21 @@ export class CreateGroupUseCase {
       })
     );
 
-    const group = await this.groupsRepository.create({
-      name,
-      description: description ?? "",
-      userEmails,
-    });
+    try {
+      const group = await this.groupsRepository.create({
+        name,
+        description: description ?? "",
+        userEmails,
+      });
 
-    return group;
+      return group;
+    } catch (err: any) {
+      
+      if (err.code === "P2002" && err.meta?.target?.includes("name")) {
+        throw new Error("Já existe um grupo com esse nome");
+      }
+      throw err;
+    }
   }
 }
+

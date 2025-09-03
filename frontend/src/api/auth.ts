@@ -1,11 +1,20 @@
 import axios from "axios";
 
-
 export const api = axios.create({
   baseURL: "http://localhost:3333",
   withCredentials: true,
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem("token"); 
+      window.location.href = "/login"; 
+    }
+    return Promise.reject(error);
+  }
+);
 export async function loginRequest(email: string, password: string) {
   try {
     const response = await api.post("/sessions", { email, password });

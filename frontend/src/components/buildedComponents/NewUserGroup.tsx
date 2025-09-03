@@ -4,7 +4,7 @@ import Card from "../baseComponents/card";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import { createGroup } from "../../api/groups";
-import { useAuth } from "../../hooks/useAuth"; 
+import { useAuth } from "../../hooks/useAuth";
 
 interface NewUserGroupFormProps {
   open: boolean;
@@ -12,12 +12,8 @@ interface NewUserGroupFormProps {
   onCreated?: () => void;
 }
 
-export default function NewUserGroupForm({
-  open,
-  onClose,
-  onCreated,
-}: NewUserGroupFormProps) {
-  const { user } = useAuth(); // pega o usuário logado
+export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGroupFormProps) {
+  const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,8 +21,8 @@ export default function NewUserGroupForm({
   const [userEmails, setUserEmails] = useState<string[]>([]);
 
   useEffect(() => {
-    if (open && user?.email) {
-      setUserEmails([user.email]);
+    if (open) {
+      setUserEmails(user?.email ? [user.email] : []);
     }
   }, [open, user?.email]);
 
@@ -50,7 +46,7 @@ export default function NewUserGroupForm({
     e.preventDefault();
 
     if (!groupName.trim()) {
-      setError("Nome do grupo obrigatório");
+      setError("Nome do grupo é obrigatório");
       return;
     }
 
@@ -65,7 +61,6 @@ export default function NewUserGroupForm({
       };
 
       await createGroup(payload);
-
       onCreated?.();
       onClose();
 
@@ -74,17 +69,26 @@ export default function NewUserGroupForm({
       setDescription("");
       setUserEmails(user?.email ? [user.email] : []);
     } catch (err: any) {
-     
-      if (err?.message) {
-        try {
-          const parsed = JSON.parse(err.message);
-          setError(parsed.message || "Erro ao criar grupo");
-        } catch {
-          setError(err.message);
+      let backendMsg = "Erro desconhecido";
+
+      const data = err.response?.data;
+
+      if (data) {
+        if (typeof data === "object" && "message" in data) {
+          backendMsg = data.message; 
+        } else if (typeof data === "string") {
+          backendMsg = data;
         }
-      } else {
-        setError("Erro ao criar grupo");
+      } else if (err.message) {
+        backendMsg = err.message;
       }
+
+      
+      if (backendMsg.includes("Unique constraint failed")) {
+        backendMsg = "Já existe um grupo com esse nome";
+      }
+
+      setError(backendMsg);
     } finally {
       setLoading(false);
     }
@@ -136,7 +140,6 @@ export default function NewUserGroupForm({
                   placeholder={`email${index + 1}@exemplo.com`}
                   className="flex-1 p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
                 />
-                {/* Botão de remover mesmo que seja o email do criador */}
                 {userEmails.length > 1 && (
                   <button
                     type="button"
@@ -172,6 +175,7 @@ export default function NewUserGroupForm({
             />
           </div>
 
+          {/* Erro */}
           {error && (
             <Text variant="paragraph-small" className="text-danger">
               {error}

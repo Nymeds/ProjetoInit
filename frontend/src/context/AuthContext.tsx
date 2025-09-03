@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-refresh/only-export-components */
+// src/contexts/AuthContext.tsx
 import { createContext, type ReactNode, useState, useEffect } from "react";
 import { loginRequest, api } from "../api/auth";
 
@@ -24,72 +26,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Função para chamar o refresh token
-  async function refreshToken() {
+  async function fetchUser(storedToken: string) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
     try {
-      const response = await api.patch("/token/refresh"); 
-      const newToken = response.data.token;
-      localStorage.setItem("token", newToken);
-      api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
-      return newToken;
-    } catch (err) {
-      logout();
-      throw err;
+      const { data } = await api.get("/sessions/me");
+      setUser(data.user);
+      setToken(storedToken);
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        // Tenta refresh
+        try {
+          const { data } = await api.patch("/token/refresh", {}, { withCredentials: true });
+          const { token: newToken } = data;
+          localStorage.setItem("token", newToken);
+          api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+          const { data: me } = await api.get("/sessions/me");
+          setUser(me.user);
+          setToken(newToken);
+        } catch {
+          logout();
+        }
+      } else {
+        logout();
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  // Interceptor para lidar com 401
-  useEffect(() => {
-    const interceptor = api.interceptors.response.use(
-      response => response,
-      async error => {
-        const originalRequest = error.config;
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
-          try {
-            const newToken = await refreshToken();
-            originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-            return api.request(originalRequest);
-          } catch {
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => api.interceptors.response.eject(interceptor);
-  }, []);
-
-  // Carregar usuário ao iniciar
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
-    const fetchUser = async () => {
-      if (storedToken) {
-        setToken(storedToken);
-        api.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
-        try {
-          const { data } = await api.get("/sessions/me");
-          setUser(data.user);
-        } catch {
-          setUser(null);
-          localStorage.removeItem("token");
-        }
-      }
-      setIsLoading(false);
-    };
-    fetchUser();
+    if (storedToken) fetchUser(storedToken);
+    else setIsLoading(false);
   }, []);
 
   async function login(email: string, password: string) {
     setIsLoading(true);
     try {
-      const { token } = await loginRequest(email, password);
-      localStorage.setItem("token", token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
+      const { token: newToken } = await loginRequest(email, password);
+      localStorage.setItem("token", newToken);
+      api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
       const { data } = await api.get("/sessions/me");
       setUser(data.user);
-      setToken(token);
+      setToken(newToken);
     } catch (err) {
       logout();
       throw err;

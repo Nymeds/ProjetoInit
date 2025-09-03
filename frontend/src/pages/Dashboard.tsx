@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTodos } from '../hooks/useTodos';
+import { useGroups } from '../hooks/useGroups';
 import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
 import { StatsCard } from '../components/buildedComponents/StatsCard';
 import { TaskList } from '../components/buildedComponents/TaskList';
@@ -11,29 +14,49 @@ import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
-import type { Todo } from '../types/types';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const { data: todos, isLoading: todosLoading, refetch } = useTodos({ enabled: !!user });
-  const navigate = useNavigate();
+  const { data: groups = [], refetch: refetchGroups } = useGroups();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
   }, [authLoading, user, navigate]);
 
+  // Mapeia os todos para incluir o grupo completo
+  const todosWithGroup = useMemo(() => {
+    if (!todos) return [];
+    return todos.map((todo: { group: any; groupId: string; }) => ({
+      ...todo,
+      group: todo.group ?? groups.find(g => g.id === todo.groupId) ?? null
+    }));
+  }, [todos, groups]);
+
+  // Agrupa tarefas por grupo
+  const todosGrouped = useMemo(() => {
+    const map: Record<string, typeof todosWithGroup> = {};
+    todosWithGroup.forEach((todo: { group: { id: string; }; }) => {
+      const groupId = todo.group?.id ?? 'sem-grupo';
+      if (!map[groupId]) map[groupId] = [];
+      map[groupId].push(todo);
+    });
+    return map;
+  }, [todosWithGroup]);
+
+  // Estatísticas gerais
+  const totalTasks = todosWithGroup.length;
+  const completedTasks = todosWithGroup.filter((todo: { completed: any; }) => todo.completed).length;
+  const pendingTasks = totalTasks - completedTasks;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   function handleLogout() {
     logout();
     navigate('/login');
   }
-
-  // Estatísticas
-  const completedTasks = todos?.filter((todo: Todo) => todo.completed).length || 0;
-  const pendingTasks = todos?.filter((todo: Todo) => !todo.completed).length || 0;
-  const totalTasks = todos?.length || 0;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   if (authLoading || !user) {
     return (
@@ -52,7 +75,6 @@ export function Dashboard() {
         <Card className="bg-background-quaternary p-6 border-b-2 border-border-primary">
           <DashboardHeader user={user} onLogout={handleLogout} />
 
-          {/* Resumo das Atividades */}
           <div className="mb-16 text-center">
             <Text variant="heading-medium" className="text-heading mb-3">Resumo das Atividades</Text>
             <Text variant="paragraph-medium" className="text-accent-paragraph">
@@ -60,7 +82,6 @@ export function Dashboard() {
             </Text>
           </div>
 
-          {/* Estatísticas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             <StatsCard title="Total de Tarefas" value={totalTasks} icon={BarChart3} />
             <StatsCard title="Concluídas" value={completedTasks} icon={CheckCircle} color="accent-brand" />
@@ -68,7 +89,6 @@ export function Dashboard() {
             <StatsCard title="Taxa de Conclusão" value={`${completionRate}%`} icon={TrendingUp} color="accent-brand-light" />
           </div>
 
-          {/* Ações */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-8">
             <Text variant="heading-medium" className="text-heading mb-2">Suas Tarefas</Text>
             <div className="flex flex-col md:flex-row gap-2">
@@ -81,7 +101,6 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Estado sem tarefas */}
           {totalTasks === 0 && (
             <Card className="p-8 text-center" floating>
               <Text variant="heading-small" className="mb-2">Você ainda não tem tarefas</Text>
@@ -94,28 +113,29 @@ export function Dashboard() {
             </Card>
           )}
 
-          {/* Modais */}
+          {/* Agrupamento visual por grupo */}
+          {Object.entries(todosGrouped).map(([groupId, groupTodos]) => {
+            const groupName = groups.find(g => g.id === groupId)?.name ?? "Sem grupo";
+            return (
+              <div key={groupId} className="mb-8">
+                <Text variant="heading-small" className="text-heading mb-4">
+                  {groupName} ({groupTodos.length})
+                </Text>
+                <TaskList todos={groupTodos} isLoading={todosLoading} onDeleted={() => { refetch?.(); refetchGroups?.(); }} />
+              </div>
+            );
+          })}
+
           <NewTaskModal
             open={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
-            onCreated={() => {
-              refetch?.();
-              setIsCreateOpen(false);
-            }}
+            onCreated={() => { refetch?.(); refetchGroups?.(); }}
           />
           <NewUserGroupForm
             open={isCreateGroupOpen}
             onClose={() => setIsCreateGroupOpen(false)}
-            onCreated={() => {
-              refetch?.();
-              setIsCreateGroupOpen(false);
-            }}
+            onCreated={() => { refetch?.(); refetchGroups?.(); }}
           />
-
-          {/* Lista de tarefas */}
-          {totalTasks > 0 && (
-            <TaskList todos={todos} isLoading={todosLoading} onDeleted={() => refetch?.()} />
-          )}
         </Card>
       </div>
     </div>
