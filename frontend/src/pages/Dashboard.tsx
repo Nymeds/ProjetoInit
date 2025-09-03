@@ -52,6 +52,7 @@ export function Dashboard() {
         <Card className="bg-background-quaternary p-6 border-b-2 border-border-primary">
           <DashboardHeader user={user} onLogout={handleLogout} />
 
+          {/* Resumo das Atividades */}
           <div className="mb-16 text-center">
             <Text variant="heading-medium" className="text-heading mb-3">Resumo das Atividades</Text>
             <Text variant="paragraph-medium" className="text-accent-paragraph">
@@ -59,6 +60,7 @@ export function Dashboard() {
             </Text>
           </div>
 
+          {/* Estatísticas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             <StatsCard title="Total de Tarefas" value={totalTasks} icon={BarChart3} />
             <StatsCard title="Concluídas" value={completedTasks} icon={CheckCircle} color="accent-brand" />
@@ -66,55 +68,54 @@ export function Dashboard() {
             <StatsCard title="Taxa de Conclusão" value={`${completionRate}%`} icon={TrendingUp} color="accent-brand-light" />
           </div>
 
-          <div className="space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <Text variant="heading-medium" className="text-heading mb-2">Suas Tarefas</Text>
-
-              <div className="flex flex-col md:flex-row gap-2">
-                <Button onClick={() => setIsCreateOpen(true)} variant="primary" className="flex items-center gap-2">
-                  <Plus size={16} /> Nova Tarefa
-                </Button>
-                <Button onClick={() => setIsCreateGroupOpen(true)} variant="primary" className="flex items-center gap-2">
-                  <Plus size={16} /> Novo Grupo
-                </Button>
-              </div>
+          {/* Ações */}
+          <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+            <Text variant="heading-medium" className="text-heading mb-2">Suas Tarefas</Text>
+            <div className="flex flex-col md:flex-row gap-2">
+              <Button onClick={() => setIsCreateOpen(true)} variant="primary" className="flex items-center gap-2">
+                <Plus size={16} /> Nova Tarefa
+              </Button>
+              <Button onClick={() => setIsCreateGroupOpen(true)} variant="primary" className="flex items-center gap-2">
+                <Plus size={16} /> Novo Grupo
+              </Button>
             </div>
-
-            {totalTasks === 0 && (
-              <Card className="p-8 text-center" floating>
-                <Text variant="heading-small" className="mb-2">Você ainda não tem tarefas</Text>
-                <Text variant="paragraph-small" className="text-accent-paragraph mb-4">
-                  Crie sua primeira tarefa para começar a organizar suas atividades.
-                </Text>
-                <div className="flex justify-center">
-                  <Button onClick={() => setIsCreateOpen(true)} variant="primary">Criar primeira tarefa</Button>
-                </div>
-              </Card>
-            )}
-
-            {/* Modal de criação de tarefa */}
-            <NewTaskModal
-              open={isCreateOpen}
-              onClose={() => setIsCreateOpen(false)}
-              onCreated={() => {
-                refetch?.();
-                setIsCreateOpen(false);
-              }}
-            />
-
-            {/* Modal de criação de grupo */}
-            <NewUserGroupForm
-              open={isCreateGroupOpen}
-              onClose={() => setIsCreateGroupOpen(false)}
-              onCreated={() => {
-                refetch?.();
-                setIsCreateGroupOpen(false);
-              }}
-            />
-
-            {/* Lista de tarefas */}
-            <TaskList todos={todos} isLoading={todosLoading} onDeleted={() => refetch?.()} />
           </div>
+
+          {/* Estado sem tarefas */}
+          {totalTasks === 0 && (
+            <Card className="p-8 text-center" floating>
+              <Text variant="heading-small" className="mb-2">Você ainda não tem tarefas</Text>
+              <Text variant="paragraph-small" className="text-accent-paragraph mb-4">
+                Crie sua primeira tarefa para começar a organizar suas atividades.
+              </Text>
+              <div className="flex justify-center">
+                <Button onClick={() => setIsCreateOpen(true)} variant="primary">Criar primeira tarefa</Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Modais */}
+          <NewTaskModal
+            open={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onCreated={() => {
+              refetch?.();
+              setIsCreateOpen(false);
+            }}
+          />
+          <NewUserGroupForm
+            open={isCreateGroupOpen}
+            onClose={() => setIsCreateGroupOpen(false)}
+            onCreated={() => {
+              refetch?.();
+              setIsCreateGroupOpen(false);
+            }}
+          />
+
+          {/* Lista de tarefas */}
+          {totalTasks > 0 && (
+            <TaskList todos={todos} isLoading={todosLoading} onDeleted={() => refetch?.()} />
+          )}
         </Card>
       </div>
     </div>

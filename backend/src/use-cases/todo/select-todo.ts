@@ -13,7 +13,8 @@ export class SelectTodosUseCase {
   constructor(private todosRepository: TodosRepository) {}
 
   async execute({ userId }: SelectTodosUseCaseRequest): Promise<SelectTodosUseCaseResponse> {
-    const todos = await this.todosRepository.findManyByUser(userId)
+    
+    const todos = await this.todosRepository.findAllVisibleForUser(userId)
     return { todos }
   }
 }

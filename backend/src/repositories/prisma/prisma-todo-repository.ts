@@ -4,28 +4,23 @@ import type { TodosRepository } from '../todo-repository.js';
 
 export class PrismaTodosRepository implements TodosRepository {
   async create(data: { title: string; userId: string; groupId?: string }): Promise<Todo> {
-    const todo = await prisma.todo.create({
+    return prisma.todo.create({
       data: {
         ...data,
-        groupId: data.groupId ?? null, 
+        groupId: data.groupId ?? null,
       },
-      include: { group: true }, 
     });
-    return todo;
   }
 
   async findById(id: number): Promise<Todo | null> {
-    return prisma.todo.findUnique({
-      where: { id },
-      include: { group: true }, 
-    });
+    return prisma.todo.findUnique({ where: { id } });
   }
 
-  async findManyByUser(userId: string): Promise<Todo[]> {
-    return prisma.todo.findMany({
-      where: { userId },
-      include: { group: true },
-    });
+  async findManyByUser(userId: string, groupId?: string): Promise<Todo[]> {
+    const whereClause: any = { userId };
+    if (groupId) whereClause.groupId = groupId;
+
+    return prisma.todo.findMany({ where: whereClause });
   }
 
   async update(
@@ -36,15 +31,32 @@ export class PrismaTodosRepository implements TodosRepository {
       where: { id },
       data: {
         ...data,
-        groupId: data.groupId ?? undefined, 
+        groupId: data.groupId ?? null,
       },
-      include: { group: true }, 
     });
   }
 
   async delete(id: number): Promise<void> {
-    await prisma.todo.delete({
-      where: { id },
+    await prisma.todo.delete({ where: { id } });
+  }
+
+  async findAllVisibleForUser(userId: string): Promise<Todo[]> {
+    // Pega todos os grupos do usuário
+    const userGroups = await prisma.userGroup.findMany({
+      where: { userId },
+      select: { groupId: true },
+    });
+
+    const groupIds = userGroups.map(g => g.groupId);
+
+    // Retorna todas as tarefas do usuário ou do grupo
+    return prisma.todo.findMany({
+      where: {
+        OR: [
+          { userId },
+          { groupId: { in: groupIds } },
+        ],
+      },
     });
   }
 }

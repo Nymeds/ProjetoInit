@@ -1,4 +1,5 @@
 import type { GroupsRepository } from "@/repositories/groups-repository.js";
+import type { UsersRepository } from "@/repositories/users-repository.js";
 
 export interface CreateGroupRequest {
   name: string;
@@ -6,20 +7,24 @@ export interface CreateGroupRequest {
   userEmails: string[]; 
 }
 
-
 export class CreateGroupUseCase {
-  constructor(private groupsRepository: GroupsRepository) {}
+  constructor(
+    private groupsRepository: GroupsRepository,
+    private usersRepository: UsersRepository
+  ) {}
 
   async execute({ name, description, userEmails }: CreateGroupRequest) {
     if (!name.trim()) {
       throw new Error("Nome do grupo é obrigatório");
     }
 
- 
-    const existingGroup = await this.groupsRepository.findByName(name);
-    if (existingGroup) {
-      throw new Error("Já existe um grupo com esse nome");
-    }
+    const users = await Promise.all(
+      userEmails.map(async (email) => {
+        const user = await this.usersRepository.findByEmail(email);
+        if (!user) throw new Error(`Usuário com email ${email} não encontrado`);
+        return user;
+      })
+    );
 
     const group = await this.groupsRepository.create({
       name,

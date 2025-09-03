@@ -1,4 +1,5 @@
 import { PrismaGroupsRepository } from "@/repositories/prisma/prisma-groups-repository.js";
+import { PrismaUsersRepository } from "@/repositories/prisma/prisma-users-repository.js";
 import { CreateGroupUseCase } from "@/use-cases/groups/create.js";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import z from "zod";
@@ -14,7 +15,8 @@ export async function createGroup(request: FastifyRequest, reply: FastifyReply) 
 
   try {
     const repository = new PrismaGroupsRepository();
-    const useCase = new CreateGroupUseCase(repository);
+    const usersRepository = new PrismaUsersRepository();
+    const useCase = new CreateGroupUseCase(repository,usersRepository);
 
     const group = await useCase.execute({
       name,
