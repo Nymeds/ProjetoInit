@@ -3,7 +3,7 @@ import { CheckCircle, Clock, Calendar, Trash2 } from 'lucide-react';
 import Card from '../baseComponents/card';
 import { Text } from '../baseComponents/text';
 import { Button } from '../baseComponents/button';
-import { deleteTodo } from '../../api/todos';
+import { deleteTodo, updateTodo } from '../../api/todos';
 import type { Todo } from '../../types/types';
 
 interface TaskCardProps {
@@ -11,10 +11,13 @@ interface TaskCardProps {
   onDeleted?: () => void;
   className?: string;
   onClick?: () => void; 
+  onUpdated?: () => void;
+  laceholder?: boolean;
 }
 
-export function TaskCard({ todo, onDeleted, className = '', onClick }: TaskCardProps) {
+export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
+  const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
@@ -30,6 +33,20 @@ export function TaskCard({ todo, onDeleted, className = '', onClick }: TaskCardP
       setError(err.message || 'Erro ao deletar tarefa');
     } finally {
       setDeleting(false);
+    }
+  }
+  async function handleUpdate() {
+  
+    setUpdating(true);
+    setError(null);
+    try {
+      await updateTodo(todo.id.toString()); 
+      onUpdated?.();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || `Erro ao marcar como concluida a tarefa ${todo.title}`);
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -84,19 +101,51 @@ export function TaskCard({ todo, onDeleted, className = '', onClick }: TaskCardP
 
         {error && <Text variant="paragraph-small" className="text-danger mt-2">{error}</Text>}
 
-        <div className="flex flex-col items-end gap-2">
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            variant="danger"
-            disabled={deleting}
-          >
-            <Trash2 size={14} />
-          </Button>
-        </div>
+        <div className="flex gap-2 justify-end">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              variant="danger"
+              disabled={deleting}
+            >
+              <Trash2 size={14} />
+            </Button>
+
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdate();
+              }}
+              variant="primary"
+              disabled={updating}
+            >
+              <CheckCircle size={14} />
+            </Button>
+          </div>
+
       </div>
     </Card>
+  );
+}
+export function TaskCardFake({onClick}: TaskCardProps) {
+  
+     
+  return (<>
+    <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
+       <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
+      <div className="space-y-4">
+        <Text variant="heading-small">{"Atividade 1"}</Text>
+        <div>{<CheckCircle />}</div>
+      </div>
+    </Card>
+    <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
+       <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
+      <div className="space-y-4">
+        <Text variant="heading-small">{"Atividade 1"}</Text>
+        <div>{<Clock />}</div>
+      </div>
+    </Card></>
   );
 }

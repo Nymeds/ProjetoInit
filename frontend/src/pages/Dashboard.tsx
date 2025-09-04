@@ -125,7 +125,7 @@ export function Dashboard() {
                 <Text variant="heading-small" className="text-heading mb-4">
                   {groupName} ({groupTodos.length})
                 </Text>
-                <TaskList todos={groupTodos} isLoading={todosLoading} onDeleted={() => { refetch?.(); refetchGroups?.(); }} onSelect={(todo) => setSelectedTodo(todo)}/>
+                <TaskList todos={groupTodos} isLoading={todosLoading} onDeleted={() => { refetch?.(); refetchGroups?.(); }} onUpdated={() => { refetch?.(); refetchGroups?.(); }}  onSelect={(todo) => setSelectedTodo(todo)}/>
               </div>
             );
           })}

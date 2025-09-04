@@ -76,3 +76,48 @@ export async function deleteTodo(id: string) {
     return undefined;
   }
 }
+
+export async function updateTodo(id: string) {
+
+  if (!id) throw new Error('ID da tarefa é obrigatório');
+
+  const token =
+    localStorage.getItem('token') ||
+    localStorage.getItem('@app:token') ||
+    localStorage.getItem('@ignite:token') ||
+    localStorage.getItem('access_token') ||
+    sessionStorage.getItem('token') ||
+    '';
+
+  if (!token) {
+    throw new Error('Token JWT não encontrado. Faça login novamente.');
+  }
+
+  const url = `${BASE}/todo/${encodeURIComponent(id)}/complete`;
+
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (res.status === 401) {
+    throw new Error('Não autorizado (401). Verifique o token JWT.');
+  }
+
+  if (res.status === 404) {
+    const text = await res.text().catch(() => null);
+    throw new Error(`Tarefa não encontrada (404). Resposta: ${text || 'sem corpo'}`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => null);
+    throw new Error(text || `Erro ao deletar tarefa: ${res.status}`);
+  }
+
+  try {
+    return await res.json();
+  } catch {
+    return undefined;
+  }
+}
