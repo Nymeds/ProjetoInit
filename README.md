@@ -8,9 +8,7 @@ Inclui **criação e exclusão de tarefas**, **autenticação via JWT**, **cria�
 - email: `desenvolvedor@dev.com`  
 - password: `123456`  
 
-Esse perfil é de membro e não tem tasks ativas para você testar e ver como o sistema está funcionando.  
-
-> ℹ️ As descrições das tasks ainda são meramente ilustrativas.
+Esse perfil é de membro e não tem tasks ativas para você testar e ver como o sistema está funcionando, caso não queira criar um usuario :O .  
 
 ---
 
@@ -165,8 +163,6 @@ Exibição de tarefas compartilhadas
 ## 🛠 Próximos Passos
 
  Melhorar UI do sistema (UX e responsividade)
-
- Melhorar descrições e usabilidade no frontend
 
  Aumentar cobertura de testes nos use-cases
 

@@ -4,6 +4,7 @@ import type { Todo } from '@prisma/client'
 interface CreateTodoUseCaseRequest {
   title: string
   userId: string
+  description?: string | undefined
   groupId?: string  | undefined
 }
 
@@ -14,8 +15,8 @@ interface CreateTodoUseCaseResponse {
 export class CreateTodoUseCase {
   constructor(private todosRepository: TodosRepository) {}
 
-  async execute({ title, userId, groupId }: CreateTodoUseCaseRequest): Promise<CreateTodoUseCaseResponse> {
-    const todo = await this.todosRepository.create({ title, userId, groupId })
+  async execute({ title, userId,description, groupId }: CreateTodoUseCaseRequest): Promise<CreateTodoUseCaseResponse> {
+    const todo = await this.todosRepository.create({ title, userId, description , groupId })
     return { todo }
   }
 }

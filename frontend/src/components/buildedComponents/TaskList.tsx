@@ -7,9 +7,10 @@ interface TaskListProps {
   todos?: Todo[];
   isLoading?: boolean;
   onDeleted?: () => void;
+  onSelect?: (todo: Todo) => void;
 }
 
-export function TaskList({ todos, isLoading, onDeleted }: TaskListProps) {
+export function TaskList({ todos, isLoading, onDeleted, onSelect }: TaskListProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -42,7 +43,13 @@ export function TaskList({ todos, isLoading, onDeleted }: TaskListProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {todos.map((todo) => (
-        <TaskCard key={todo.id} todo={todo} onDeleted={onDeleted} />
+        <TaskCard
+          key={todo.id}
+          todo={todo}
+          onDeleted={onDeleted}
+         
+          onClick={() => onSelect?.(todo)}
+        />
       ))}
     </div>
   );

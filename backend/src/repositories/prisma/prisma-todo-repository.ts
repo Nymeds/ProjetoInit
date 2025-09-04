@@ -3,11 +3,13 @@ import type { Todo } from '@prisma/client';
 import type { TodosRepository } from '../todo-repository.js';
 
 export class PrismaTodosRepository implements TodosRepository {
-  async create(data: { title: string; userId: string; groupId?: string }): Promise<Todo> {
+  async create(data: { title: string; userId: string; description?:string; groupId?: string }): Promise<Todo> {
     return prisma.todo.create({
       data: {
-        ...data,
-        groupId: data.groupId ?? null,
+       title: data.title,
+       userId: data.userId,
+       description: data.description ?? null,
+       groupId: data.groupId ?? null,
       },
     });
   }

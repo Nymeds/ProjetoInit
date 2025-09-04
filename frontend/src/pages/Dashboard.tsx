@@ -14,6 +14,8 @@ import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
+import TaskInfo from '../components/buildedComponents/TaskInfo';
+import type { Todo } from '../types/types';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -21,6 +23,8 @@ export function Dashboard() {
   const { data: groups = [], refetch: refetchGroups } = useGroups();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -121,7 +125,7 @@ export function Dashboard() {
                 <Text variant="heading-small" className="text-heading mb-4">
                   {groupName} ({groupTodos.length})
                 </Text>
-                <TaskList todos={groupTodos} isLoading={todosLoading} onDeleted={() => { refetch?.(); refetchGroups?.(); }} />
+                <TaskList todos={groupTodos} isLoading={todosLoading} onDeleted={() => { refetch?.(); refetchGroups?.(); }} onSelect={(todo) => setSelectedTodo(todo)}/>
               </div>
             );
           })}
@@ -135,6 +139,12 @@ export function Dashboard() {
             open={isCreateGroupOpen}
             onClose={() => setIsCreateGroupOpen(false)}
             onCreated={() => { refetch?.(); refetchGroups?.(); }}
+          />
+          <TaskInfo
+            open={!!selectedTodo}
+            onClose={() => setSelectedTodo(null)}
+            onCreated={() => { refetch?.(); refetchGroups?.(); }}
+            todo={selectedTodo!}
           />
         </Card>
       </div>

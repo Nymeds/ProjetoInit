@@ -6,17 +6,18 @@ import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-reposit
 export async function create(request: FastifyRequest, reply: FastifyReply) {
   const schema = z.object({
     title: z.string(),
-    groupId: z.string().optional(), // novo
+    description: z.string().optional(),
+    groupId: z.string().optional(),
   })
 
-  const { title, groupId } = schema.parse(request.body)
+  const { title, groupId, description } = schema.parse(request.body)
   const userId = (request.user as any).sub
 
   try {
     const repository = new PrismaTodosRepository()
     const useCase = new CreateTodoUseCase(repository)
 
-    const { todo } = await useCase.execute({ title, userId, groupId , })
+    const { todo } = await useCase.execute({ title, userId, description, groupId , })
 
     return reply.status(201).send({ todo })
   } catch (err: any) {

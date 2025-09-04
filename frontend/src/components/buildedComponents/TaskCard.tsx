@@ -10,9 +10,10 @@ interface TaskCardProps {
   todo: Todo;
   onDeleted?: () => void;
   className?: string;
+  onClick?: () => void; 
 }
 
-export function TaskCard({ todo, onDeleted, className = '' }: TaskCardProps) {
+export function TaskCard({ todo, onDeleted, className = '', onClick }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +34,11 @@ export function TaskCard({ todo, onDeleted, className = '' }: TaskCardProps) {
   }
 
   return (
-    <Card className={`bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className}`}>
+    <Card
+     
+      onClick={onClick}
+      className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className}`}
+    >
       <div className="space-y-4">
         <div className="flex items-start justify-between">
           <Text variant="heading-small" className="text-heading flex-1 pr-3 leading-relaxed">
@@ -80,7 +85,14 @@ export function TaskCard({ todo, onDeleted, className = '' }: TaskCardProps) {
         {error && <Text variant="paragraph-small" className="text-danger mt-2">{error}</Text>}
 
         <div className="flex flex-col items-end gap-2">
-          <Button onClick={handleDelete} variant="danger" disabled={deleting}>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            variant="danger"
+            disabled={deleting}
+          >
             <Trash2 size={14} />
           </Button>
         </div>
