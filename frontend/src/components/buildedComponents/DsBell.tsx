@@ -1,6 +1,5 @@
 /* eslint-disable prefer-const */
- 
-// src/components/buildedComponents/ModalAnimado.tsx
+
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "../baseComponents/button";
@@ -20,7 +19,7 @@ const letraComTempos: { word: string; delay: number }[] = [
   { word: "answer,", delay: 600 },
   { word: "dooo", delay: 2000 },
 
-  { word: "\nI'm", delay: 550 },
+  { word: "\n - I'm", delay: 550 },
   { word: "half", delay: 950 },
   { word: "crazy", delay: 700 },
   { word: "all", delay: 650 },
@@ -30,7 +29,7 @@ const letraComTempos: { word: string; delay: number }[] = [
   { word: "of", delay: 400 },
   { word: "youuuu", delay: 2000 },
 
-  { word: "\nIt", delay: 400 },
+  { word: "\n - It", delay: 400 },
   { word: "won't", delay: 300 },
   { word: "be", delay: 200 },
   { word: "a", delay: 150 },
@@ -42,7 +41,7 @@ const letraComTempos: { word: string; delay: number }[] = [
   { word: "a", delay: 150 },
   { word: "carriage,", delay: 600 },
 
-  { word: "\nBut", delay: 400 },
+  { word: "\n - But", delay: 400 },
   { word: "you", delay: 300 },
   { word: "will", delay: 250 },
   { word: "look", delay: 250 },
@@ -66,14 +65,14 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
   const typingTimeout = useRef<number | null>(null);
   const introTimeout = useRef<number | null>(null);
 
-  // índices controlando a digitação
+  
   const currentWordIndex = useRef(0);
   const letterIndex = useRef(0);
 
-  // referência para scroll automático do terminal
+  
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  // Fecha com ESC
+ 
   useEffect(() => {
     if (!open) return;
 
@@ -95,7 +94,7 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
      
   }, [open]);
 
-  // auto scroll quando displayedText muda
+ 
   useEffect(() => {
     if (contentRef.current) {
       // rola suavemente até o final
@@ -243,7 +242,7 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
               <span className="w-3 h-3 rounded-full bg-[#27c93f]" />
             </div>
 
-            <div className="ml-4 text-sm font-mono text-green-300 select-none">VT-like Terminal</div>
+            <div className="ml-4 text-sm font-mono text-green-300 select-none">Terminal</div>
 
             <div className="ml-auto text-xs text-green-500 font-mono select-none">v 0.1</div>
           </div>
@@ -323,7 +322,7 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
           >
             {!playing ? (
               <Button variant="primary" onClick={startMusic}>
-                Tocar Música 🎵
+                 🎵
               </Button>
             ) : (
               <Button variant="danger" onClick={toggleAudio}>
