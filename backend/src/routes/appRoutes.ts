@@ -13,6 +13,7 @@ import { verifyUserRole } from "@/middlewares/verify-user-role.js";
 import { createGroup } from "@/controllers/group/create.js";
 import { me } from "@/controllers/auth/auth-me.js";
 import { listGroups } from "@/controllers/group/list.js";
+import { deleteGroup } from "@/controllers/group/delete.js";
 
 export async function appRoutes(app: FastifyInstance) {
   // Auth
@@ -38,4 +39,6 @@ export async function appRoutes(app: FastifyInstance) {
   // Groups
   app.post('/groups', { preHandler: [verifyJwt] }, createGroup);
   app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
+  app.delete<{ Params: { id: string } }>('/groups/:id', { preHandler: [verifyJwt] }, deleteGroup);
+
 }

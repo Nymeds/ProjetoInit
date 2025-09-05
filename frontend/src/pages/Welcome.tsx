@@ -42,8 +42,8 @@ export default function Welcome() {
               novas funcionalidades. Está em constante evolução — então pode rolar alguns bugs 😅
             </p>
 
-            <p>login de testes : desenvolvedor@dev.com </p>
-            <p>senha : 123456</p>
+            <p> Sinta se a vontade para criar um usuario e testar</p>
+            
 
             <p className="text-accent-span text-sm">
               Obrigado por testar e acompanhar o progresso 🚀
