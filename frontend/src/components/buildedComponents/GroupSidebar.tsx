@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
 import { useGroups } from "../../hooks/useGroups";
-import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import { Trash2, Search, Users, Folder } from "lucide-react";
 import { Modal } from "../baseComponents/Modal";
+import { deleteGroup } from "../../api/groups";
 
 function initials(name: string) {
   const parts = name.split(" ").filter(Boolean);
@@ -30,8 +30,7 @@ function getAvatarColor(index: number) {
 
 export function GroupSidebar() {
   const { data: groups = [], refetch, isLoading } = useGroups();
-  const { token } = useAuth();
-
+  
   const [query, setQuery] = useState("");
   const [groupToDelete, setGroupToDelete] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,12 +43,7 @@ export function GroupSidebar() {
 
   async function handleDeleteGroup(id: string) {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/groups/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await deleteGroup(id)
       setIsModalOpen(false);
       setGroupToDelete(null);
       refetch?.();

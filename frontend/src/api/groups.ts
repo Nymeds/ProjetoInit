@@ -40,3 +40,17 @@ export async function createGroup(data: CreateGroupData) {
 
   return res.json();
 }
+export async function deleteGroup(id: string) {
+  const token = localStorage.getItem("token") || "";
+  const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3333"}/groups/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Erro ao deletar grupo (status ${res.status})`);
+  }
+
+  return res.json();
+}
