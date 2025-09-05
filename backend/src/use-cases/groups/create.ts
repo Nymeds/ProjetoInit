@@ -1,5 +1,5 @@
-import type { GroupsRepository } from "@/repositories/groups-repository.js";
-import type { UsersRepository } from "@/repositories/users-repository.js";
+import type { GroupsRepository } from "../../repositories/groups-repository.js";
+import type { UsersRepository } from "../../repositories/users-repository.js";
 
 export interface CreateGroupRequest {
   name: string;

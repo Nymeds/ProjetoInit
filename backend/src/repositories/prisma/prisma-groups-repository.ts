@@ -1,4 +1,4 @@
-import { prisma } from "@/utils/prismaClient.js";
+import { prisma } from "../../utils/prismaClient.js";
 import type { GroupsRepository, CreateGroupParams } from "../groups-repository.js";
 import type { Group } from "@prisma/client";
 

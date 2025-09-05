@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { PrismaUsersRepository } from "@/repositories/prisma/prisma-users-repository.js";
-import { GetUserProfileUseCase } from "@/use-cases/auth-users/get-user-profile.js";
+import { PrismaUsersRepository } from "../../repositories/prisma/prisma-users-repository.js";
+import { GetUserProfileUseCase } from "../../use-cases/auth-users/get-user-profile.js";
 
 export async function me(request: FastifyRequest, reply: FastifyReply) {
   try {

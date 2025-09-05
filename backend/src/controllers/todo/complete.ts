@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
-import { CompleteTodoUseCase } from '@/use-cases/todo/complete-todo.js'
+import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
+import { CompleteTodoUseCase } from '../../use-cases/todo/complete-todo.js'
 
 interface CompleteTodoRequestParams {
   id: string

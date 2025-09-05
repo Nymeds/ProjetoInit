@@ -1,6 +1,6 @@
-import { PrismaGroupsRepository } from "@/repositories/prisma/prisma-groups-repository.js";
-import { PrismaUsersRepository } from "@/repositories/prisma/prisma-users-repository.js";
-import { CreateGroupUseCase } from "@/use-cases/groups/create.js";
+import { PrismaGroupsRepository } from "../../repositories/prisma/prisma-groups-repository.js";
+import { PrismaUsersRepository } from "../../repositories/prisma/prisma-users-repository.js";
+import { CreateGroupUseCase } from "../../use-cases/groups/create.js";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import z from "zod";
 

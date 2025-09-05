@@ -1,0 +1,34 @@
+import { register } from '../controllers/auth/register.js';
+import { create } from '../controllers/todo/create.js';
+import { verifyJwt } from "../middlewares/verify-jwt.js";
+import { authenticate } from "../controllers/auth/authenticate.js";
+import { selectTodos } from '../controllers/todo/select-todo.js';
+import { deleteTodo } from "../controllers/todo/delete.js";
+import { updateTodo } from "../controllers/todo/update-todo.js";
+import { completeTodo } from "../controllers/todo/complete.js";
+import { refresh } from "../controllers/auth/refresh.js";
+import { deleteUser } from "../controllers/auth/delete.js";
+import { verifyUserRole } from "../middlewares/verify-user-role.js";
+import { createGroup } from "../controllers/group/create.js";
+import { me } from "../controllers/auth/auth-me.js";
+import { listGroups } from "../controllers/group/list.js";
+import { deleteGroup } from "../controllers/group/delete.js";
+export async function appRoutes(app) {
+    // Auth
+    app.post('/users', register);
+    app.post('/sessions', authenticate);
+    app.patch('/token/refresh', refresh);
+    app.get('/sessions/me', { preHandler: [verifyJwt] }, me);
+    // Todos
+    app.post('/todo', { preHandler: [verifyJwt] }, create);
+    app.get('/todo', { preHandler: [verifyJwt] }, selectTodos);
+    app.delete('/todo/:id', { preHandler: [verifyJwt] }, deleteTodo);
+    app.put('/todo/:id', { preHandler: [verifyJwt] }, updateTodo);
+    app.patch('/todo/:id/complete', { preHandler: [verifyJwt] }, completeTodo);
+    // Users (admin)
+    app.delete('/users/:id', { preHandler: [verifyJwt, verifyUserRole('ADMIN')] }, deleteUser);
+    // Groups
+    app.post('/groups', { preHandler: [verifyJwt] }, createGroup);
+    app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
+    app.delete('/groups/:id', { preHandler: [verifyJwt] }, deleteGroup);
+}

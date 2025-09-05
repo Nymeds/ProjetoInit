@@ -1,4 +1,4 @@
-import type { GroupsRepository } from '@/repositories/groups-repository.js';
+import type { GroupsRepository } from '../../repositories/groups-repository.js';
 
 export class ListGroupsUseCase {
   constructor(private groupsRepository: GroupsRepository) {}

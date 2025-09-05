@@ -1,7 +1,6 @@
-// src/controllers/groups.ts
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaGroupsRepository } from '@/repositories/prisma/prisma-groups-repository.js';
-import { ListGroupsUseCase } from '@/use-cases/groups/list-groups.js';
+import { PrismaGroupsRepository } from '../../repositories/prisma/prisma-groups-repository.js';
+import { ListGroupsUseCase } from '../../use-cases/groups/list-groups.js';
 
 export async function listGroups(request: FastifyRequest, reply: FastifyReply) {
   try {

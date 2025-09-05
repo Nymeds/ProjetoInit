@@ -1,5 +1,5 @@
-import { PrismaGroupsRepository } from "@/repositories/prisma/prisma-groups-repository.js";
-import { DeleteGroupUseCase } from "@/use-cases/groups/delete.js";
+import { PrismaGroupsRepository } from "../../repositories/prisma/prisma-groups-repository.js";
+import { DeleteGroupUseCase } from "../../use-cases/groups/delete.js";
 import type { FastifyRequest, FastifyReply } from "fastify";
 
 export async function deleteGroup(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {

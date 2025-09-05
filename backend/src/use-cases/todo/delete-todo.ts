@@ -1,4 +1,4 @@
-import type { TodosRepository } from '@/repositories/todo-repository.js'
+import type { TodosRepository } from '../../repositories/todo-repository.js'
 
 interface DeleteTodoUseCaseRequest {
   todoId: number

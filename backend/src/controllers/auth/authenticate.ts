@@ -1,8 +1,8 @@
 
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { AuthenticateUseCase } from '@/use-cases/auth-users/authenticate.js'
-import { PrismaUsersRepository } from '@/repositories/prisma/prisma-users-repository.js'
+import { AuthenticateUseCase } from '../../use-cases/auth-users/authenticate.js'
+import { PrismaUsersRepository } from '../../repositories/prisma/prisma-users-repository.js'
 
 export async function authenticate(
   request: FastifyRequest,

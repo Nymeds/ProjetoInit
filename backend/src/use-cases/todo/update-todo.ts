@@ -1,4 +1,4 @@
-import type { TodosRepository } from '@/repositories/todo-repository.js'
+import type { TodosRepository } from '../../repositories/todo-repository.js'
 import type { Todo } from '@prisma/client'
 
 interface UpdateTodoUseCaseRequest {

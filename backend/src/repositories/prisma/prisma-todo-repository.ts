@@ -1,4 +1,4 @@
-import { prisma } from 'src/utils/prismaClient.js';
+import { prisma } from '../../utils/prismaClient.js';
 import type { Todo } from '@prisma/client';
 import type { TodosRepository } from '../todo-repository.js';
 

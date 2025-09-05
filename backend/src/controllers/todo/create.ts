@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { CreateTodoUseCase } from '@/use-cases/todo/create-todo.js'
-import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
+import { CreateTodoUseCase } from '../../use-cases/todo/create-todo.js'
+import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
 
 export async function create(request: FastifyRequest, reply: FastifyReply) {
   const schema = z.object({

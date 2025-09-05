@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
-import { SelectTodosUseCase } from '@/use-cases/todo/select-todo.js'
+import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
+import { SelectTodosUseCase } from '../../use-cases/todo/select-todo.js'
 
 export async function selectTodos(request: FastifyRequest, reply: FastifyReply) {
   try {

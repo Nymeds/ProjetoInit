@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { PrismaTodosRepository } from '@/repositories/prisma/prisma-todo-repository.js'
-import { UpdateTodoUseCase } from '@/use-cases/todo/update-todo.js'
+import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
+import { UpdateTodoUseCase } from '../../use-cases/todo/update-todo.js'
 import { z } from 'zod'
 
 interface UpdateTodoRequestParams {

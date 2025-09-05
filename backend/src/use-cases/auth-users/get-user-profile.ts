@@ -1,4 +1,4 @@
-import type { UsersRepository } from "@/repositories/users-repository.js";
+import type { UsersRepository } from "../../repositories/users-repository.js";
 
 interface GetUserProfileRequest {
   userId: string;
