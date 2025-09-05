@@ -1,5 +1,5 @@
  
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import Card from "../baseComponents/card";
