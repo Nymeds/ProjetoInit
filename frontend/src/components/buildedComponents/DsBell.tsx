@@ -435,11 +435,11 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
             }}
           >
             <Button variant="primary" onClick={() => playSong("evidencias")} className={`${theme === 'vintage' ? 'terminal-button' : 'commodore-button'}`}>
-              🎸 EVIDÊNCIAS
+              🎸
             </Button>
 
             <Button variant={currentSong === "daisy" ? "danger" : "primary"} onClick={() => playSong("daisy")} className={`${theme === 'vintage' ? 'terminal-button' : 'commodore-button'}`}>
-              🔔 DAISY
+              🔔
             </Button>
 
             {/* Controlador de Volume */}
