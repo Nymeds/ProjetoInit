@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 /* eslint-disable prefer-const */
 
 import { useRef, useState, useEffect } from "react";
@@ -299,11 +299,6 @@ export default function ModalAnimado({ open, onClose }: ModalAnimadoProps) {
     onClose();
   };
 
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) audioRef.current.play();
-    else audioRef.current.pause();
-  };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
