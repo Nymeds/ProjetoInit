@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "postbuild": "cpx static.json dist/static.json",
+    "postbuild": "cpx _redirects dist/_redirects",
     "lint": "eslint .",
     "preview": "vite preview"
   },
