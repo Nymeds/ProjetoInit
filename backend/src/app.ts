@@ -4,6 +4,11 @@ import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
 import { env } from "./env/index.js";
 import cors from '@fastify/cors';
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const app = Fastify();
 
@@ -27,7 +32,6 @@ const allowedOrigins = [
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    
     if (!origin) return cb(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -42,14 +46,18 @@ await app.register(cors, {
   credentials: true,
 });
 
-
 app.register(fastifyCookie);
 
-
+// Rotas da API
 app.register(appRoutes);
+// @ts-ignore
+// Servir frontend (React build)
+app.register(import('@fastify/static'), {
+  root: path.join(__dirname, "../frontend/dist"), // ajuste se a pasta build for diferente
+  prefix: "/", // serve tudo na raiz
+});
 
-
-const PORT = Number(process.env.PORT) || 3333;
-app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+// SPA fallback: todas as rotas que não forem API retornam index.html
+app.setNotFoundHandler((req, reply) => {
+  reply.sendFile("index.html");
 });
