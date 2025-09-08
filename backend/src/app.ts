@@ -27,7 +27,7 @@ const allowedOrigins = [
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    // permitir requisições sem origin (ex: Postman)
+    
     if (!origin) return cb(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -42,13 +42,13 @@ await app.register(cors, {
   credentials: true,
 });
 
-// Cookies
+
 app.register(fastifyCookie);
 
-// Rotas
+
 app.register(appRoutes);
 
-// Server (pode definir a porta dinamicamente para Render)
+
 const PORT = Number(process.env.PORT) || 3333;
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
   console.log(`Servidor rodando na porta ${PORT}`);
