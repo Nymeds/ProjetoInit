@@ -57,7 +57,3 @@ app.register(import('@fastify/static'), {
   prefix: "/", // serve tudo na raiz
 });
 
-// SPA fallback: todas as rotas que não forem API retornam index.html
-app.setNotFoundHandler((req, reply) => {
-  reply.sendFile("index.html");
-});

@@ -40,7 +40,7 @@ export async function authenticate(
         sameSite: 'lax',
       })
       .status(200)
-      .send({ token: accessToken })
+      .send({ token: accessToken , refreshToken})
   } catch (err: any) {
     return reply
       .status(400)

@@ -34,5 +34,6 @@ export async function refresh(request: FastifyRequest, reply: FastifyReply) {
     .status(200)
     .send({
       token,
+       refreshToken,
     })
 }

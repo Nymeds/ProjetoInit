@@ -31,7 +31,7 @@ export function Dashboard() {
     if (!authLoading && !user) navigate('/login');
   }, [authLoading, user, navigate]);
 
-  // Mapeia os todos para incluir o grupo completo
+  
   const todosWithGroup = useMemo(() => {
     if (!todos) return [];
     return todos.map((todo: any) => {
@@ -43,12 +43,12 @@ export function Dashboard() {
     });
   }, [todos, groups]);
 
-  // Agrupa tarefas por grupo - CORRIGIDO
+  
   const todosGrouped = useMemo(() => {
     const map: Record<string, any[]> = {};
     
     todosWithGroup.forEach((todo: any) => {
-      // Use o ID do grupo se existir, senão use 'sem-grupo'
+     
       const groupKey = todo.group?.id || 'sem-grupo';
       
       if (!map[groupKey]) {
@@ -60,7 +60,7 @@ export function Dashboard() {
     return map;
   }, [todosWithGroup]);
 
-  // Função para obter o nome do grupo - CORRIGIDA
+ 
   const getGroupName = (groupId: string) => {
     if (groupId === 'sem-grupo') {
       return 'Sem grupo';
@@ -69,7 +69,7 @@ export function Dashboard() {
     return group?.name || 'Grupo não encontrado';
   };
 
-  // Estatísticas gerais
+  
   const totalTasks = todosWithGroup.length;
   const completedTasks = todosWithGroup.filter((todo: any) => todo.completed).length;
   const pendingTasks = totalTasks - completedTasks;
