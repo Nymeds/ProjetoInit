@@ -3,13 +3,13 @@ import type { Todo } from '@prisma/client';
 import type { TodosRepository } from '../todo-repository.js';
 
 export class PrismaTodosRepository implements TodosRepository {
-  async create(data: { title: string; userId: string; description?:string; groupId?: string }): Promise<Todo> {
+  async create(data: { title: string; userId: string; description?: string; groupId?: string }): Promise<Todo> {
     return prisma.todo.create({
       data: {
-       title: data.title,
-       userId: data.userId,
-       description: data.description ?? null,
-       groupId: data.groupId ?? null,
+        title: data.title,
+        userId: data.userId,
+        description: data.description ?? null,
+        groupId: data.groupId ?? undefined,
       },
     });
   }
@@ -29,11 +29,15 @@ export class PrismaTodosRepository implements TodosRepository {
     id: number,
     data: { title?: string; completed?: boolean; groupId?: string },
   ): Promise<Todo> {
+    const existingTodo = await prisma.todo.findUnique({ where: { id } });
+    if (!existingTodo) throw new Error("Tarefa não encontrada");
+
     return prisma.todo.update({
       where: { id },
       data: {
         ...data,
-        groupId: data.groupId ?? null,
+       
+        groupId: data.groupId ?? existingTodo.groupId ?? undefined,
       },
     });
   }
@@ -43,7 +47,7 @@ export class PrismaTodosRepository implements TodosRepository {
   }
 
   async findAllVisibleForUser(userId: string): Promise<Todo[]> {
-    // Pega todos os grupos do usuário
+   
     const userGroups = await prisma.userGroup.findMany({
       where: { userId },
       select: { groupId: true },
@@ -51,7 +55,7 @@ export class PrismaTodosRepository implements TodosRepository {
 
     const groupIds = userGroups.map(g => g.groupId);
 
-    // Retorna todas as tarefas do usuário ou do grupo
+  
     return prisma.todo.findMany({
       where: {
         OR: [
@@ -60,5 +64,15 @@ export class PrismaTodosRepository implements TodosRepository {
         ],
       },
     });
+  }
+
+  
+  async isUserInGroup(userId: string, groupId: string): Promise<boolean> {
+    const membership = await prisma.userGroup.findUnique({
+      where: {
+        userId_groupId: { userId, groupId }
+      }
+    });
+    return !!membership;
   }
 }

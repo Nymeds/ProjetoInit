@@ -1,4 +1,4 @@
-import React from "react";
+
 import { View, FlatList, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from "react-native";
 import TaskCard from "./TaskCard";
 import type { Todo } from "../hooks/useTodos";
