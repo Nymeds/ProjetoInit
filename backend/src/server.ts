@@ -7,7 +7,7 @@ app
     port: 3333
   })
   .then(() => {
-    console.log("SERVER RODANDO NA PORTA 3333");
+    console.log("SERVER ON");
   })
   .catch((err) => {
     console.error(err);
