@@ -47,3 +47,15 @@ export const getGroups = async (): Promise<Group[]> => {
     throw new Error(msg);
   }
 };
+export const deleteGroup = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/groups/${id}`);
+  } catch (err: any) {
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data ||
+      err?.message ||
+      "Erro ao apagar grupo";
+    throw new Error(msg);
+  }
+};

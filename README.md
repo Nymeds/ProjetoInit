@@ -106,7 +106,7 @@ Servidor backend: `http://localhost:3333`
 cd frontend
 npm install
 
-# opcional: configurar VITE_API_URL no .env
+
 npm run dev
 ```
 

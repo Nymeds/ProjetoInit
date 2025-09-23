@@ -3,6 +3,7 @@ import TaskCard from "./TaskCard";
 import type { Todo } from "../hooks/useTodos";
 import { useTheme } from "@react-navigation/native";
 import { RefreshCw } from "lucide-react-native";
+import { useState } from "react";
 
 interface Props {
   todos?: Todo[];
@@ -16,6 +17,26 @@ interface Props {
 export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle, onSelect }: Props) {
   const { colors } = useTheme();
   const c = colors as any;
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    if (!onRefresh) return;
+
+    setRefreshing(true);
+
+    
+    const timeout = new Promise<void>((resolve) =>
+      setTimeout(() => resolve(), 5000)
+    );
+
+    try {
+      await Promise.race([onRefresh(), timeout]);
+    } catch (err) {
+      console.error("Erro no refresh:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -23,14 +44,24 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.text }]}>Suas tarefas</Text>
         {onRefresh && (
-          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton} disabled={loading}>
-            <RefreshCw size={20} color={c.primary} />
+          <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshButton}
+            disabled={refreshing || loading}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : (
+              <RefreshCw size={20} color={c.primary} />
+            )}
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Loading */}
-      {loading && <ActivityIndicator size="large" color={c.primary} style={{ marginTop: 20 }} />}
+      {/* Loading inicial */}
+      {loading && !refreshing && (
+        <ActivityIndicator size="large" color={c.primary} style={{ marginTop: 20 }} />
+      )}
 
       {/* Nenhuma tarefa */}
       {!loading && !todos?.length && (
@@ -44,7 +75,12 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
         data={todos}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <TaskCard todo={item} onDelete={onDelete} onToggle={onToggle} onPress={() => onSelect?.(item)} />
+          <TaskCard
+            todo={item}
+            onDelete={onDelete}
+            onToggle={onToggle}
+            onPress={() => onSelect?.(item)}
+          />
         )}
         contentContainerStyle={{ paddingBottom: 16 }}
       />

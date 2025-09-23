@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Group, GroupPayload, createGroup, getGroups } from "../services/groups";
+import { Group, GroupPayload, createGroup, getGroups, deleteGroup } from "../services/groups";
 
 export const useGroups = () => {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -27,13 +27,25 @@ export const useGroups = () => {
       setGroups((prev) => [...prev, newGroup]);
       return newGroup;
     } catch (err: any) {
-      
       const backendMsg =
         err?.response?.data?.message ||
         err?.response?.data ||
         err?.message ||
         "Erro desconhecido";
+      throw new Error(backendMsg);
+    }
+  }, []);
 
+  const removeGroup = useCallback(async (id: string) => {
+    try {
+      await deleteGroup(id);
+      setGroups((prev) => prev.filter((group) => group.id !== id));
+    } catch (err: any) {
+      const backendMsg =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        err?.message ||
+        "Erro desconhecido";
       throw new Error(backendMsg);
     }
   }, []);
@@ -47,5 +59,6 @@ export const useGroups = () => {
     loading,
     fetchGroups,
     addGroup,
+    removeGroup,
   };
 };
