@@ -51,9 +51,13 @@ app.register(fastifyCookie);
 // Rotas da API
 app.register(appRoutes);
 // @ts-ignore
-// Servir frontend (React build)
+
 app.register(import('@fastify/static'), {
-  root: path.join(__dirname, "../frontend/dist"), // ajuste se a pasta build for diferente
-  prefix: "/", // serve tudo na raiz
+  root: path.join(__dirname, "../frontend/dist"),
+  prefix: "/", 
 });
 
+
+app.setNotFoundHandler((req, reply) => {
+  reply.sendFile("index.html");
+});
