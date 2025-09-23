@@ -15,14 +15,16 @@ export default function Home() {
   const { colors } = useTheme();
   const c = colors as any;
 
+
   const total = todos.length;
-  const completed = todos.filter((t) => t.completed).length;
+  const completed = todos.filter(t => t.completed).length;
   const pending = total - completed;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
+
   const todosWithGroups: Todo[] = useMemo(() => {
     const groupList = Array.isArray(groups) ? groups : [];
-    return todos.map((todo) => {
+    return todos.map(todo => {
       const possibleGroupId =
         (todo as any).group && typeof (todo as any).group === "object" && (todo as any).group.id
           ? (todo as any).group.id
@@ -30,7 +32,7 @@ export default function Home() {
           ? (todo as any).group
           : (todo as any).groupId ?? null;
 
-      const found = possibleGroupId ? groupList.find((g) => g.id === possibleGroupId) : undefined;
+      const found = possibleGroupId ? groupList.find(g => g.id === possibleGroupId) : undefined;
 
       const finalGroup =
         (todo as any).group && typeof (todo as any).group === "object" && (todo as any).group.name
@@ -46,24 +48,30 @@ export default function Home() {
 
   async function handleCreateTodo(payload: { title: string; description?: string; groupId?: string }) {
     await addTodo(payload);
-    await loadTodos();
+    await loadTodos(); 
   }
 
-  
+
   async function handleCreateGroup(payload: { name: string; description?: string; userEmails: string[] }) {
     try {
-      await addGroup(payload);  
-      await fetchGroups();      
+      await addGroup(payload);
+      await fetchGroups();
     } catch (err) {
-      throw err; 
+      throw err;
     }
   }
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
-      <DashboardHeader  />
+      <DashboardHeader />
       <StatsRow total={total} completed={completed} pending={pending} completionRate={completionRate} />
-      <TaskList todos={todosWithGroups} loading={todosLoading || groupsLoading} onDelete={removeTodo} onToggle={toggleComplete} />
+      <TaskList
+        todos={todosWithGroups}
+        loading={todosLoading || groupsLoading}
+        onDelete={removeTodo}
+        onToggle={toggleComplete}
+        onRefresh={loadTodos} 
+      />
       {!groupsLoading && (
         <FabMenu onCreateTodo={handleCreateTodo} onCreateGroup={handleCreateGroup} />
       )}
@@ -71,4 +79,6 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, padding: 16 } });
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+});

@@ -1,9 +1,8 @@
-
 import { View, FlatList, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from "react-native";
 import TaskCard from "./TaskCard";
 import type { Todo } from "../hooks/useTodos";
 import { useTheme } from "@react-navigation/native";
-import { RefreshCw } from "lucide-react-native"; 
+import { RefreshCw } from "lucide-react-native";
 
 interface Props {
   todos?: Todo[];
@@ -23,9 +22,11 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
       {/* Cabeçalho com título e refresh */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.text }]}>Suas tarefas</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <RefreshCw size={20} color={c.primary} />
-        </TouchableOpacity>
+        {onRefresh && (
+          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton} disabled={loading}>
+            <RefreshCw size={20} color={c.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Loading */}
@@ -66,6 +67,6 @@ const styles = StyleSheet.create({
   refreshButton: {
     padding: 6,
     borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.05)", 
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
 });
