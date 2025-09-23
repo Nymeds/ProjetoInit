@@ -17,11 +17,11 @@ export class CompleteTodoUseCase {
     const todo = await this.todosRepository.findById(todoId)
 
     if (!todo) {
-      throw new Error('Todo not found')
+      throw new Error('Tarefa nao encontrada')
     }
 
     if (todo.userId !== userId) {
-      throw new Error('Unauthorized: cannot complete this todo')
+      throw new Error('Não autorizado para completar essa tarefa')
     }
 
     const updatedTodo = await this.todosRepository.update(todoId, { completed: true })

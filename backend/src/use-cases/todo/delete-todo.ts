@@ -13,11 +13,11 @@ export class DeleteTodoUseCase {
     const todo = await this.todosRepository.findById(todoId)
 
     if (!todo) {
-      throw new Error('Todo not found')
+      throw new Error('Tarefa nao encontrada')
     }
 
     if (todo.userId !== userId) {
-      throw new Error('Unauthorized: cannot delete this todo')
+      throw new Error('Não autorizado para deletar essa tarefa')
     }
 
     await this.todosRepository.delete(todoId)

@@ -1,4 +1,3 @@
-
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { AuthenticateUseCase } from '../../use-cases/auth-users/authenticate.js'
@@ -40,7 +39,7 @@ export async function authenticate(
         sameSite: 'lax',
       })
       .status(200)
-      .send({ token: accessToken })
+      .send({ token: accessToken , refreshToken})
   } catch (err: any) {
     return reply
       .status(400)

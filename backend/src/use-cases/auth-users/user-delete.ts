@@ -10,7 +10,7 @@ export class DeleteUserUseCase {
   async execute({ targetUserId }: DeleteUserUseCaseRequest): Promise<void> {
     const user = await this.usersRepository.findById(targetUserId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Usuario nao encontrado')
     }
 
     await this.usersRepository.apagar(targetUserId)
