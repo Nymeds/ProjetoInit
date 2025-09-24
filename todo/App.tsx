@@ -16,6 +16,7 @@ export default function App() {
 
 function NavigationWithTheme() {
   const { theme } = useThemeContext();
+
   return (
     <NavigationContainer theme={theme}>
       <RootNavigator />

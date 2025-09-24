@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "../services/api";
+import api, { setSignOutHandler } from "../services/api";
 
 interface User {
   id: string;
@@ -25,18 +25,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    refreshUser();
-  }, []);
-
   const extractErrorMessage = (err: any): string => {
     const fallback = err?.message || "Erro desconhecido";
     const data = err?.response?.data;
-
     if (!data) return fallback;
-
     let msg = data.message;
-
     if (typeof msg === "string") {
       try {
         const arr = JSON.parse(msg);
@@ -49,53 +42,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return msg;
       }
     }
-
     if (Array.isArray(msg)) {
       const messages = msg.map((item: any) => item?.message).filter(Boolean);
       if (messages.length) return messages.join("\n");
     }
-
     return fallback;
   };
 
-  const login = async (email: string, password: string) => {
-  try {
-    const response = await api.post("/sessions", { email, password });
-    const { token, refreshToken } = response.data;
+  
+  const logout = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove(["@token", "@refreshToken", "@user"]);
+      
+      try {
+        delete api.defaults.headers.common["Authorization"];
+      } catch {}
+      setUser(null);
+      console.log("[Auth] logout executed");
+    } catch (err) {
+      console.error("[Auth] logout error:", err);
+      setUser(null);
+    }
+  }, []);
 
-    if (!token) throw new Error("Login falhou");
+ 
+  useEffect(() => {
+    setSignOutHandler(logout);
+    return () => {
+      
+      setSignOutHandler(() => {});
+    };
+  }, [logout]);
 
-    // Salva tokens no AsyncStorage
-    await AsyncStorage.setItem("@token", token);
-    if (refreshToken) await AsyncStorage.setItem("@refreshToken", refreshToken);
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const response = await api.post("/sessions", { email, password });
+      const { token, refreshToken } = response.data;
+      if (!token) throw new Error("Login falhou");
+      await AsyncStorage.setItem("@token", token);
+      if (refreshToken) await AsyncStorage.setItem("@refreshToken", refreshToken);
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-    // Define o header Authorization no axios ANTES de chamar /sessions/me
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      const userResponse = await api.get("/sessions/me");
+      const userData = userResponse.data.user || userResponse.data;
 
-    // Agora busca os dados do usuário com o token aplicado
-    const userResponse = await api.get("/sessions/me");
-    const userData = userResponse.data.user || userResponse.data;
+      await AsyncStorage.setItem("@user", JSON.stringify(userData));
+      setUser(userData);
+      console.log("[Auth] login success");
+    } catch (err: any) {
+      console.error("[Auth] login error:", err);
+      throw new Error(extractErrorMessage(err));
+    }
+  }, []);
 
-    await AsyncStorage.setItem("@user", JSON.stringify(userData));
-    setUser(userData);
-  } catch (err: any) {
-    throw new Error(extractErrorMessage(err));
-  }
-};
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    try {
+      const response = await api.post("/users", { name, email, password });
+      return response.data;
+    } catch (err: any) {
+      throw new Error(extractErrorMessage(err));
+    }
+  }, []);
 
-
-
-  const register = async (name: string, email: string, password: string) => {
-  try {
-    const response = await api.post("/users", { name, email, password });
-    return response.data; 
-  } catch (err) {
-    throw new Error(extractErrorMessage(err));
-  }
-};
-
-
-  const refreshUser = async () => {
+  
+  const refreshUser = useCallback(async () => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("@token");
@@ -104,19 +114,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
       const response = await api.get("/sessions/me");
-      setUser(response.data.user || response.data);
-    } catch {
+      const userData = response.data.user || response.data;
+      setUser(userData);
+      await AsyncStorage.setItem("@user", JSON.stringify(userData));
+      console.log("[Auth] refreshUser success");
+    } catch (err: any) {
+      console.warn("[Auth] refreshUser failed; clearing auth:", err?.message ?? err);
+      try {
+        
+        await AsyncStorage.multiRemove(["@token", "@refreshToken", "@user"]);
+        try {
+          delete api.defaults.headers.common["Authorization"];
+        } catch {}
+      } catch (e) {
+        console.error("[Auth] error clearing tokens:", e);
+      }
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
-    await AsyncStorage.multiRemove(["@token", "@refreshToken", "@user"]);
-    setUser(null);
-  };
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, register }}>
