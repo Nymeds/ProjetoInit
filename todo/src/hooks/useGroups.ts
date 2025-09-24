@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Group, GroupPayload, createGroup, getGroups, deleteGroup } from "../services/groups";
+import { useCallback, useEffect, useState } from "react";
+import { Group, getGroups, GroupPayload, createGroup, deleteGroup } from "../services/groups";
 
 export const useGroups = () => {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -10,9 +10,11 @@ export const useGroups = () => {
     try {
       const data = await getGroups();
       setGroups(Array.isArray(data) ? data : []);
+      return data;
     } catch (err) {
       console.error("Erro ao carregar grupos:", err);
       setGroups([]);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -21,9 +23,9 @@ export const useGroups = () => {
   const addGroup = useCallback(async (payload: GroupPayload) => {
     try {
       const newGroup = await createGroup(payload);
-      if (!newGroup?.id) {
-        throw new Error("O backend não retornou o ID do grupo");
-      }
+      if (!newGroup?.id) throw new Error("O backend não retornou o ID do grupo");
+
+      // Atualiza state localmente sem precisar esperar fetch
       setGroups((prev) => [...prev, newGroup]);
       return newGroup;
     } catch (err: any) {

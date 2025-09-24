@@ -21,6 +21,6 @@ export async function deleteTodo(
 
     return reply.status(200).send({ message: 'Todo deleted successfully' })
   } catch (err: any) {
-    return reply.status(400).send({ message: err.message || 'Error deleting todo' })
+    return reply.status(400).send({ message: err.message || 'Erro ao deletar todo ' })
   }
 }

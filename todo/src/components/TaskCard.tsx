@@ -59,6 +59,7 @@ export default function TaskCard({ todo, onDelete, onToggle, onPress }: Props) {
   }, [todo.groupId]);
 
   const confirmDelete = () => {
+    console.log("confirmDelete dados do todo:", todo);
     Alert.alert("Confirmar", "Deseja excluir esta tarefa?", [
       { text: "Cancelar", style: "cancel" },
       {

@@ -22,15 +22,7 @@ function initials(name = "") {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-const avatarColors = [
-  "#66eae1",
-  "#667eea",
-  "#f093fb",
-  "#4facfe",
-  "#43e97b",
-  "#fa709a",
-];
-
+const avatarColors = ["#66eae1", "#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a"];
 function getAvatarColor(index: number) {
   return avatarColors[index % avatarColors.length];
 }
@@ -51,7 +43,7 @@ export default function GroupsScreen() {
   }, [groups, query]);
 
   async function handleCreateGroup(payload: { name: string; description?: string; userEmails: string[] }) {
-    await addGroup(payload);
+    await addGroup(payload); // state atualizado automaticamente
     setIsModalOpen(false);
   }
 
@@ -63,7 +55,7 @@ export default function GroupsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await removeGroup(group.id);
+            await removeGroup(group.id); // state atualizado automaticamente
           } catch (err) {
             console.error("Erro ao deletar grupo:", err);
             Alert.alert("Erro", "Não foi possível deletar o grupo");
@@ -102,9 +94,7 @@ export default function GroupsScreen() {
           style={[styles.createBtn, { borderColor: colors.border }]}
           onPress={() => setIsModalOpen(true)}
         >
-          <Text style={{ color: colors.primary, fontWeight: "600" }}>
-            Criar Grupo
-          </Text>
+          <Text style={{ color: colors.primary, fontWeight: "600" }}>Criar Grupo</Text>
         </TouchableOpacity>
       </View>
 
@@ -115,10 +105,7 @@ export default function GroupsScreen() {
           onChangeText={setQuery}
           placeholder="Buscar grupos..."
           placeholderTextColor={colors.border}
-          style={[
-            styles.searchInput,
-            { color: colors.text, borderColor: colors.border },
-          ]}
+          style={[styles.searchInput, { color: colors.text, borderColor: colors.border }]}
         />
       </View>
 
@@ -127,70 +114,39 @@ export default function GroupsScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={[styles.empty, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.text }}>
-              Você ainda não participa de nenhum grupo.
-            </Text>
+            <Text style={{ color: colors.text }}>Você ainda não participa de nenhum grupo.</Text>
           </View>
         }
         renderItem={({ item, index }) => (
           <TouchableOpacity
             onPress={() => navigation.navigate("GroupDetail", { group: item })}
             activeOpacity={0.9}
-            style={[
-              styles.card,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
+            style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
             <View style={styles.row}>
-              <View
-                style={[
-                  styles.avatar,
-                  { backgroundColor: getAvatarColor(index) },
-                ]}
-              >
+              <View style={[styles.avatar, { backgroundColor: getAvatarColor(index) }]}>
                 <Text style={styles.avatarText}>{initials(item.name)}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text
-                  style={[styles.groupName, { color: colors.text }]}
-                  numberOfLines={1}
-                >
+                <Text style={[styles.groupName, { color: colors.text }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text
-                  style={{ color: colors.text, opacity: 0.7, marginTop: 4 }}
-                >
-                  {item.members?.length ?? 0}{" "}
-                  {item.members?.length === 1 ? "membro" : "membros"}
+                <Text style={{ color: colors.text, opacity: 0.7, marginTop: 4 }}>
+                  {item.members?.length ?? 0} {item.members?.length === 1 ? "membro" : "membros"}
                 </Text>
-                {item.description ? (
-                  <Text
-                    style={{
-                      color: colors.text,
-                      opacity: 0.7,
-                      marginTop: 6,
-                    }}
-                    numberOfLines={2}
-                  >
+                {item.description && (
+                  <Text style={{ color: colors.text, opacity: 0.7, marginTop: 6 }} numberOfLines={2}>
                     {item.description}
                   </Text>
-                ) : null}
+                )}
               </View>
 
               <View style={styles.rightActions}>
-                <TouchableOpacity
-                  onPress={() => confirmDeleteGroup(item)}
-                  style={{ padding: 8 }}
-                >
-                  <Trash2
-                    size={18}
-                    color={colors.notification ?? colors.primary}
-                  />
+                <TouchableOpacity onPress={() => confirmDeleteGroup(item)} style={{ padding: 8 }}>
+                  <Trash2 size={18} color={colors.notification ?? colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -199,11 +155,7 @@ export default function GroupsScreen() {
       />
 
       {/* Create Group Modal */}
-      <CreateGroupModal
-        visible={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onCreateGroup={handleCreateGroup}
-      />
+      <CreateGroupModal visible={isModalOpen} onClose={() => setIsModalOpen(false)} onCreateGroup={handleCreateGroup} />
     </View>
   );
 }
@@ -211,42 +163,15 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: {
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  header: { padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   heading: { fontSize: 20, fontWeight: "700" },
-  createBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
+  createBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   searchRow: { paddingHorizontal: 16, paddingBottom: 8 },
   searchInput: { borderWidth: 1, borderRadius: 10, padding: 10 },
-  empty: {
-    margin: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  card: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 10,
-  },
+  empty: { margin: 16, padding: 20, borderWidth: 1, borderRadius: 10, alignItems: "center" },
+  card: { padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
   row: { flexDirection: "row", alignItems: "center" },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  avatar: { width: 48, height: 48, borderRadius: 8, justifyContent: "center", alignItems: "center" },
   avatarText: { color: "#fff", fontWeight: "700" },
   groupName: { fontSize: 16, fontWeight: "700" },
   rightActions: { marginLeft: 8 },
