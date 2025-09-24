@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
 import { useState } from "react";
+import { useError } from "../context/ErrorContext";
 
 interface User {
   id: string;
@@ -12,7 +13,7 @@ interface User {
 
 export function useAuthActions() {
   const [user, setUser] = useState<User | null>(null);
-
+  const { showError } = useError()
   const setTokens = async (token: string, refreshToken?: string) => {
     await AsyncStorage.setItem("@token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -56,7 +57,6 @@ export function useAuthActions() {
 
   const login = async (email: string, password: string) => {
     try {
-      // login retorna apenas token e refreshToken
       const response = await api.post("/sessions", { email, password });
       const { token, refreshToken } = response.data;
 
@@ -64,7 +64,6 @@ export function useAuthActions() {
 
       await setTokens(token, refreshToken);
 
-      // buscar os dados do usuário
       const userResponse = await api.get("/sessions/me");
       const userData = userResponse.data.user || userResponse.data;
 
@@ -73,7 +72,9 @@ export function useAuthActions() {
 
       return userData;
     } catch (err: any) {
-      throw new Error(extractErrorMessage(err));
+      const msg = extractErrorMessage(err);
+      showError(msg); 
+      throw err; 
     }
   };
 
@@ -82,7 +83,9 @@ export function useAuthActions() {
       const response = await api.post("/users", { name, email, password });
       return response.data;
     } catch (err: any) {
-      throw new Error(extractErrorMessage(err));
+      const msg = extractErrorMessage(err);
+      showError(msg);
+      throw err;
     }
   };
 
@@ -99,7 +102,9 @@ export function useAuthActions() {
       return userData;
     } catch (err: any) {
       await removeTokens();
-      throw new Error(extractErrorMessage(err));
+      const msg = extractErrorMessage(err);
+      showError(msg);
+      throw err;
     }
   };
 

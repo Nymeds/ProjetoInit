@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Group, getGroups, GroupPayload, createGroup, deleteGroup } from "../services/groups";
+import { useError } from "../context/ErrorContext";
+import { Group, GroupPayload, getGroups, createGroup, deleteGroup } from "../services/groups";
 
 export const useGroups = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showError } = useError(); 
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
@@ -11,46 +13,52 @@ export const useGroups = () => {
       const data = await getGroups();
       setGroups(Array.isArray(data) ? data : []);
       return data;
-    } catch (err) {
-      console.error("Erro ao carregar grupos:", err);
+    } catch (err: any) {
+      showError(err?.response?.data?.message || "Erro ao carregar grupos");
       setGroups([]);
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
-  const addGroup = useCallback(async (payload: GroupPayload) => {
-    try {
-      const newGroup = await createGroup(payload);
-      if (!newGroup?.id) throw new Error("O backend não retornou o ID do grupo");
+  const addGroup = useCallback(
+    async (payload: GroupPayload) => {
+      try {
+        const newGroup = await createGroup(payload);
+        if (!newGroup?.id) throw new Error("O backend não retornou o ID do grupo");
+        setGroups((prev) => [...prev, newGroup]);
+        return newGroup;
+      } catch (err: any) {
+        const backendMsg =
+          err?.response?.data?.message ||
+          err?.response?.data ||
+          err?.message ||
+          "Erro desconhecido";
+        showError(backendMsg);
+        throw new Error(backendMsg);
+      }
+    },
+    [showError]
+  );
 
-      // Atualiza state localmente sem precisar esperar fetch
-      setGroups((prev) => [...prev, newGroup]);
-      return newGroup;
-    } catch (err: any) {
-      const backendMsg =
-        err?.response?.data?.message ||
-        err?.response?.data ||
-        err?.message ||
-        "Erro desconhecido";
-      throw new Error(backendMsg);
-    }
-  }, []);
-
-  const removeGroup = useCallback(async (id: string) => {
-    try {
-      await deleteGroup(id);
-      setGroups((prev) => prev.filter((group) => group.id !== id));
-    } catch (err: any) {
-      const backendMsg =
-        err?.response?.data?.message ||
-        err?.response?.data ||
-        err?.message ||
-        "Erro desconhecido";
-      throw new Error(backendMsg);
-    }
-  }, []);
+  const removeGroup = useCallback(
+    async (id: string) => {
+      try {
+        await deleteGroup(id);
+        setGroups((prev) => prev.filter((group) => group.id !== id));
+      } catch (err: any) {
+        const backendMsg =
+          err?.response?.data?.message ||
+          err?.response?.data ||
+          err?.message ||
+          "Erro desconhecido";
+        showError(backendMsg);
+        throw new Error(backendMsg);
+      }
+    },
+    [showError]
+  );
 
   useEffect(() => {
     fetchGroups();
