@@ -1,22 +1,18 @@
 import React from "react";
-import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import AuthStack from "./AuthStack";
 import AppDrawer from "./AppDrawer";
+import Loading from "../components/Loading";
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
 
+ 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text>Carregando...</Text>
-      </View>
-    );
+    return <Loading visible={true} message="Carregando dados..." />;
   }
 
   return (
@@ -29,7 +25,3 @@ export default function RootNavigator() {
     </Stack.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-});
