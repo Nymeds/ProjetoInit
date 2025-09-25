@@ -7,6 +7,12 @@ Funcionalidades principais: autenticação JWT, CRUD de tarefas, grupos (tarefas
 
 ---
 
+
+## ATENÇÃO
+no mobile é necesario criar um arquivo na pasta android chamado local.properties e colar isso
+sdk.dir=C:\\Users\\{seu usuario}\\AppData\\Local\\Android\\Sdk
+è um bug do emulador 
+
 ## 🔎 Visão geral rápida
 
 * **Backend**: Node.js, Fastify, Prisma (SQLite por padrão), Zod, JWT, TypeScript
