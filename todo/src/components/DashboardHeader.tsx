@@ -7,7 +7,7 @@ import type { MainDrawerParamList } from "../navigation/AppDrawer"
 
 
 
-export default function DashboardHeader({ onLogout }: Props) {
+export default function DashboardHeader({ onLogout }: { onLogout: () => void }) {
   const { colors } = useTheme();
 
  

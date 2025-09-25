@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Modal, View, TextInput, TouchableOpacity, Text, ScrollView, ActivityIndicator } from "react-native";
+import { Modal, View, TextInput, TouchableOpacity, Text, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { getGroups } from "../services/groups";
-import clsx from "clsx";
 
 export interface Group {
   id: string;
@@ -64,17 +63,16 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
 
   return (
     <Modal transparent visible={visible} animationType="fade">
-      <View className="flex-1 justify-center items-center bg-black/40">
-        <View className="w-11/12 p-5 rounded-lg" style={{ backgroundColor: colors.card }}>
-          <Text className="text-lg font-bold text-center mb-3" style={{ color: colors.text }}>Adicionar Tarefa</Text>
+      <View style={[styles.overlay]}>
+        <View style={[styles.modal, { backgroundColor: colors.card }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Adicionar Tarefa</Text>
 
           <TextInput
             placeholder="Título"
             placeholderTextColor={colors.border}
             value={title}
             onChangeText={setTitle}
-            className="border rounded-lg p-3 my-2"
-            style={{ borderColor: colors.border, color: colors.text }}
+            style={[styles.input, { borderColor: colors.border, color: colors.text }]}
           />
 
           <TextInput
@@ -82,26 +80,27 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
             placeholderTextColor={colors.border}
             value={description}
             onChangeText={setDescription}
-            className="border rounded-lg p-3 my-2"
-            style={{ borderColor: colors.border, color: colors.text }}
+            style={[styles.input, { borderColor: colors.border, color: colors.text }]}
           />
 
-          <Text className="text-base font-semibold mt-2 mb-1" style={{ color: colors.text }}>Selecionar grupo:</Text>
+          <Text style={[styles.subtitle, { color: colors.text }]}>Selecionar grupo:</Text>
 
           {loadingGroups ? (
-            <ActivityIndicator size="small" color={colors.primary} className="my-2" />
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
           ) : (
-            <ScrollView className="max-h-40 my-2">
+            <ScrollView style={{ maxHeight: 160, marginVertical: 8 }}>
               {/* Sem Grupo */}
               <TouchableOpacity
                 onPress={() => setSelectedGroup(undefined)}
-                className={clsx(
-                  "p-3 rounded-md mb-2 border justify-center",
-                  selectedGroup === undefined ? "border-primary bg-primary" : "border-gray-300 bg-white"
-                )}
-                style={{ backgroundColor: selectedGroup === undefined ? colors.primary : colors.card, borderColor: selectedGroup === undefined ? colors.primary : colors.border }}
+                style={[
+                  styles.groupButton,
+                  {
+                    backgroundColor: selectedGroup === undefined ? colors.primary : colors.card,
+                    borderColor: selectedGroup === undefined ? colors.primary : colors.border,
+                  },
+                ]}
               >
-                <Text className={clsx(selectedGroup === undefined ? "text-white font-bold" : "text-black font-normal")} style={{ color: selectedGroup === undefined ? "#fff" : colors.text }}>
+                <Text style={{ color: selectedGroup === undefined ? "#fff" : colors.text, fontWeight: selectedGroup === undefined ? "bold" : "normal" }}>
                   Sem grupo
                 </Text>
               </TouchableOpacity>
@@ -113,13 +112,15 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
                   <TouchableOpacity
                     key={g.id}
                     onPress={() => setSelectedGroup(g.id)}
-                    className={clsx(
-                      "p-3 rounded-md mb-2 border justify-center",
-                      selected ? "border-primary bg-primary" : "border-gray-300 bg-white"
-                    )}
-                    style={{ backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }}
+                    style={[
+                      styles.groupButton,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.card,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
                   >
-                    <Text className={clsx(selected ? "text-white font-bold" : "text-black font-normal")} style={{ color: selected ? "#fff" : colors.text }}>
+                    <Text style={{ color: selected ? "#fff" : colors.text, fontWeight: selected ? "bold" : "normal" }}>
                       {g.name}
                     </Text>
                   </TouchableOpacity>
@@ -129,12 +130,12 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
           )}
 
           {/* Ações */}
-          <View className="flex-row justify-between mt-4">
+          <View style={styles.actions}>
             <TouchableOpacity onPress={onClose} disabled={loadingCreate}>
-              <Text className="font-semibold" style={{ color: colors.notification }}>Cancelar</Text>
+              <Text style={{ color: colors.notification, fontWeight: "600" }}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleAdd} disabled={loadingCreate}>
-              <Text className="font-bold" style={{ color: colors.primary }}>
+              <Text style={{ color: colors.primary, fontWeight: "bold" }}>
                 {loadingCreate ? "Criando..." : "Adicionar"}
               </Text>
             </TouchableOpacity>
@@ -144,3 +145,47 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modal: {
+    width: "90%",
+    padding: 20,
+    borderRadius: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  groupButton: {
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 8,
+    justifyContent: "center",
+  },
+  actions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+});
