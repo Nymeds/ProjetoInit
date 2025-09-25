@@ -1,70 +1,66 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, Button, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { useNavigation, useTheme } from "@react-navigation/native";
 import { Input } from "../../components/Input";
 import { useAuth } from "../../context/AuthContext";
 import CardCircular from "../../components/CircularCard";
 import { Ionicons } from "@expo/vector-icons";
+import { useForm, Controller } from "react-hook-form";
+import * as Yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 
 const icon = require("../../../assets/icon.png");
+
+// Schema Yup
+const registerSchema = Yup.object().shape({
+  name: Yup.string().required("O nome é obrigatório"),
+  email: Yup.string().email("E-mail inválido").required("O e-mail é obrigatório"),
+  password: Yup.string().min(6, "A senha deve ter no mínimo 6 caracteres").required("A senha é obrigatória"),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("password")], "As senhas não coincidem")
+    .required("Confirme a senha"),
+});
+
+type RegisterFormData = {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
 export default function Register() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { register } = useAuth();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const friendlyMessage = (msg: string) => {
-    if (msg.includes("Invalid email address")) return "O e-mail informado é inválido";
-    if (msg.includes("Too small")) return "A senha deve ter no mínimo 6 caracteres";
-    if (msg.includes("409") || msg.includes("Request failed with status code 409")) return "Esse e-mail já está cadastrado";
-    return msg;
-  };
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<RegisterFormData>({
+    resolver: yupResolver(registerSchema),
+  });
 
-  const handleRegister = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      setErrorMessages(["Preencha todos os campos!"]);
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMessages(["As senhas não coincidem!"]);
-      return;
-    }
-
+  const onSubmit = async (data: RegisterFormData) => {
     try {
       setLoading(true);
-      setErrorMessages([]);
       setSuccessMessage("");
 
-      
-      const response = await register(name, email, password);
+      const response = await register(data.name, data.email, data.password);
 
-      
       if (response?.message === "User registered successfully") {
         setSuccessMessage("Cadastro realizado! Redirecionando para login...");
-        
-        setName("");
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
-      
+        reset();
         setTimeout(() => navigation.navigate("Login" as never), 4000);
-      } else {
-        setErrorMessages(["Erro desconhecido"]);
       }
-
     } catch (err: any) {
-      const messages = err.message ? err.message.split("\n").map(friendlyMessage) : ["Erro desconhecido"];
-      setErrorMessages(messages);
+      console.log("Erro ao registrar:", err.message);
     } finally {
       setLoading(false);
     }
@@ -84,51 +80,84 @@ export default function Register() {
       <CardCircular size={100} icon={icon} iconSize={90} />
       <Text style={[styles.title, { color: colors.text }]}>Cadastro</Text>
 
-      {errorMessages.length > 0 &&
-        errorMessages.map((msg, idx) => (
-          <Text key={idx} style={styles.errorText}>
-            {msg}
-          </Text>
-        ))}
-
-      {successMessage ? (
-        <Text style={styles.successText}>{successMessage}</Text>
-      ) : null}
-
-      <Input placeholder="Nome" value={name} onChangeText={setName} />
-      <Input placeholder="E-mail" value={email} onChangeText={setEmail} />
-
-      <Input
-        placeholder="Senha"
-        secureTextEntry={!showPassword}
-        value={password}
-        onChangeText={setPassword}
-        rightIcon={
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color={colors.text} />
-          </TouchableOpacity>
-        }
+      {/* Campo Nome */}
+      <Controller
+        control={control}
+        name="name"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input placeholder="Nome" value={value} onChangeText={onChange} onBlur={onBlur} />
+        )}
       />
+      {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
 
-      <Input
-        placeholder="Confirmar Senha"
-        secureTextEntry={!showConfirmPassword}
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        rightIcon={
-          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-            <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={24} color={colors.text} />
-          </TouchableOpacity>
-        }
+      {/* Campo Email */}
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input placeholder="E-mail" value={value} onChangeText={onChange} onBlur={onBlur} />
+        )}
       />
+      {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
-      <View style={{ width: "100%", marginTop: 12 }}>
-        <Button title="Cadastrar" color={colors.primary} onPress={handleRegister} />
-      </View>
+      {/* Campo Senha */}
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input
+            placeholder="Senha"
+            secureTextEntry={!showPassword}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color={colors.text} />
+              </TouchableOpacity>
+            }
+          />
+        )}
+      />
+      {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
-      <View style={{ marginTop: 10 }}>
-        <Button title="Voltar para Login" color={colors.primary} onPress={() => navigation.navigate("Login" as never)} />
-      </View>
+      {/* Campo Confirmar Senha */}
+      <Controller
+        control={control}
+        name="confirmPassword"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input
+            placeholder="Confirmar Senha"
+            secureTextEntry={!showConfirmPassword}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={24} color={colors.text} />
+              </TouchableOpacity>
+            }
+          />
+        )}
+      />
+      {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
+
+      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+
+      {/* Botão */}
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: colors.primary }]}
+        onPress={handleSubmit(onSubmit)}
+      >
+        <Text style={styles.buttonText}>Cadastrar</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.buttonOutline, { borderColor: colors.primary }]}
+        onPress={() => navigation.navigate("Login" as never)}
+      >
+        <Text style={[styles.buttonText, { color: colors.primary }]}>Voltar para Login</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -138,4 +167,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", marginBottom: 20 },
   errorText: { color: "red", marginTop: 4, textAlign: "center" },
   successText: { color: "green", marginTop: 4, textAlign: "center" },
+  button: { padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12, width: "100%" },
+  buttonText: { color: "#fff", fontWeight: "600" },
+  buttonOutline: { padding: 12, borderRadius: 8, alignItems: "center", borderWidth: 1, marginTop: 10, width: "100%" },
 });

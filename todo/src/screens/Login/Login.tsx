@@ -6,22 +6,24 @@ import CardCircular from "../../components/CircularCard";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm, Controller } from "react-hook-form";
-import * as Yup from "yup";
+import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 
-// Ícone da logo
 const icon = require("../../../assets/icon.png");
 
-// Schema Yup
-const loginSchema = Yup.object().shape({
-  email: Yup.string().email("E-mail inválido").required("O e-mail é obrigatório"),
-  password: Yup.string().min(6, "Senha deve ter no mínimo 6 caracteres").required("A senha é obrigatória"),
+//  Schema Yup
+const loginSchema = yup.object({
+  email: yup
+    .string()
+    .email("E-mail inválido")
+    .required("O e-mail é obrigatório"),
+  password: yup
+    .string()
+    .min(6, "Senha deve ter no mínimo 6 caracteres")
+    .required("A senha é obrigatória"),
 });
 
-type FormData = {
-  email: string;
-  password: string;
-};
+type FormData = yup.InferType<typeof loginSchema>;
 
 export default function Login() {
   const navigation = useNavigation();
@@ -32,8 +34,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
     resolver: yupResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -72,10 +79,14 @@ export default function Login() {
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
         )}
       />
-      {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+      {errors.email && (
+        <Text style={styles.errorText}>{errors.email.message}</Text>
+      )}
 
       {/* Campo Senha */}
       <Controller
@@ -100,10 +111,14 @@ export default function Login() {
           />
         )}
       />
-      {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+      {errors.password && (
+        <Text style={styles.errorText}>{errors.password.message}</Text>
+      )}
 
       {/* Erro geral */}
-      {generalError && <Text style={styles.errorText}>{generalError}</Text>}
+      {generalError && (
+        <Text style={styles.errorText}>{generalError}</Text>
+      )}
 
       {/* Botões */}
       <View style={styles.buttonContainer}>
@@ -118,7 +133,9 @@ export default function Login() {
           style={[styles.buttonOutline, { borderColor: colors.primary }]}
           onPress={() => navigation.navigate("Register" as never)}
         >
-          <Text style={[styles.buttonText, { color: colors.primary }]}>Ir para Cadastro</Text>
+          <Text style={[styles.buttonText, { color: colors.primary }]}>
+            Ir para Cadastro
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -126,11 +143,26 @@ export default function Login() {
 }
 
 const styles = {
-  container: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   title: { fontSize: 28, fontWeight: "700", marginBottom: 20 },
   errorText: { color: "red", marginTop: 4, textAlign: "center" },
   buttonContainer: { width: "100%", marginTop: 12 },
-  button: { padding: 12, borderRadius: 8, alignItems: "center", marginBottom: 10 },
+  button: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
   buttonText: { color: "#fff", fontWeight: "600" },
-  buttonOutline: { padding: 12, borderRadius: 8, alignItems: "center", borderWidth: 1 },
+  buttonOutline: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+  },
 };

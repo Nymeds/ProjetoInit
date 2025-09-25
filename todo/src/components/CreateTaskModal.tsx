@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Modal, View, TextInput, TouchableOpacity, Text, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
+import {
+  Modal,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { useTheme } from "@react-navigation/native";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { getGroups } from "../services/groups";
 
 export interface Group {
@@ -11,17 +23,40 @@ export interface Group {
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreate: (payload: { title: string; description?: string; groupId?: string }) => Promise<void>;
+  onCreate: (payload: {
+    title: string;
+    description?: string;
+    groupId?: string;
+  }) => Promise<void>;
 }
+
+
+const schema = yup.object({
+  title: yup
+    .string()
+    .required("O título é obrigatório")
+    .min(3, "Mínimo de 3 caracteres"),
+  description: yup.string().optional(),
+  groupId: yup.string().optional(),
+});
+
+export type TaskFormData = yup.InferType<typeof schema>;
 
 export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
   const { colors } = useTheme();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
-  const [loadingCreate, setLoadingCreate] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TaskFormData>({
+    resolver: yupResolver(schema),
+    defaultValues: { title: "", description: "", groupId: undefined },
+  });
+
 
   useEffect(() => {
     if (!visible) return;
@@ -38,105 +73,159 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
       }
     };
     fetchGroups();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [visible]);
 
+  // 🔄 Resetar formulário quando fechar
   useEffect(() => {
     if (!visible) {
-      setTitle("");
-      setDescription("");
-      setSelectedGroup(undefined);
+      reset();
       setGroups([]);
     }
-  }, [visible]);
+  }, [visible, reset]);
 
-  const handleAdd = async () => {
-    if (!title.trim()) return;
-    setLoadingCreate(true);
-    try {
-      await onCreate({ title, description, groupId: selectedGroup });
-      onClose();
-    } finally {
-      setLoadingCreate(false);
-    }
+  // ✅ Submit
+  const handleAdd = async (data: TaskFormData) => {
+    await onCreate(data);
+    onClose();
   };
 
   return (
     <Modal transparent visible={visible} animationType="fade">
       <View style={[styles.overlay]}>
         <View style={[styles.modal, { backgroundColor: colors.card }]}>
-          <Text style={[styles.title, { color: colors.text }]}>Adicionar Tarefa</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Adicionar Tarefa
+          </Text>
 
-          <TextInput
-            placeholder="Título"
-            placeholderTextColor={colors.border}
-            value={title}
-            onChangeText={setTitle}
-            style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+          {/* Title */}
+          <Controller
+            control={control}
+            name="title"
+            render={({ field: { value, onChange } }) => (
+              <TextInput
+                placeholder="Título"
+                placeholderTextColor={colors.border}
+                value={value}
+                onChangeText={onChange}
+                style={[
+                  styles.input,
+                  { borderColor: colors.border, color: colors.text },
+                ]}
+              />
+            )}
+          />
+          {errors.title && (
+            <Text style={{ color: "red" }}>{errors.title.message}</Text>
+          )}
+
+          {/* Description */}
+          <Controller
+            control={control}
+            name="description"
+            render={({ field: { value, onChange } }) => (
+              <TextInput
+                placeholder="Descrição"
+                placeholderTextColor={colors.border}
+                value={value}
+                onChangeText={onChange}
+                style={[
+                  styles.input,
+                  { borderColor: colors.border, color: colors.text },
+                ]}
+              />
+            )}
           />
 
-          <TextInput
-            placeholder="Descrição"
-            placeholderTextColor={colors.border}
-            value={description}
-            onChangeText={setDescription}
-            style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-          />
-
-          <Text style={[styles.subtitle, { color: colors.text }]}>Selecionar grupo:</Text>
+          <Text style={[styles.subtitle, { color: colors.text }]}>
+            Selecionar grupo:
+          </Text>
 
           {loadingGroups ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
+            <ActivityIndicator
+              size="small"
+              color={colors.primary}
+              style={{ marginVertical: 8 }}
+            />
           ) : (
-            <ScrollView style={{ maxHeight: 160, marginVertical: 8 }}>
-              {/* Sem Grupo */}
-              <TouchableOpacity
-                onPress={() => setSelectedGroup(undefined)}
-                style={[
-                  styles.groupButton,
-                  {
-                    backgroundColor: selectedGroup === undefined ? colors.primary : colors.card,
-                    borderColor: selectedGroup === undefined ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text style={{ color: selectedGroup === undefined ? "#fff" : colors.text, fontWeight: selectedGroup === undefined ? "bold" : "normal" }}>
-                  Sem grupo
-                </Text>
-              </TouchableOpacity>
-
-              {/* Grupos */}
-              {groups.map((g) => {
-                const selected = selectedGroup === g.id;
-                return (
+            <Controller
+              control={control}
+              name="groupId"
+              render={({ field: { value, onChange } }) => (
+                <ScrollView style={{ maxHeight: 160, marginVertical: 8 }}>
+                  {/* Sem grupo */}
                   <TouchableOpacity
-                    key={g.id}
-                    onPress={() => setSelectedGroup(g.id)}
+                    onPress={() => onChange(undefined)}
                     style={[
                       styles.groupButton,
                       {
-                        backgroundColor: selected ? colors.primary : colors.card,
-                        borderColor: selected ? colors.primary : colors.border,
+                        backgroundColor:
+                          value === undefined ? colors.primary : colors.card,
+                        borderColor:
+                          value === undefined ? colors.primary : colors.border,
                       },
                     ]}
                   >
-                    <Text style={{ color: selected ? "#fff" : colors.text, fontWeight: selected ? "bold" : "normal" }}>
-                      {g.name}
+                    <Text
+                      style={{
+                        color: value === undefined ? "#fff" : colors.text,
+                        fontWeight: value === undefined ? "bold" : "normal",
+                      }}
+                    >
+                      Sem grupo
                     </Text>
                   </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+
+                  {/* Grupos */}
+                  {groups.map((g) => {
+                    const selected = value === g.id;
+                    return (
+                      <TouchableOpacity
+                        key={g.id}
+                        onPress={() => onChange(g.id)}
+                        style={[
+                          styles.groupButton,
+                          {
+                            backgroundColor: selected
+                              ? colors.primary
+                              : colors.card,
+                            borderColor: selected
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: selected ? "#fff" : colors.text,
+                            fontWeight: selected ? "bold" : "normal",
+                          }}
+                        >
+                          {g.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            />
           )}
 
           {/* Ações */}
           <View style={styles.actions}>
-            <TouchableOpacity onPress={onClose} disabled={loadingCreate}>
-              <Text style={{ color: colors.notification, fontWeight: "600" }}>Cancelar</Text>
+            <TouchableOpacity onPress={onClose} disabled={isSubmitting}>
+              <Text style={{ color: colors.notification, fontWeight: "600" }}>
+                Cancelar
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleAdd} disabled={loadingCreate}>
+            <TouchableOpacity
+              onPress={handleSubmit(handleAdd)}
+              disabled={isSubmitting}
+            >
               <Text style={{ color: colors.primary, fontWeight: "bold" }}>
-                {loadingCreate ? "Criando..." : "Adicionar"}
+                {isSubmitting ? "Criando..." : "Adicionar"}
               </Text>
             </TouchableOpacity>
           </View>
