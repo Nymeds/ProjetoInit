@@ -16,20 +16,23 @@ export default function FabMenu({ onCreateTodo, onCreateGroup }: Props) {
   const [taskModalVisible, setTaskModalVisible] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
 
-  // Wrapper para enviar sucesso/falha ao modal
+ 
   const createGroupWrapper = async (payload: { name: string; description?: string; userEmails: string[] }) => {
     try {
-      await onCreateGroup(payload); // função do Home
-      return { success: true } as const;
+      await onCreateGroup(payload);
+      
+      return { success: true };
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? "Erro ao criar grupo";
-
-      if (/não encontrado/i.test(msg) || /User not found/i.test(msg)) {
-        const found = msg.match(/\b[A-Za-z0-9._%+-]+@[^\s@]+\.[A-Za-z]{2,}\b/g) ?? [];
-        return { success: false, message: msg, invalidEmails: found } as const;
-      }
-
-      return { success: false, message: msg } as const;
+     
+      const message = err?.response?.data?.message ?? err?.message ?? "Erro ao criar grupo";
+      
+      console.log("Erro capturado no wrapper:", message); 
+      
+    
+      return { 
+        success: false, 
+        message: message 
+      };
     }
   };
 
