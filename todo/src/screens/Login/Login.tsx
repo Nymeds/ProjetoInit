@@ -1,44 +1,48 @@
 import React, { useState } from "react";
-import { View, Text, Button, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useNavigation, useTheme } from "@react-navigation/native";
 import { Input } from "../../components/Input";
 import CardCircular from "../../components/CircularCard";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useForm, Controller } from "react-hook-form";
+import * as Yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 
+// Ícone da logo
 const icon = require("../../../assets/icon.png");
+
+// Schema Yup
+const loginSchema = Yup.object().shape({
+  email: Yup.string().email("E-mail inválido").required("O e-mail é obrigatório"),
+  password: Yup.string().min(6, "Senha deve ter no mínimo 6 caracteres").required("A senha é obrigatória"),
+});
+
+type FormData = {
+  email: string;
+  password: string;
+};
 
 export default function Login() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const friendlyMessage = (msg: string) => {
-    if (msg.includes("Invalid email address")) return "O e-mail informado é inválido";
-    if (msg.includes("Too small")) return "A senha deve ter no mínimo 6 caracteres";
-    if (msg.includes("Login falhou")) return "Usuário ou senha incorretos";
-    return msg;
-  };
+  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: yupResolver(loginSchema),
+  });
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setErrorMessages(["Preencha email e senha!"]);
-      return;
-    }
-
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
+    setGeneralError(null);
     try {
-      setLoading(true);
-      setErrorMessages([]);
-      await login(email, password);
+      await login(data.email, data.password);
     } catch (err: any) {
-      const messages = err.message ? err.message.split("\n").map(friendlyMessage) : ["Erro desconhecido"];
-      setErrorMessages(messages);
+      setGeneralError(err.message || "Erro desconhecido");
     } finally {
       setLoading(false);
     }
@@ -58,52 +62,75 @@ export default function Login() {
       <CardCircular size={100} icon={icon} iconSize={90} />
       <Text style={[styles.title, { color: colors.text }]}>Login</Text>
 
-      <Input placeholder="E-mail" value={email} onChangeText={setEmail} />
-
-      <Input
-        placeholder="Senha"
-        secureTextEntry={!showPassword}
-        value={password}
-        onChangeText={setPassword}
-        rightIcon={
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={24}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-        }
+      {/* Campo Email */}
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input
+            placeholder="E-mail"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+          />
+        )}
       />
+      {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
-      {errorMessages.length > 0 &&
-        errorMessages.map((msg, index) => (
-          <Text key={index} style={styles.errorText}>
-            {msg}
-          </Text>
-        ))}
+      {/* Campo Senha */}
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <Input
+            placeholder="Senha"
+            secureTextEntry={!showPassword}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            }
+          />
+        )}
+      />
+      {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
-      <View style={{ width: "100%", marginTop: 12 }}>
-        <Button title="Entrar" color={colors.primary} onPress={handleLogin} />
-      </View>
+      {/* Erro geral */}
+      {generalError && <Text style={styles.errorText}>{generalError}</Text>}
 
-      <View style={{ width: "80%", marginTop: 14 }}>
-        <Button
-          title="Ir para Cadastro"
-          color={colors.primary}
+      {/* Botões */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={handleSubmit(onSubmit)}
+        >
+          <Text style={styles.buttonText}>Entrar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.buttonOutline, { borderColor: colors.primary }]}
           onPress={() => navigation.navigate("Register" as never)}
-        />
+        >
+          <Text style={[styles.buttonText, { color: colors.primary }]}>Ir para Cadastro</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   title: { fontSize: 28, fontWeight: "700", marginBottom: 20 },
-  errorText: {
-    color: "red",
-    marginTop: 4,
-    textAlign: "center",
-  },
-});
+  errorText: { color: "red", marginTop: 4, textAlign: "center" },
+  buttonContainer: { width: "100%", marginTop: 12 },
+  button: { padding: 12, borderRadius: 8, alignItems: "center", marginBottom: 10 },
+  buttonText: { color: "#fff", fontWeight: "600" },
+  buttonOutline: { padding: 12, borderRadius: 8, alignItems: "center", borderWidth: 1 },
+};

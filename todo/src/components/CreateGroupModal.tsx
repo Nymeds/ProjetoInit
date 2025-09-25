@@ -1,83 +1,68 @@
-import React, { useEffect, useState } from "react";
-import { Modal, View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import React, { useEffect } from "react";
+import { Modal, View, TextInput, TouchableOpacity, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import clsx from "clsx";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreateGroup: (payload: { name: string; description?: string; userEmails: string[] }) => Promise<void>;
+  onCreateGroup: (payload: {
+    name: string;
+    description?: string;
+    userEmails: string[];
+  }) => Promise<void>;
 }
+
+interface EmailField {
+  value?: string;
+}
+
+interface FormData {
+  name: string;
+  description?: string;
+  otherEmails?: EmailField[];
+}
+
+// Yup Schema
+const schema: yup.ObjectSchema<FormData> = yup.object({
+  name: yup.string().required("Nome do grupo é obrigatório"),
+  description: yup.string().transform((value) => (value === "" ? undefined : value)).notRequired(),
+  otherEmails: yup
+    .array(
+      yup.object({
+        value: yup.string().email("E-mail inválido").transform((value) => (value === "" ? undefined : value)).notRequired(),
+      })
+    )
+    .notRequired(),
+});
 
 export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Props) {
   const { colors } = useTheme();
   const { user, loading: userLoading } = useAuth();
 
-  const [groupName, setGroupName] = useState("");
-  const [description, setDescription] = useState("");
-  const [otherEmails, setOtherEmails] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [invalidEmails, setInvalidEmails] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: { name: "", description: "", otherEmails: [] },
+  });
 
   useEffect(() => {
-    if (visible) {
-      setGroupName("");
-      setDescription("");
-      setOtherEmails([]);
-      setError(null);
-      setInvalidEmails([]);
-      setLoading(false);
-    }
+    if (visible) reset({ name: "", description: "", otherEmails: [] });
   }, [visible]);
-
-  const handleAddEmail = () => setOtherEmails((s) => [...s, ""]);
-  const handleRemoveEmail = (index: number) => setOtherEmails((s) => s.filter((_, i) => i !== index));
-  const handleEmailChange = (index: number, value: string) => setOtherEmails((s) => { const copy = [...s]; copy[index] = value; return copy; });
-
-  const extractEmailsFromString = (text: string) => {
-    if (!text) return [];
-    const re = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-    return text.match(re) ?? [];
-  };
-
-  const handleSubmit = async () => {
-    if (!groupName.trim()) { setError("Nome do grupo é obrigatório"); return; }
-    if (!user?.email) { setError("Usuário não carregado ainda"); return; }
-
-    setLoading(true);
-    setError(null);
-    setInvalidEmails([]);
-
-    const payload = {
-      name: groupName.trim(),
-      description: description.trim() || undefined,
-      userEmails: [user.email, ...otherEmails.filter((e) => e.trim() !== "")],
-    };
-
-    try {
-      await onCreateGroup(payload);
-      setGroupName(""); setDescription(""); setOtherEmails([]);
-      onClose();
-    } catch (err: any) {
-      let backendMsg = err?.message || "Erro ao criar grupo";
-      if (/não encontrado/i.test(backendMsg) || /User not found/i.test(backendMsg)) {
-        const found = extractEmailsFromString(backendMsg);
-        setInvalidEmails(found);
-        backendMsg = `Algum dos emails informados não pertence a um usuário cadastrado. ${found.length ? `(${found.join(", ")})` : ""}`;
-      } else if (/unique constraint failed/i.test(backendMsg) || /Já existe/i.test(backendMsg)) {
-        backendMsg = "Já existe um grupo com esse nome";
-      }
-      setError(backendMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (userLoading) {
     return (
       <Modal transparent visible={visible} animationType="fade">
-        <View style={styles.overlay}>
+        <View className="flex-1 justify-center items-center bg-black/40">
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </Modal>
@@ -86,73 +71,145 @@ export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Pr
 
   if (!user) return null;
 
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
+    const emails = [user.email, ...(data.otherEmails?.map((e) => e.value || "") || [])].filter(Boolean);
+
+    try {
+      await onCreateGroup({
+        name: data.name.trim(),
+        description: data.description?.trim(),
+        userEmails: emails,
+      });
+      onClose();
+      reset();
+    } catch (err: any) {
+      const backendMsg = err?.message || "Erro ao criar grupo";
+      if (/não encontrado/i.test(backendMsg) || /User not found/i.test(backendMsg)) {
+        setError("otherEmails", { message: backendMsg });
+      } else if (/unique constraint failed/i.test(backendMsg) || /Já existe/i.test(backendMsg)) {
+        setError("name", { message: "Já existe um grupo com esse nome" });
+      } else {
+        setError("name", { message: backendMsg });
+      }
+    }
+  };
+
   return (
     <Modal transparent visible={visible} animationType="fade">
-      <View style={styles.overlay}>
-        <View style={[styles.modal, { backgroundColor: colors.card }]}>
-          <Text style={[styles.title, { color: colors.text }]}>Novo Grupo</Text>
+      <View className="flex-1 justify-center items-center bg-black/40">
+        <View
+          className="w-[90%] p-5 rounded-lg max-h-[80%]"
+          style={{ backgroundColor: colors.card }}
+        >
+          <Text className="text-xl font-bold text-center mb-3" style={{ color: colors.text }}>
+            Novo Grupo
+          </Text>
 
           <ScrollView>
-            <TextInput
-              placeholder="Nome do grupo"
-              placeholderTextColor={colors.border}
-              value={groupName}
-              onChangeText={setGroupName}
-              style={[styles.input, { color: colors.text, borderColor: error === "Nome do grupo é obrigatório" ? colors.notification : colors.border }]}
-              editable={!loading}
-            />
-
-            <Text style={[styles.label, { color: colors.text }]}>Membros</Text>
-
-            <View style={styles.emailRow}>
-              <TextInput value={user.email} editable={false} style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} />
-            </View>
-
-            {otherEmails.map((email, i) => {
-              const isInvalid = invalidEmails.includes(email.trim());
-              return (
-                <View key={i} style={styles.emailRow}>
+            {/* Nome do grupo */}
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, value } }) => (
+                <>
                   <TextInput
-                    placeholder={`email${i + 1}@exemplo.com`}
+                    placeholder="Nome do grupo"
                     placeholderTextColor={colors.border}
-                    value={email}
-                    onChangeText={(val) => handleEmailChange(i, val)}
-                    style={[styles.input, { flex: 1, color: colors.text, borderColor: isInvalid ? colors.notification : colors.border }, isInvalid ? { backgroundColor: `${colors.notification}22` } : null]}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!loading}
+                    value={value}
+                    onChangeText={onChange}
+                    className={clsx(
+                      "border rounded-md p-3 my-2",
+                      errors.name ? "border-red-500" : "border-gray-300"
+                    )}
+                    style={{ color: colors.text }}
                   />
-                  <TouchableOpacity onPress={() => handleRemoveEmail(i)} disabled={loading}>
-                    <Text style={{ color: colors.notification }}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-
-            <TouchableOpacity onPress={handleAddEmail} disabled={loading}>
-              <Text style={{ color: colors.primary, marginVertical: 6 }}>+ Adicionar outro</Text>
-            </TouchableOpacity>
-
-            <TextInput
-              placeholder="Descrição (opcional)"
-              placeholderTextColor={colors.border}
-              value={description}
-              onChangeText={setDescription}
-              style={[styles.input, { height: 80, color: colors.text, borderColor: colors.border }]}
-              multiline
-              editable={!loading}
+                  {errors.name && <Text className="text-red-500">{errors.name.message}</Text>}
+                </>
+              )}
             />
 
-            {error && <Text style={{ color: colors.notification, marginTop: 6 }}>{error}</Text>}
+            {/* E-mail do usuário */}
+            <Text className="mt-2 mb-1 font-semibold" style={{ color: colors.text }}>
+              Membros
+            </Text>
+            <TextInput
+              value={user.email}
+              editable={false}
+              className="border rounded-md p-3 my-2"
+              style={{ color: colors.text, backgroundColor: colors.background, borderColor: colors.border }}
+            />
+
+            {/* Outros e-mails */}
+            <Controller
+              control={control}
+              name="otherEmails"
+              render={({ field: { value, onChange } }) => (
+                <>
+                  {(value || []).map((emailObj, i) => (
+                    <View key={i} className="flex-row items-center gap-2 my-1">
+                      <TextInput
+                        placeholder={`email${i + 1}@exemplo.com`}
+                        placeholderTextColor={colors.border}
+                        value={emailObj.value}
+                        onChangeText={(text) => {
+                          const copy = [...value];
+                          copy[i].value = text;
+                          onChange(copy);
+                        }}
+                        className={clsx(
+                          "flex-1 border rounded-md p-3",
+                          errors.otherEmails ? "border-red-500" : "border-gray-300"
+                        )}
+                        style={{ color: colors.text }}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          const copy = [...value];
+                          copy.splice(i, 1);
+                          onChange(copy);
+                        }}
+                      >
+                        <Text className="text-red-500">✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity onPress={() => onChange([...(value || []), { value: "" }])}>
+                    <Text className="text-blue-500 my-1">+ Adicionar outro</Text>
+                  </TouchableOpacity>
+                  {errors.otherEmails && <Text className="text-red-500">{errors.otherEmails.message}</Text>}
+                </>
+              )}
+            />
+
+            {/* Descrição */}
+            <Controller
+              control={control}
+              name="description"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  placeholder="Descrição (opcional)"
+                  placeholderTextColor={colors.border}
+                  value={value}
+                  onChangeText={onChange}
+                  className="border rounded-md p-3 my-2 h-20"
+                  style={{ color: colors.text, borderColor: colors.border }}
+                  multiline
+                />
+              )}
+            />
           </ScrollView>
 
-          <View style={styles.actions}>
-            <TouchableOpacity onPress={() => !loading && onClose()} disabled={loading}>
-              <Text style={{ color: colors.notification }}>{loading ? "Aguarde..." : "Cancelar"}</Text>
+          {/* Ações */}
+          <View className="flex-row justify-between mt-4">
+            <TouchableOpacity onPress={onClose}>
+              <Text className="text-red-500 font-semibold">Cancelar</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleSubmit} disabled={loading}>
-              <Text style={{ color: colors.primary, fontWeight: "bold" }}>{loading ? "Criando..." : "Criar Grupo"}</Text>
+            <TouchableOpacity onPress={handleSubmit(onSubmit)}>
+              <Text className="text-blue-500 font-bold">
+                {isSubmitting ? "Criando..." : "Criar Grupo"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -160,13 +217,3 @@ export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Pr
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)" },
-  modal: { width: "90%", padding: 20, borderRadius: 12, maxHeight: "80%" },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
-  label: { marginTop: 10, marginBottom: 4, fontSize: 14, fontWeight: "600" },
-  input: { borderWidth: 1, borderRadius: 8, padding: 10, marginVertical: 6 },
-  emailRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  actions: { flexDirection: "row", justifyContent: "space-between", marginTop: 16 },
-});
