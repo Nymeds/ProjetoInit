@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Modal, View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 interface Props {
   visible: boolean;
@@ -9,77 +12,138 @@ interface Props {
   onCreateGroup: (payload: { name: string; description?: string; userEmails: string[] }) => Promise<{ success: boolean; message?: string }>;
 }
 
-export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Props) {
-  const { colors } = useTheme();
-  const { user, loading: userLoading } = useAuth();
+interface FormData {
+  name: string;
+  description: string;
+  emails: { value: string }[];
+}
 
-  const [groupName, setGroupName] = useState("");
-  const [description, setDescription] = useState("");
-  const [otherEmails, setOtherEmails] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [invalidEmails, setInvalidEmails] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+const schema = yup.object({
+  name: yup.string().required("Nome do grupo é obrigatório").trim(),
+  description: yup.string().trim(),
+  emails: yup.array().of(
+    yup.object({ value: yup.string().email("Email inválido") })
+  ).default([{ value: "" }])
+});
 
-  useEffect(() => {
-    if (visible) {
-      setGroupName("");
-      setDescription("");
-      setOtherEmails([]);
-      setError(null);
-      setInvalidEmails([]);
-      setLoading(false);
+const useGroupForm = (user: any, onCreateGroup: Props['onCreateGroup'], onClose: Props['onClose']) => {
+  const [invalidEmails, setInvalidEmails] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [apiError, setApiError] = React.useState<string | null>(null);
+
+  const form = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      name: "",
+      description: "",
+      emails: [{ value: "" }]
     }
-  }, [visible]);
+  });
 
-  const extractEmailsFromString = (text: string) => {
-    if (!text) return [];
-    const re = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-    return text.match(re) ?? [];
-  };
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "emails"
+  });
 
-  const handleSubmit = async () => {
-    if (!groupName.trim()) { 
-      setError("Nome do grupo é obrigatório"); 
-      return; 
-    }
-    if (!user?.email) { 
-      setError("Usuário não carregado ainda"); 
-      return; 
-    }
+  const extractEmailsFromString = (text: string) => 
+    text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) ?? [];
 
+  const handleSubmit = form.handleSubmit(async (data) => {
+    if (!user?.email) return;
+    
     setLoading(true);
-    setError(null);
+    setApiError(null);
     setInvalidEmails([]);
 
+    const validEmails = data.emails.map(e => e.value.trim()).filter(Boolean);
     const payload = {
-      name: groupName.trim(),
-      description: description.trim() || undefined,
-      userEmails: [user.email, ...otherEmails.filter((e) => e.trim() !== "")],
+      name: data.name.trim(),
+      description: data.description.trim() || undefined,
+      userEmails: [user.email, ...validEmails]
     };
 
     const result = await onCreateGroup(payload);
 
     if (result.success) {
-      setGroupName("");
-      setDescription("");
-      setOtherEmails([]);
-      onClose(); // fecha modal só no sucesso
+      reset();
+      onClose();
     } else {
-      let backendMsg = result.message || "Erro ao criar grupo";
-
-      if (/não encontrado/i.test(backendMsg) || /User not found/i.test(backendMsg)) {
-        const found = extractEmailsFromString(backendMsg);
+      let msg = result.message || "Erro ao criar grupo";
+      
+      if (/não encontrado|User not found/i.test(msg)) {
+        const found = extractEmailsFromString(msg);
         setInvalidEmails(found);
-        backendMsg = `Algum dos emails informados não pertence a um usuário cadastrado. ${found.join(", ")}`;
-      } else if (/unique constraint failed/i.test(backendMsg) || /Já existe/i.test(backendMsg)) {
-        backendMsg = "Já existe um grupo com esse nome";
+        msg = `Emails não cadastrados: ${found.join(", ")}`;
+      } else if (/unique constraint|Já existe/i.test(msg)) {
+        msg = "Já existe um grupo com esse nome";
       }
-
-      setError(backendMsg);
+      
+      setApiError(msg);
     }
+    
+    setLoading(false);
+  });
 
+  const handleEmailChange = (index: number, value: string) => {
+    const currentEmail = form.getValues(`emails.${index}.value`);
+    form.setValue(`emails.${index}.value`, value);
+    
+    if (invalidEmails.includes(currentEmail?.trim())) {
+      setInvalidEmails(prev => prev.filter(email => email !== currentEmail?.trim()));
+      setApiError(null);
+    }
+  };
+
+  const removeEmail = (index: number) => {
+    const emailToRemove = form.getValues(`emails.${index}.value`)?.trim();
+    remove(index);
+    
+    if (emailToRemove && invalidEmails.includes(emailToRemove)) {
+      setInvalidEmails(prev => prev.filter(email => email !== emailToRemove));
+    }
+  };
+
+  const reset = () => {
+    form.reset();
+    setInvalidEmails([]);
+    setApiError(null);
     setLoading(false);
   };
+
+  return {
+    form,
+    fields,
+    append,
+    removeEmail,
+    handleSubmit,
+    handleEmailChange,
+    loading,
+    apiError,
+    invalidEmails,
+    reset
+  };
+};
+
+export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Props) {
+  const { colors } = useTheme();
+  const { user, loading: userLoading } = useAuth();
+  
+  const {
+    form,
+    fields,
+    append,
+    removeEmail,
+    handleSubmit,
+    handleEmailChange,
+    loading,
+    apiError,
+    invalidEmails,
+    reset
+  } = useGroupForm(user, onCreateGroup, onClose);
+
+  useEffect(() => {
+    if (visible) reset();
+  }, [visible]);
 
   if (userLoading) {
     return (
@@ -93,7 +157,7 @@ export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Pr
 
   if (!user) return null;
 
-  const hasError = !!error || invalidEmails.length > 0;
+  const hasErrors = !form.formState.isValid || !!apiError || invalidEmails.length > 0;
 
   return (
     <Modal transparent visible={visible} animationType="fade">
@@ -102,61 +166,95 @@ export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Pr
           <Text style={[styles.title, { color: colors.text }]}>Novo Grupo</Text>
 
           <ScrollView>
-            <TextInput
-              placeholder="Nome do grupo"
-              placeholderTextColor={colors.border}
-              value={groupName}
-              onChangeText={setGroupName}
-              style={[styles.input, { color: colors.text, borderColor: error === "Nome do grupo é obrigatório" ? colors.notification : colors.border }]}
-              editable={!loading}
+            <Controller
+              name="name"
+              control={form.control}
+              render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                <TextInput
+                  placeholder="Nome do grupo"
+                  placeholderTextColor={colors.border}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  style={[
+                    styles.input,
+                    { color: colors.text, borderColor: error ? colors.notification : colors.border }
+                  ]}
+                  editable={!loading}
+                />
+              )}
             />
 
             <Text style={[styles.label, { color: colors.text }]}>Membros</Text>
+            
+            <TextInput 
+              value={user.email} 
+              editable={false} 
+              style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} 
+            />
 
-            <View style={styles.emailRow}>
-              <TextInput value={user.email} editable={false} style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} />
-            </View>
-
-            {otherEmails.map((email, i) => {
-              const isInvalid = invalidEmails.includes(email.trim());
+            {fields.map((field, index) => {
+              const emailValue = form.watch(`emails.${index}.value`);
+              const isInvalid = invalidEmails.includes(emailValue?.trim());
+              
               return (
-                <View key={i} style={styles.emailRow}>
-                  <TextInput
-                    placeholder={`email${i + 1}@exemplo.com`}
-                    placeholderTextColor={colors.border}
-                    value={email}
-                    onChangeText={(val) => {
-                      const copy = [...otherEmails];
-                      copy[i] = val;
-                      setOtherEmails(copy);
-                    }}
-                    style={[styles.input, { flex: 1, color: colors.text, borderColor: isInvalid ? colors.notification : colors.border }, isInvalid ? { backgroundColor: `${colors.notification}22` } : null]}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!loading}
+                <View key={field.id} style={styles.emailRow}>
+                  <Controller
+                    name={`emails.${index}.value`}
+                    control={form.control}
+                    render={({ field: { value } }) => (
+                      <TextInput
+                        placeholder={`email${index + 1}@exemplo.com`}
+                        placeholderTextColor={colors.border}
+                        value={value}
+                        onChangeText={(val) => handleEmailChange(index, val)}
+                        style={[
+                          styles.input,
+                          { flex: 1, color: colors.text, borderColor: isInvalid ? colors.notification : colors.border },
+                          isInvalid && { backgroundColor: `${colors.notification}22` }
+                        ]}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        editable={!loading}
+                      />
+                    )}
                   />
-                  <TouchableOpacity onPress={() => setOtherEmails((prev) => prev.filter((_, idx) => idx !== i))} disabled={loading}>
+                  <TouchableOpacity onPress={() => removeEmail(index)} disabled={loading}>
                     <Text style={{ color: colors.notification }}>✕</Text>
                   </TouchableOpacity>
                 </View>
               );
             })}
 
-            <TouchableOpacity onPress={() => setOtherEmails((prev) => [...prev, ""])} disabled={loading}>
+            <TouchableOpacity onPress={() => append({ value: "" })} disabled={loading}>
               <Text style={{ color: colors.primary, marginVertical: 6 }}>+ Adicionar outro</Text>
             </TouchableOpacity>
 
-            <TextInput
-              placeholder="Descrição (opcional)"
-              placeholderTextColor={colors.border}
-              value={description}
-              onChangeText={setDescription}
-              style={[styles.input, { height: 80, color: colors.text, borderColor: colors.border }]}
-              multiline
-              editable={!loading}
+            <Controller
+              name="description"
+              control={form.control}
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  placeholder="Descrição (opcional)"
+                  placeholderTextColor={colors.border}
+                  value={value}
+                  onChangeText={onChange}
+                  style={[styles.input, { height: 80, color: colors.text, borderColor: colors.border }]}
+                  multiline
+                  editable={!loading}
+                />
+              )}
             />
 
-            {error && <Text style={{ color: colors.notification, marginTop: 6 }}>{error}</Text>}
+            {form.formState.errors.name && (
+              <Text style={{ color: colors.notification, marginTop: 6 }}>
+                {form.formState.errors.name.message}
+              </Text>
+            )}
+            
+            {apiError && (
+              <Text style={{ color: colors.notification, marginTop: 6 }}>{apiError}</Text>
+            )}
           </ScrollView>
 
           <View style={styles.actions}>
@@ -164,8 +262,10 @@ export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Pr
               <Text style={{ color: colors.notification }}>{loading ? "Aguarde..." : "Cancelar"}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleSubmit} disabled={loading || hasError}>
-              <Text style={{ color: colors.primary, fontWeight: "bold" }}>{loading ? "Criando..." : "Criar Grupo"}</Text>
+            <TouchableOpacity onPress={handleSubmit} disabled={loading || hasErrors}>
+              <Text style={{ color: colors.primary, fontWeight: "bold" }}>
+                {loading ? "Criando..." : "Criar Grupo"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
