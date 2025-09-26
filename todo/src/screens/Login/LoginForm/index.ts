@@ -1,31 +1,17 @@
 import React, { useState } from "react";
 import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useNavigation, useTheme } from "@react-navigation/native";
-import { Input } from "../../components/Input";
-import CardCircular from "../../components/CircularCard";
-import { useAuth } from "../../context/AuthContext";
+import { Input } from "../../../components/Input";
+import CardCircular from "../../../components/CircularCard";
+import { useAuth } from "../../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm, Controller } from "react-hook-form";
-import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { loginSchema, FormData } from "./schema";
 
-const icon = require("../../../assets/icon.png");
+const icon = require("../../../../assets/icon.png");
 
-//  Schema Yup
-const loginSchema = yup.object({
-  email: yup
-    .string()
-    .email("E-mail inválido")
-    .required("O e-mail é obrigatório"),
-  password: yup
-    .string()
-    .min(6, "Senha deve ter no mínimo 6 caracteres")
-    .required("A senha é obrigatória"),
-});
-
-type FormData = yup.InferType<typeof loginSchema>;
-
-export default function Login() {
+export default function LoginForm() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { login } = useAuth();
@@ -57,7 +43,7 @@ export default function Login() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ color: colors.text, marginTop: 12 }}>Carregando...</Text>
       </View>
@@ -65,7 +51,7 @@ export default function Login() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <>
       <CardCircular size={100} icon={icon} iconSize={90} />
       <Text style={[styles.title, { color: colors.text }]}>Login</Text>
 
@@ -138,27 +124,38 @@ export default function Login() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </>
   );
 }
 
 const styles = {
-  container: {
-    flex: 1,
-    justifyContent: "center",
+  loadingContainer: {
     alignItems: "center",
-    padding: 20,
   },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: 20 },
-  errorText: { color: "red", marginTop: 4, textAlign: "center" },
-  buttonContainer: { width: "100%", marginTop: 12 },
+  title: { 
+    fontSize: 28, 
+    fontWeight: "700", 
+    marginBottom: 20 
+  },
+  errorText: { 
+    color: "red", 
+    marginTop: 4, 
+    textAlign: "center" 
+  },
+  buttonContainer: { 
+    width: "100%", 
+    marginTop: 12 
+  },
   button: {
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 10,
   },
-  buttonText: { color: "#fff", fontWeight: "600" },
+  buttonText: { 
+    color: "#fff", 
+    fontWeight: "600" 
+  },
   buttonOutline: {
     padding: 12,
     borderRadius: 8,
