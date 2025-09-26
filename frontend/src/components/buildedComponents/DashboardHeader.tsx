@@ -3,6 +3,7 @@ import { Button } from '../baseComponents/button';
 import { Text } from '../baseComponents/text';
 import type { User as UserType } from '../../context/AuthContext';
 import Card from '../baseComponents/card';
+import ThemeToggle from '../buildedComponents/AnimatedThemeToggle';
 
 interface DashboardHeaderProps {
   user: UserType;
@@ -12,6 +13,8 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row justify-between items-center mb-12 space-y-6 lg:space-y-0">
+      
+      {/* Seção de saudação e card de data */}
       <div className="text-center lg:text-left space-y-4">
         <div className="flex items-center justify-center lg:justify-start space-x-4">
           <div className="w-16 h-16 bg-gradient-to-br from-accent-brand to-accent-brand-light rounded-2xl flex items-center justify-center shadow-lg">
@@ -25,34 +28,37 @@ export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
               {user.role}
             </Text>
           </div>
-          
         </div>
-        <hr></hr>
-       <Card className="w-56 bg-background-tertiary p-4 flex flex-col items-center justify-center border border-border-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-            <Text variant="heading-small" className="text-heading mb-1 text-center">
-                Hoje é
-            </Text>
-            <Text variant="paragraph-small" className="text-accent-paragraph text-center">
-                {new Date().toLocaleDateString('pt-BR', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-                })}
-            </Text>
-            </Card>
 
+        <hr />
 
+        <Card className="w-56 bg-background-tertiary p-4 flex flex-col items-center justify-center border border-border-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
+          <Text variant="heading-small" className="text-heading mb-1 text-center">
+            Hoje é
+          </Text>
+          <Text variant="paragraph-small" className="text-accent-paragraph text-center">
+            {new Date().toLocaleDateString('pt-BR', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </Text>
+        </Card>
       </div>
-      
-      <Button 
-        variant="danger" 
-        className="flex items-center space-x-3 px-6 py-3" 
-        onClick={onLogout}
-      >
-        <LogOut className="w-5 h-5" />
-        <span>Sair</span>
-      </Button>
+
+      {/* Seção de ações: toggle e logout */}
+      <div className="flex flex-col items-center space-y-3">
+        <ThemeToggle />
+        <Button 
+          variant="danger" 
+          className="flex items-center space-x-3 px-6 py-3" 
+          onClick={onLogout}
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Sair</span>
+        </Button>
+      </div>
     </div>
   );
 }

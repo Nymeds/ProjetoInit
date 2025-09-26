@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, type ReactNode, useState } from "react";
 import { registerRequest } from "../api/register";
 
@@ -17,7 +19,6 @@ interface RegisterProviderProps {
   children: ReactNode;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const RegisterContext = createContext<RegisterContextType>(
   {} as RegisterContextType
 );
@@ -32,11 +33,11 @@ export function RegisterProvider({ children }: RegisterProviderProps) {
 
     try {
       await registerRequest(data.name, data.email, data.password);
-      
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Se sucesso, não faz nada, o navigate será chamado no onSubmit
     } catch (err: any) {
-      setErrorMessage(err.message || "Erro ao cadastrar");
-     
+      const message = err.message || "Erro ao cadastrar";
+      setErrorMessage(message);
+      throw new Error(message); // lança para o onSubmit tratar
     } finally {
       setIsLoading(false);
     }

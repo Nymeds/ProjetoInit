@@ -24,15 +24,15 @@ export function Register() {
   async function onSubmit(data: RegisterFormData) {
     try {
       await registerUser(data);
-      navigate("/login"); 
+      navigate("/login"); // Só navega se registerUser não lançar erro
     } catch {
-      // Erro já tratado 
+      // Não navega, erro já tratado no context
     }
   }
 
   return (
     <div className="flex flex-col justify-between min-h-screen bg-background-primary p-6">
-
+      
       {/* LOGO E TÍTULO */}
       <div className="flex flex-col items-center gap-6 mt-8">
         <motion.img
@@ -53,7 +53,7 @@ export function Register() {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <Card floating className="flex flex-col gap-8 w-full max-w-md md:max-w-lg p-8 items-center">
-
+            
             <Text variant="heading-medium" className="text-center">
               Registro
             </Text>
@@ -158,9 +158,15 @@ export function Register() {
 
               {/* ERRO DO BACKEND */}
               {errorMessage && (
-                <Text variant="paragraph-small" className="text-danger text-center" role="alert">
-                  {errorMessage}
-                </Text>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Text variant="paragraph-small" className="text-danger text-center" role="alert">
+                    {errorMessage}
+                  </Text>
+                </motion.div>
               )}
 
               {/* BOTÃO DE CADASTRO */}
