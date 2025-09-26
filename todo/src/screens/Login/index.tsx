@@ -44,8 +44,24 @@ export default function Login() {
     try {
       await login(data.email, data.password);
     } catch (err: any) {
-      setGeneralError(err?.message || "Erro desconhecido");
-    } finally {
+  if (err.response) {
+    switch (err.response.status) {
+      case 400:
+        setGeneralError("E-mail ou senha inválidos.");
+        break;
+      case 401:
+        setGeneralError("Não autorizado. Verifique suas credenciais.");
+        break;
+      case 500:
+        setGeneralError("Erro no servidor. Tente mais tarde.");
+        break;
+      default:
+        setGeneralError("Ocorreu um erro inesperado.");
+    }
+  } else {
+    setGeneralError("Erro de conexão. Verifique sua internet.");
+  }
+} finally {
       setLoading(false);
     }
   };
