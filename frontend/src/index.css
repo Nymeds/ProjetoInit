@@ -24,8 +24,8 @@
 	--font-sans: "Mulish", sans-serif;
 }
 
-
-:root{
+/* Dark theme (default) */
+:root {
   --font-sans: "Mulish", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   --bg-900: #040d18;
   --bg-800: #0b1630;
@@ -35,21 +35,98 @@
   --accent-2: #66eae1;
   --danger: #f54a26;
   --text: #e7eef8;
+
+  /* CSS Variables for theme switching */
+  --color-background-primary: #040d18;
+  --color-background-secondary: #262337;
+  --color-background-tertiary: #3c3857;
+  --color-background-quaternary: #3c3857;
+  --color-background-danger: #f54a26;
+  --color-border-primary: #2c2c35;
+  --color-border-active: #4c4c5d;
+  --color-accent-brand: #1ccfc3;
+  --color-accent-brand-light: #66eae1;
+  --color-accent-red: #f54a26;
+  --color-heading: #fafcff;
+  --color-accent-paragraph: #f1f7ff;
+  --color-accent-span: #5c636c;
+  --color-placeholder: #a9a9a9;
+  --color-label: #ffffff;
+  --color-label-inverse: #040d18;
 }
 
+/* Light theme */
+:root.light-theme {
+  --bg-900: #e9e9e9;
+  --bg-800: #f8f8f8;
+  --card-bg: rgba(0,0,0,0.03);
+  --glass-border: rgba(0,0,0,0.08);
+  --accent: #1ccfc3;
+  --accent-2: #66eae1;
+  --danger: #f54a26;
+  --text: #111111;
 
-html,body,#root{
-  height:100%;
+  /* Light theme color variables */
+  --color-background-primary: #e9e9e9;
+  --color-background-secondary: #f8f8f8;
+  --color-background-tertiary: #f1f7ff;
+  --color-background-quaternary: #ffffff;
+  --color-background-danger: #f54a26;
+  --color-border-primary: #e0e0e0;
+  --color-border-active: #4c4c5d;
+  --color-accent-brand: #1ccfc3;
+  --color-accent-brand-light: #66eae1;
+  --color-accent-red: #f54a26;
+  --color-heading: #111111;
+  --color-accent-paragraph: #333333;
+  --color-accent-span: #5c636c;
+  --color-placeholder: #a9a9a9;
+  --color-label: #111111;
+  --color-label-inverse: #ffffff;
 }
-body{
+
+/* Alternative light theme class for manual switching */
+.light-mode {
+  --bg-900: #e9e9e9;
+  --bg-800: #f8f8f8;
+  --card-bg: rgba(0,0,0,0.03);
+  --glass-border: rgba(0,0,0,0.08);
+  --accent: #1ccfc3;
+  --accent-2: #66eae1;
+  --danger: #f54a26;
+  --text: #111111;
+
+  --color-background-primary: #e9e9e9;
+  --color-background-secondary: #f8f8f8;
+  --color-background-tertiary: #f1f7ff;
+  --color-background-quaternary: #ffffff;
+  --color-background-danger: #f54a26;
+  --color-border-primary: #e0e0e0;
+  --color-border-active: #4c4c5d;
+  --color-accent-brand: #1ccfc3;
+  --color-accent-brand-light: #66eae1;
+  --color-accent-red: #f54a26;
+  --color-heading: #111111;
+  --color-accent-paragraph: #333333;
+  --color-accent-span: #5c636c;
+  --color-placeholder: #a9a9a9;
+  --color-label: #111111;
+  --color-label-inverse: #ffffff;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
   font-family: var(--font-sans);
   color: var(--text);
-  background: linear-gradient(180deg,var(--bg-900) 0%, var(--bg-800) 100%);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  line-height:1.4;
+  background: linear-gradient(180deg, var(--bg-900) 0%, var(--bg-800) 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.4;
+  transition: background 0.3s ease, color 0.3s ease;
 }
-
 
 .card-surface {
   background: var(--card-bg);
@@ -57,19 +134,33 @@ body{
   border-radius: 12px;
   box-shadow: 0 6px 24px rgba(3,8,18,0.6);
   padding: 1rem;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Light theme card adjustments */
+:root.light-theme .card-surface,
+.light-mode .card-surface {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
 }
 
 .stat-icon {
-  width:48px;
-  height:48px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:10px;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
   background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   border: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
+/* Light theme stat icon adjustments */
+:root.light-theme .stat-icon,
+.light-mode .stat-icon {
+  background: linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01));
+  border: 1px solid rgba(0,0,0,0.08);
+}
 
 .app-container {
   max-width: 1200px;
@@ -85,4 +176,37 @@ body{
   background-color: rgba(2,6,23,0.55);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  transition: background-color 0.3s ease;
+}
+
+/* Light theme modal backdrop adjustments */
+:root.light-theme .modal-backdrop,
+.light-mode .modal-backdrop {
+  background-color: rgba(255,255,255,0.8);
+}
+
+/* Theme toggle transitions */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Media query for system theme preference */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark-theme) {
+    --bg-900: #e9e9e9;
+    --bg-800: #f8f8f8;
+    --card-bg: rgba(0,0,0,0.03);
+    --glass-border: rgba(0,0,0,0.08);
+    --text: #111111;
+
+    --color-background-primary: #e9e9e9;
+    --color-background-secondary: #f8f8f8;
+    --color-background-tertiary: #f1f7ff;
+    --color-background-quaternary: #ffffff;
+    --color-border-primary: #e0e0e0;
+    --color-heading: #111111;
+    --color-accent-paragraph: #333333;
+    --color-label: #111111;
+    --color-label-inverse: #ffffff;
+  }
 }

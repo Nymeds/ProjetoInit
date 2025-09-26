@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-refresh/only-export-components */
-// src/contexts/AuthContext.tsx
 import { createContext, type ReactNode, useState, useEffect } from "react";
 import { loginRequest, api } from "../api/auth";
 

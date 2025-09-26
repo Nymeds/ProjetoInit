@@ -1,4 +1,3 @@
-// RegisterContext.tsx
 import { createContext, type ReactNode, useState } from "react";
 import { registerRequest } from "../api/register";
 
