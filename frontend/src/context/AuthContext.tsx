@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(storedToken);
     } catch (err: any) {
       if (err.response?.status === 401) {
-        // Tenta refresh
+       
         try {
           const { data } = await api.patch("/token/refresh", {}, { withCredentials: true });
           const { token: newToken } = data;

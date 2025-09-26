@@ -1,5 +1,6 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert } from "react-native";
 
 const api = axios.create({
   baseURL: "http://10.0.2.2:3333",
@@ -54,7 +55,8 @@ api.interceptors.response.use(
     if (status === 401 && !originalRequest._retry) {
       if (isRefreshEndpoint) {
         if (signOutHandler) signOutHandler();
-        return Promise.reject(error);
+        Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
+        return Promise.reject(new Error("Sessão expirada"));
       }
 
       originalRequest._retry = true;
@@ -76,7 +78,8 @@ api.interceptors.response.use(
         const refreshToken = await AsyncStorage.getItem("@refreshToken");
         if (!refreshToken) {
           if (signOutHandler) signOutHandler();
-          return Promise.reject(error);
+          Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
+          return Promise.reject(new Error("Sessão expirada"));
         }
 
         const r = await api.patch<{ token: string; refreshToken: string }>(
@@ -97,12 +100,14 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         if (signOutHandler) signOutHandler();
-        return Promise.reject(err);
+        Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
+        return Promise.reject(new Error("Sessão expirada"));
       } finally {
         isRefreshing = false;
       }
     }
 
+    // Outros erros que não sejam 401
     return Promise.reject(error);
   }
 );

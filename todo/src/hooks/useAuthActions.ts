@@ -103,7 +103,7 @@ export function useAuthActions() {
     } catch (err: any) {
       await removeTokens();
       const msg = extractErrorMessage(err);
-      showError(msg);
+      ErrorMessage(msg);
       throw err;
     }
   };

@@ -59,7 +59,6 @@ export default function TaskCard({ todo, onDelete, onToggle, onPress }: Props) {
   }, [todo.groupId]);
 
   const confirmDelete = () => {
-    console.log("confirmDelete dados do todo:", todo);
     Alert.alert("Confirmar", "Deseja excluir esta tarefa?", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -78,9 +77,11 @@ export default function TaskCard({ todo, onDelete, onToggle, onPress }: Props) {
   };
 
   const handleToggle = async () => {
+    if (completed) return; // não deixa voltar para pendente
+
     try {
       setUpdating(true);
-      setCompleted(prev => !prev);
+      setCompleted(true); // só marca como concluída
       await onToggle?.(todo.id);
     } catch {
       setCompleted(todo.completed);
@@ -134,8 +135,12 @@ export default function TaskCard({ todo, onDelete, onToggle, onPress }: Props) {
           <Trash2 size={22} color={c.notification ?? c.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleToggle} disabled={updating} style={{ marginLeft: 16 }}>
-          <CheckCircle size={22} color={c.primary} />
+        <TouchableOpacity
+          onPress={handleToggle}
+          disabled={updating || completed}
+          style={{ marginLeft: 16, opacity: completed ? 0.4 : 1 }}
+        >
+          <CheckCircle size={22} color={completed ? "#28a745" : c.primary} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
