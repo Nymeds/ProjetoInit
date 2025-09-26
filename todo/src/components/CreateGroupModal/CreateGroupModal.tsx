@@ -10,19 +10,11 @@ interface Props {
   onCreateGroup: (
     payload: { name: string; description?: string; userEmails: string[] }
   ) => Promise<{ success: boolean; message?: string }>;
-  onSave?: (users: string[]) => void;
-  validateUser?: (value: string) => boolean;
 }
 
-export default function CreateGroupModal({
-  visible,
-  onClose,
-  onCreateGroup,
-  onSave,
-  validateUser,
-}: Props) {
+export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Props) {
   const { colors } = useTheme();
-  const { loading: userLoading, user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
 
   if (userLoading) {
     return (
@@ -37,14 +29,12 @@ export default function CreateGroupModal({
   if (!user) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.container, { backgroundColor: colors.card }]}>
+    <Modal transparent visible={visible} animationType="fade">
+      <View style={styles.overlay}>
+        <View style={[styles.modal, { backgroundColor: colors.card }]}>
           <CreateGroupForm
             onCreateGroup={onCreateGroup}
             onCancel={onClose}
-            onSave={onSave}
-            validateUser={validateUser}
             onSuccess={onClose}
           />
         </View>
@@ -54,26 +44,12 @@ export default function CreateGroupModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
     padding: 16,
   },
-  container: {
-    width: "100%",
-    maxWidth: 520,
-    borderRadius: 8,
-    padding: 8,
-    maxHeight: "80%",
-    overflow: "hidden",
-  },
+  modal: { width: "90%", padding: 20, borderRadius: 12, maxHeight: "80%" },
 });
