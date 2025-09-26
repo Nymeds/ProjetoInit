@@ -123,9 +123,80 @@ Frontend web: `http://localhost:5173`
 ```bash
 cd todo
 npm install
-npx expo start
+npx expo start         # abre o Metro/Expo
+npx expo start -c      # limpa cache
+npm run android        # abre no emulador Android (se configurado)
+npm run ios            # abre no iOS (macOS com Xcode)
+npm run web            # roda versão web
 ```
 
+---
+
+## Estrutura de navegação (resumo)
+
+Arquivos principais:
+- `src/navigation/RootNavigator.tsx` — ponto de entrada das rotas (controla fluxo auth vs app)
+- `src/navigation/AppDrawer.tsx` — Drawer principal com stacks
+- `src/navigation/CustomDrawerContent.tsx` — conteúdo customizado do Drawer
+- `src/navigation/HomeStack.tsx` — stack da Home
+- `src/navigation/GroupStack.tsx` — stack de Grupos
+
+Fluxo principal:
+- RootNavigator
+  - Se não autenticado → AuthStack (`src/navigation/AuthStack.tsx`)
+  - Se autenticado → AppDrawer (`src/navigation/AppDrawer.tsx`)
+    - HomeStack (tela Home)
+    - GroupsStack (telas Groups, GroupDetail)
+
+Dicas de tipagem:
+- Defina ParamLists para cada navigator (ex.: `export type GroupsStackParamList = { Groups: undefined; GroupDetail: { id: string } }`) e crie o navigator com esse generic:
+  - `const Stack = createNativeStackNavigator<GroupsStackParamList>();`
+- Em `AppDrawer`, exponha o tipo do Drawer:
+  - `export type MainDrawerParamList = { HomeStack: undefined; GroupsStack: undefined }`
+  - `const Drawer = createDrawerNavigator<MainDrawerParamList>();`
+
+Problemas comuns de tipos com @react-navigation:
+- Algumas versões geram erro exigindo `id` no `<Navigator>`. Soluções:
+  - Melhor: alinhar pacotes para uma versão compatível (v6) — ver sessão abaixo.
+  - Workaround temporário: `id={undefined}` no Navigator ou remover tipagem rígida em CustomDrawerContent e fazer cast local do `navigation`.
+- Em `CustomDrawerContent` pode haver mismatch nas typings; solução simples e segura adotada no projeto:
+  - aceitar `props: any` e depois `const navigation = props.navigation as DrawerNavigationProp<MainDrawerParamList>;` ao navegar.
+
+Arquivo relevante:
+- `src/navigation/CustomDrawerContent.tsx` — contém logout, toggleTheme e navegação para `GroupsStack`.
+
+---
+
+## Modais e formulários
+
+Create group:
+- Componentes:
+  - `src/components/CreateGroupModal/CreateGroupModal.tsx` — wrapper/modal (abre/fechar)
+  - `src/components/CreateGroupModal/CreateGroupForm.tsx` — formulário (react-hook-form + yup)
+- Comportamento:
+  - O formulário valida emails/membros antes de permitir fechar/salvar.
+  - `attemptClose()` bloqueia fechamento se houver usuário inválido.
+  - Use `onCreateGroup` (prop) para chamar API e tratar resposta (ex.: e-mails inválidos retornados do backend).
+
+## Referências de arquivo (onde procurar)
+
+- Navegação
+  - `src/navigation/RootNavigator.tsx`
+  - `src/navigation/AppDrawer.tsx`
+  - `src/navigation/CustomDrawerContent.tsx`
+  - `src/navigation/GroupStack.tsx`
+  - `src/navigation/HomeStack.tsx`
+- Modal/Grupo
+  - `src/components/CreateGroupModal/CreateGroupModal.tsx`
+  - `src/components/CreateGroupModal/CreateGroupForm.tsx`
+- Telas
+  - `src/screens/GroupsScreen/GroupsScreen.tsx`
+  - `src/screens/GroupsScreen/GroupDetailScreen.tsx`
+  - `src/screens/Home/Home.tsx`
+  - `src/screens/Login/index.tsx`
+  - `src/screens/Register/index.tsx`
+
+---
 * Android emulator: use `http://10.0.2.2:3333`
 * Expo em dispositivo físico: use IP LAN da máquina
 
@@ -235,3 +306,8 @@ VITE_API_URL="http://localhost:3333"
 ---
 
 ✍️ Projeto em constante evolução – feito para estudos e aprendizado!
+
+
+
+
+
