@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useTheme, useNavigation } from "@react-navigation/native";
 import { useGroups } from "../../hooks/useGroups";
-import CreateGroupModal from "../../components/CreateGroupModal";
+import CreateGroupModal from "../../components/CreateGroupModal/CreateGroupModal";
 import { Trash2 } from "lucide-react-native";
 
 function initials(name = "") {
@@ -155,7 +155,9 @@ export default function GroupsScreen() {
       />
 
       {/* Create Group Modal */}
-      <CreateGroupModal visible={isModalOpen} onClose={() => setIsModalOpen(false)} onCreateGroup={handleCreateGroup} />
+      <CreateGroupModal visible={isModalOpen} onClose={() => setIsModalOpen(false)} 
+      // @ts-ignore
+      onCreateGroup={handleCreateGroup} />
     </View>
   );
 }

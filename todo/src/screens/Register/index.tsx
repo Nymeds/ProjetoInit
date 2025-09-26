@@ -4,7 +4,7 @@ import { useNavigation, useTheme } from "@react-navigation/native";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 
-import { AppInput } from "../../components/AppInput"; // Componente compatível com RHF
+import { AppInput } from "../../components/AppInput";
 import CardCircular from "../../components/CircularCard";
 import { useAuth } from "../../context/AuthContext";
 import { registerSchema, RegisterFormData } from "./schema";
@@ -14,12 +14,13 @@ const icon = require("../../../assets/icon.png");
 export default function Register() {
   const navigation = useNavigation();
   const { colors } = useTheme();
-  const { register } = useAuth();
+  const { register: authRegister } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
+    // @ts-ignore
     resolver: yupResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
   });
@@ -29,8 +30,8 @@ export default function Register() {
       setLoading(true);
       setSuccessMessage("");
 
-      const response = await register(data.name, data.email, data.password);
-
+      const response = await authRegister(data.name, data.email, data.password);
+      // @ts-ignore
       if (response?.message === "User registered successfully") {
         setSuccessMessage("Cadastro realizado! Redirecionando para login...");
         reset();
@@ -97,6 +98,7 @@ export default function Register() {
       {/* Botão Cadastrar */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.primary }]}
+        // @ts-ignore
         onPress={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >

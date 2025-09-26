@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Plus, Users, CheckSquare } from "lucide-react-native";
 import { useTheme } from "@react-navigation/native";
 import CreateTaskModal from "./CreateTaskModal";
-import CreateGroupModal from "./CreateGroupModal";
+import CreateGroupModal from "./CreateGroupModal/CreateGroupModal";
 
 interface Props {
   onCreateTodo: (payload: { title: string; description?: string; groupId?: string }) => Promise<void>;

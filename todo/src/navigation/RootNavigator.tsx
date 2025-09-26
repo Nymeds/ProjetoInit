@@ -16,7 +16,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator  id={undefined} screenOptions={{ headerShown: false }}>
       {user ? (
         <Stack.Screen name="App" component={AppDrawer} />
       ) : (
