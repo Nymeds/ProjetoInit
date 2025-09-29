@@ -12,12 +12,12 @@ interface TaskCardProps {
   className?: string;
   onClick?: () => void; 
   onUpdated?: () => void;
-  placeholder?: boolean;
+  laceholder?: boolean;
 }
 
-export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }: TaskCardProps) {
+export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
@@ -28,21 +28,23 @@ export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }
     try {
       await deleteTodo(todo.id.toString()); 
       onDeleted?.();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Erro ao deletar tarefa');
     } finally {
       setDeleting(false);
     }
   }
-
   async function handleUpdate() {
+  
     setUpdating(true);
     setError(null);
     try {
       await updateTodo(todo.id.toString()); 
       onUpdated?.();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setError(err.message || `Erro ao marcar como concluída a tarefa ${todo.title}`);
+      setError(err.message || `Erro ao marcar como concluida a tarefa ${todo.title}`);
     } finally {
       setUpdating(false);
     }
@@ -50,6 +52,7 @@ export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }
 
   return (
     <Card
+     
       onClick={onClick}
       className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className}`}
     >
@@ -68,13 +71,11 @@ export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }
         </div>
 
         <div className="flex items-center justify-between">
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-semibold ${
-              todo.completed 
-                ? "bg-accent-brand/20 text-accent-brand border border-accent-brand/30" 
-                : "bg-accent-red/20 text-accent-red border border-accent-red/30"
-            }`}
-          >
+          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+            todo.completed 
+              ? "bg-accent-brand/20 text-accent-brand border border-accent-brand/30" 
+              : "bg-accent-red/20 text-accent-red border border-accent-red/30"
+          }`}>
             {todo.completed ? "✅ Concluída" : "⏳ Pendente"}
           </span>
         </div>
@@ -101,60 +102,50 @@ export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }
         {error && <Text variant="paragraph-small" className="text-danger mt-2">{error}</Text>}
 
         <div className="flex gap-2 justify-end">
-          {/* Botão de excluir */}
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            variant="danger"
-            disabled={deleting}
-          >
-            <Trash2 size={14} />
-          </Button>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              variant="danger"
+              disabled={deleting}
+            >
+              <Trash2 size={14} />
+            </Button>
 
-          {/* Botão de concluir (sempre visível, mas desabilitado se já concluída) */}
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!todo.completed) handleUpdate();
-            }}
-            variant="primary"
-            disabled={updating || todo.completed}
-            className={todo.completed ? "opacity-50 cursor-not-allowed" : ""}
-          >
-            <CheckCircle size={14} />
-          </Button>
-        </div>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdate();
+              }}
+              variant="primary"
+              disabled={updating}
+            >
+              <CheckCircle size={14} />
+            </Button>
+          </div>
+
       </div>
     </Card>
   );
 }
-
-export function TaskCardFake({ onClick }: TaskCardProps) {
-  return (
-    <>
-      <Card
-        onClick={onClick}
-        className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg"
-      >
-        <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
-        <div className="space-y-4">
-          <Text variant="heading-small">{"Atividade 1"}</Text>
-          <div>{<CheckCircle />}</div>
-        </div>
-      </Card>
-
-      <Card
-        onClick={onClick}
-        className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg"
-      >
-        <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
-        <div className="space-y-4">
-          <Text variant="heading-small">{"Atividade 1"}</Text>
-          <div>{<Clock />}</div>
-        </div>
-      </Card>
-    </>
+export function TaskCardFake({onClick}: TaskCardProps) {
+  
+     
+  return (<>
+    <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
+       <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
+      <div className="space-y-4">
+        <Text variant="heading-small">{"Atividade 1"}</Text>
+        <div>{<CheckCircle />}</div>
+      </div>
+    </Card>
+    <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
+       <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
+      <div className="space-y-4">
+        <Text variant="heading-small">{"Atividade 1"}</Text>
+        <div>{<Clock />}</div>
+      </div>
+    </Card></>
   );
 }
