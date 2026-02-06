@@ -3,6 +3,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import Welcome from "./pages/Welcome";
 import { Register } from "./pages/Register";
+import GroupChat from "./pages/GroupChat";
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/register" element={<Register/>} />
+        <Route path="/groups/:id/chat" element={<GroupChat/>} />
       </Routes>
     
   );

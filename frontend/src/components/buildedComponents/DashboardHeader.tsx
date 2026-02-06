@@ -1,4 +1,4 @@
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Menu } from 'lucide-react';
 import { Button } from '../baseComponents/button';
 import { Text } from '../baseComponents/text';
 import type { User as UserType } from '../../context/AuthContext';
@@ -8,9 +8,10 @@ import ThemeToggle from '../buildedComponents/AnimatedThemeToggle';
 interface DashboardHeaderProps {
   user: UserType;
   onLogout: () => void;
+  onToggleSidebar?: () => void;
 }
 
-export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, onToggleSidebar }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row justify-between items-center mb-12 space-y-6 lg:space-y-0">
       
@@ -49,7 +50,14 @@ export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
 
       {/* Seção de ações: toggle e logout */}
       <div className="flex flex-col items-center space-y-3">
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          {onToggleSidebar && (
+            <Button variant="ghost" onClick={onToggleSidebar} className="p-2 mr-2">
+              <Menu className="w-5 h-5" />
+            </Button>
+          )}
+          <ThemeToggle />
+        </div>
         <Button 
           variant="danger" 
           className="flex items-center space-x-3 px-6 py-3" 

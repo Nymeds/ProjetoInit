@@ -13,14 +13,15 @@ enum Role {
 }
 
 model User {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   name     String
-  email    String  @unique
+  email    String @unique
   password String
-  role     Role    @default(MEMBER)
+  role     Role   @default(MEMBER)
 
   todos    Todo[]
-  groups   UserGroup[] 
+  groups   UserGroup[]
+  messages Message[]
 }
 
 model Todo {
@@ -30,11 +31,13 @@ model Todo {
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  groupId     String?   
-  group       Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  messages Message[]
 }
 
 model Group {
@@ -43,17 +46,42 @@ model Group {
   description String?
   createdAt   DateTime    @default(now())
   members     UserGroup[]
-  todos       Todo[]      
+  todos       Todo[]
+  messages    Message[]
 }
 
 model UserGroup {
   userId  String
   groupId String
 
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  roleInGroup Role? 
+  roleInGroup Role?
 
   @@id([userId, groupId])
+}
+
+enum MessageKind {
+  COMMENT
+  CHAT
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  content   String
+  createdAt DateTime    @default(now())
+  kind      MessageKind @default(COMMENT)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  todoId Int?
+  todo   Todo? @relation(fields: [todoId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([todoId])
 }

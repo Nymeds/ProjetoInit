@@ -36,7 +36,12 @@ export async function createTodo(data: CreateTodoData) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => null);
-    throw new Error(text || `Erro ao criar tarefa: ${res.status}`);
+    let message = text || `Erro ao criar tarefa: ${res.status}`;
+    try {
+      const parsed = JSON.parse(text || '');
+      if (parsed?.message) message = parsed.message;
+    } catch {}
+    throw new Error(message);
   }
 
   return res.json();
@@ -55,7 +60,12 @@ export async function deleteTodo(id: string) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => null);
-    throw new Error(text || `Erro ao deletar tarefa: ${res.status}`);
+    let message = text || `Erro ao deletar tarefa: ${res.status}`;
+    try {
+      const parsed = JSON.parse(text || '');
+      if (parsed?.message) message = parsed.message;
+    } catch {}
+    throw new Error(message);
   }
 
   try {
@@ -78,7 +88,12 @@ export async function updateTodo(id: string) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => null);
-    throw new Error(text || `Erro ao atualizar tarefa: ${res.status}`);
+    let message = text || `Erro ao atualizar tarefa: ${res.status}`;
+    try {
+      const parsed = JSON.parse(text || '');
+      if (parsed?.message) message = parsed.message;
+    } catch {}
+    throw new Error(message);
   }
 
   try {

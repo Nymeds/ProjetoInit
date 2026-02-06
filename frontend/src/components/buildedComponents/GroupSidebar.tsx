@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import { useGroups } from "../../hooks/useGroups";
+import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import { Trash2, Search, Users, Folder } from "lucide-react";
 import { Modal } from "../baseComponents/Modal";
 import { deleteGroup } from "../../api/groups";
+import { GroupChatModal } from "./GroupChatModal";
 
 function initials(name: string) {
   const parts = name.split(" ").filter(Boolean);
@@ -28,12 +31,16 @@ function getAvatarColor(index: number) {
   return avatarColors[index % avatarColors.length];
 }
 
-export function GroupSidebar() {
+export function GroupSidebar({ onHide }: { onHide?: () => void }) {
   const { data: groups = [], refetch, isLoading } = useGroups();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [query, setQuery] = useState("");
   const [groupToDelete, setGroupToDelete] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [chatModalGroup, setChatModalGroup] = useState<any | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,15 +48,23 @@ export function GroupSidebar() {
     return groups.filter((g: any) => g.name.toLowerCase().includes(q));
   }, [groups, query]);
 
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+
+  function toggleExpand(id: string) {
+    setExpandedGroupId((prev) => (prev === id ? null : id));
+  }
+
   async function handleDeleteGroup(id: string) {
     try {
       await deleteGroup(id)
       setIsModalOpen(false);
       setGroupToDelete(null);
+      setErrorMsg(null);
       refetch?.();
+      if (expandedGroupId === id) setExpandedGroupId(null);
     } catch (err: any) {
       console.error("Erro ao deletar grupo:", err?.message ?? err);
-      alert("Erro ao deletar grupo");
+      setErrorMsg(err?.message || 'Erro ao deletar grupo');
     }
   }
 
@@ -70,7 +85,7 @@ export function GroupSidebar() {
         <div className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-accent-brand/20 flex items-center justify-center">
-              <Folder className="w-4 h-4 text-accent-brand" />
+              <Folder className="w-4 h-4 text-accent-brand " />
             </div>
             <div>
               <Text variant="heading-small" className="text-heading">Grupos</Text>
@@ -129,6 +144,11 @@ export function GroupSidebar() {
                 Organize suas tarefas por times
               </Text>
             </div>
+            {onHide && (
+              <div className="ml-auto">
+                <Button variant="ghost" onClick={onHide} className="p-2">Fechar</Button>
+              </div>
+            )}
           </div>
 
           {/* Search */}
@@ -150,47 +170,113 @@ export function GroupSidebar() {
         <div className="flex-1 overflow-hidden">
           <div className="h-full overflow-y-auto px-4 py-4 space-y-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-accent-brand/20 [&::-webkit-scrollbar-thumb]:rounded-sm hover:[&::-webkit-scrollbar-thumb]:bg-accent-brand/40">
             {filtered.map((group: any, index: number) => (
-              <div
-                key={group.id}
-                className="group relative p-3 rounded-xl hover:bg-background-primary/40 transition-all duration-200 border border-transparent hover:border-border-primary/30 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Avatar  */}
-                  <div
-                    className="flex items-center justify-center w-11 h-11 rounded-xl text-white font-bold shadow-lg ring-2 ring-white/10"
-                    style={{ background: getAvatarColor(index) }}
-                  >
-                    <span className="text-sm">{initials(group.name)}</span>
-                  </div>
+              <div key={group.id} className="space-y-2">
+                <div
+                  onClick={() => toggleExpand(group.id)}
+                  role="button"
+                  tabIndex={0}
+                  className="group relative p-3 rounded-xl hover:bg-background-primary/40 transition-all duration-200 border border-transparent hover:border-border-primary/30 backdrop-blur-sm cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Avatar  */}
+                    <div
+                      className="flex items-center justify-center w-11 h-11 rounded-xl text-white font-bold shadow-lg ring-2 ring-white/10"
+                      style={{ background: getAvatarColor(index) }}
+                    >
+                      <span className="text-sm">{initials(group.name)}</span>
+                    </div>
 
-                  {/* Info do grupo */}
-                  <div className="flex-1 min-w-0">
-                    <Text variant="label-small" className="truncate text-heading font-medium">
-                      {group.name}
-                    </Text>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Users className="w-3 h-3 text-accent-paragraph/60" />
-                      <Text variant="paragraph-small" className="text-accent-paragraph/80">
-                        {group.members?.length ?? 0} {group.members?.length === 1 ? 'membro' : 'membros'}
+                    {/* Info do grupo */}
+                    <div className="flex-1 min-w-0">
+                      <Text variant="label-small" className="truncate text-heading font-medium">
+                        {group.name}
                       </Text>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Users className="w-3 h-3 text-accent-paragraph/60" />
+                        <Text variant="paragraph-small" className="text-accent-paragraph/80">
+                          {group.members?.length ?? 0} {group.members?.length === 1 ? 'membro' : 'membros'}
+                        </Text>
+                      </div>
+                    </div>
+
+                    {/* Botão delete com hover melhorado */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        onClick={(e) => { e.stopPropagation(); openDeleteModal(group); }}
+                        variant="ghost"
+                        title={`Deletar ${group.name}`}
+                        className="p-2 hover:bg-accent-red/20 hover:text-accent-red rounded-lg transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Botão delete com hover melhorado */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      onClick={() => openDeleteModal(group)}
-                      variant="ghost"
-                      title={`Deletar ${group.name}`}
-                      className="p-2 hover:bg-accent-red/20 hover:text-accent-red rounded-lg transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
+                  {/* Indicador de atividade */}
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-accent-brand rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
 
-                {/* Indicador de atividade */}
-                <div className="absolute top-2 right-2 w-2 h-2 bg-accent-brand rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                {expandedGroupId === group.id && (
+                  <div className="p-3 bg-background-primary/40 rounded-md border border-border-primary/20">
+                    <div className="mb-2">
+                      <Text variant="paragraph-small" className="font-semibold">Descrição</Text>
+                      <Text variant="paragraph-small" className="text-accent-paragraph">{group.description ?? 'Sem descrição'}</Text>
+                    </div>
+
+                    <div>
+                      <Text variant="paragraph-small" className="font-semibold mb-1">Membros</Text>
+                      <div className="space-y-2">
+                        {group.members?.map((m: any) => (
+                          <div key={m.user.id} className="flex items-center justify-between p-2 rounded border border-border-primary/10">
+                            <div>
+                              <Text variant="label-small" className="font-medium bg-background-tertiary px-2 py-1 rounded-full">{m.user.name ?? 'Usuário'}</Text>
+                              <Text variant="paragraph-small" className="text-accent-paragraph mt-1">{m.user.email}</Text>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex flex gap-1 justify-end">
+                        {/* Leave group (current user) - mostra só se for membro */}
+                        {group.members?.some((m: any) => m.user.id === user?.id) && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!window.confirm('Tem certeza que deseja sair deste grupo?')) return;
+                              // call API
+                              import('../../api/groups').then(({ leaveGroup }) => {
+                                leaveGroup(group.id).then(() => {
+                                  refetch?.();
+                                  setExpandedGroupId(null);
+                                }).catch((err) => setErrorMsg(err.message || 'Erro ao sair do grupo'));
+                              });
+                            }}
+                          >
+                            Sair do grupo
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); setChatModalGroup(group); }}
+                        >
+                          Abrir chat
+                        </Button>
+
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); openDeleteModal(group); }}
+                        >
+                          Apagar grupo
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -202,7 +288,8 @@ export function GroupSidebar() {
             {filtered.map((group: any, index: number) => (
               <div
                 key={group.id}
-                className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-background-primary/50 border border-border-primary/50 backdrop-blur-sm"
+                onClick={() => toggleExpand(group.id)}
+                className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-background-primary/50 border border-border-primary/50 backdrop-blur-sm cursor-pointer"
               >
                 <div 
                   className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg" 
@@ -218,7 +305,7 @@ export function GroupSidebar() {
                 </Text>
 
                 <Button 
-                  onClick={() => openDeleteModal(group)} 
+                  onClick={(e) => { e.stopPropagation(); openDeleteModal(group); }} 
                   variant="ghost" 
                   className="p-1 hover:bg-accent-red/20 hover:text-accent-red rounded-md"
                 >
@@ -238,6 +325,7 @@ export function GroupSidebar() {
           title="Deletar Grupo"
           description={`Tem certeza que deseja deletar o grupo "${groupToDelete.name}"? Essa ação não pode ser desfeita.`}
         >
+          {errorMsg && <Text variant="paragraph-small" className="text-red-500 mb-4">{errorMsg}</Text>}
           <div className="flex gap-3 justify-end">
             <Button 
               variant="secondary" 
@@ -256,6 +344,12 @@ export function GroupSidebar() {
           </div>
         </Modal>
       )}
+
+      {/* Group chat modal */}
+      {chatModalGroup && (
+        <GroupChatModal open={!!chatModalGroup} onClose={() => setChatModalGroup(null)} groupId={chatModalGroup?.id} />
+      )}
+
     </>
   );
 }

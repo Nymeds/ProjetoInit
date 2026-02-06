@@ -21,7 +21,8 @@ api.interceptors.response.use(
 
 export async function loginRequest(email: string, password: string) {
   try {
-    const response = await api.post("/sessions", { email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const response = await api.post("/sessions", { email: normalizedEmail, password });
     return response.data;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {

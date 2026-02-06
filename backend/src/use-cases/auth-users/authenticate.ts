@@ -25,7 +25,10 @@ export class AuthenticateUseCase {
     email,
     password,
   }: AuthenticateUseCaseRequest): Promise<AuthenticateUseCaseResponse> {
-    const user = await this.usersRepository.findByEmail(email)
+    // normalize email for consistent lookup (emails are treated case-insensitively)
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await this.usersRepository.findByEmail(normalizedEmail)
     if (!user) {
       throw new InvalidCredentials()
     }

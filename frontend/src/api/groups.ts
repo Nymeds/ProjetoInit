@@ -44,3 +44,19 @@ export async function deleteGroup(id: string) {
 
   return res.json();
 }
+
+export async function leaveGroup(id: string) {
+  if (!id) throw new Error("ID do grupo é obrigatório");
+  const token = localStorage.getItem("token") || "";
+  const res = await fetch(`${BASE}/groups/${id}/leave`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Erro ao sair do grupo (status ${res.status})`);
+  }
+
+  return res.json();
+}

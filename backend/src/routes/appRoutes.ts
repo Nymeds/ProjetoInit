@@ -11,6 +11,7 @@ import { refresh } from "../controllers/auth/refresh.js";
 import { deleteUser } from "../controllers/auth/delete.js";
 import { verifyUserRole } from "../middlewares/verify-user-role.js";
 import { createGroup } from "../controllers/group/create.js";
+import { leaveGroup } from "../controllers/group/leave.js";
 import { me } from "../controllers/auth/auth-me.js";
 import { listGroups } from "../controllers/group/list.js";
 import { deleteGroup } from "../controllers/group/delete.js";
@@ -40,5 +41,19 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/groups', { preHandler: [verifyJwt] }, createGroup);
   app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
   app.delete<{ Params: { id: string } }>('/groups/:id', { preHandler: [verifyJwt] }, deleteGroup);
+  app.delete<{ Params: { id: string } }>('/groups/:id/leave', { preHandler: [verifyJwt] }, leaveGroup);
 
+  // Messages / Comments
+  app.get<{ Params: { id: string } }>('/groups/:id/messages', { preHandler: [verifyJwt] }, (await import('../controllers/group/messages.js')).listGroupMessages);
+  app.post<{ Params: { id: string } }>('/groups/:id/messages', { preHandler: [verifyJwt] }, (await import('../controllers/group/messages.js')).createGroupMessage);
+
+  app.get<{ Params: { id: number } }>('/todo/:id/comments', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).listTodoComments);
+  app.post<{ Params: { id: number } }>('/todo/:id/comments', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).createTodoComment);
+  app.put<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:commentId', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).updateTodoComment);
+  app.delete<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:commentId', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).deleteTodoComment);
+
+  // todo chat (separate from comments)
+  app.get<{ Params: { id: number } }>('/todo/:id/chat', { preHandler: [verifyJwt] }, (await import('../controllers/todo/chat.js')).listTodoChat);
+  app.post<{ Params: { id: number } }>('/todo/:id/chat', { preHandler: [verifyJwt] }, (await import('../controllers/todo/chat.js')).createTodoChat);
 }
+

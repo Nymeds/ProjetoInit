@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
+import { Modal } from "../baseComponents/Modal";
 import Card from "../baseComponents/card";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
@@ -50,6 +51,27 @@ export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGr
       return;
     }
 
+    // Validações: pelo menos 2 membros e sem emails duplicados
+    const cleaned = userEmails.map((s) => s.trim()).filter((s) => s !== "");
+    if (cleaned.length < 2) {
+      setError("O grupo precisa ter pelo menos 2 membros");
+      return;
+    }
+
+    const lower = cleaned.map((s) => s.toLowerCase());
+    const unique = new Set(lower);
+    if (unique.size !== lower.length) {
+      setError("Emails duplicados não são permitidos");
+      return;
+    }
+
+    // Simple email format check
+    const invalid = cleaned.find((em) => !/^\S+@\S+\.\S+$/.test(em));
+    if (invalid) {
+      setError(`Email inválido: ${invalid}`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -57,7 +79,7 @@ export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGr
       const payload = {
         name: groupName,
         description,
-        userEmails: userEmails.filter((email) => email.trim() !== ""),
+        userEmails: cleaned,
       };
 
       await createGroup(payload);
@@ -95,25 +117,8 @@ export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-background-primary/50 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
-
-      <Card className="relative p-6 w-full max-w-md floating">
-        <div className="flex justify-between mb-4 items-center">
-          <Text variant="heading-small">Novo Grupo</Text>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-accent-paragraph hover:text-white rounded-md p-1"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <Modal open={open} onClose={onClose} title="Novo Grupo" className="max-w-md" fullScreenOnMobile>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* Nome do grupo */}
           <div>
             <label htmlFor="group-name">
@@ -188,7 +193,6 @@ export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGr
             </Button>
           </div>
         </form>
-      </Card>
-    </div>
+    </Modal>
   );
 }

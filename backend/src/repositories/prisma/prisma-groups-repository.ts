@@ -32,11 +32,19 @@ export class PrismaGroupsRepository implements GroupsRepository {
   }
 
   async addMember(groupId: string, userEmail: string) {
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
+    // normalize email before lookup
+    const normalized = userEmail.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalized } });
     if (!user) throw new Error("Usuário não encontrado");
 
     return prisma.userGroup.create({
       data: { groupId, userId: user.id },
+    });
+  }
+
+  async removeMember(groupId: string, userId: string) {
+    await prisma.userGroup.deleteMany({
+      where: { groupId, userId },
     });
   }
 

@@ -9,7 +9,7 @@ import { StatsCard } from '../components/buildedComponents/StatsCard';
 import { TaskList } from '../components/buildedComponents/TaskList';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
 import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
-import TaskInfo from '../components/buildedComponents/TaskInfo';
+import TaskDrawer from '../components/buildedComponents/TaskDrawer';
 import { GroupSidebar } from '../components/buildedComponents/GroupSidebar';
 import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
@@ -24,6 +24,7 @@ export function Dashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const navigate = useNavigate();
 
@@ -75,6 +76,13 @@ export function Dashboard() {
   const pendingTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  // Fecha modal se tarefa selecionada desaparecer (ex.: excluída de outra tela)
+  useEffect(() => {
+    if (!selectedTodo) return;
+    const found = todosWithGroup.find((t: any) => t.id === selectedTodo.id);
+    if (!found) setSelectedTodo(null);
+  }, [todosWithGroup, selectedTodo]);
+
   function handleLogout() {
     logout();
     navigate('/login');
@@ -94,20 +102,26 @@ export function Dashboard() {
   return (
    <div className="min-h-screen flex bg-background-primary text-label font-sans">
   {/* Sidebar fixa */}
-  <div className="hidden lg:flex flex-col w-64 flex-shrink-0 fixed top-0 left-0 h-full bg-background-secondary/30 border-r border-border-primary">
-    <div className="p-1">
-      <GroupSidebar />
+  {showSidebar ? (
+    <div className="hidden lg:flex flex-col w-64 flex-shrink-0 fixed top-0 left-0 h-full bg-background-secondary/30 border-r border-border-primary">
+      <div className="p-1">
+        <GroupSidebar onHide={() => setShowSidebar(false)} />
+      </div>
     </div>
-  </div>
+  ) : (
+    <button className="fixed top-4 left-4 z-50 bg-background-quaternary p-2 rounded-md shadow-md lg:hidden" onClick={() => setShowSidebar(true)}>
+      Mostrar grupos
+    </button>
+  )}
 
   {/* Conteúdo principal */}
-  <div className="flex-1 lg:ml-64">
+  <div className={`flex-1 transition-all duration-300 ${showSidebar ? 'lg:ml-64' : ''}`}>
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       
       {/* Header Card */}
       <Card className="bg-background-quaternary border border-border-primary">
         <div className="p-6">
-          <DashboardHeader user={user} onLogout={handleLogout} />
+          <DashboardHeader user={user} onLogout={handleLogout} onToggleSidebar={() => setShowSidebar((s) => !s)} />
         </div>
       </Card>
 
@@ -253,11 +267,12 @@ export function Dashboard() {
     onClose={() => setIsCreateGroupOpen(false)}
     onCreated={() => { refetch?.(); refetchGroups?.(); }}
   />
-  <TaskInfo
+  <TaskDrawer
+    key={selectedTodo?.id ?? 'task-drawer-closed'}
     open={!!selectedTodo}
     onClose={() => setSelectedTodo(null)}
     onCreated={() => { refetch?.(); refetchGroups?.(); }}
-    todo={selectedTodo!}
+    todo={selectedTodo}
   />
 </div>
   );

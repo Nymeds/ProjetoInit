@@ -25,7 +25,10 @@ export class RegisterUseCase {
     
     const password_hash = await hash(password, 6)
 
-    const userWithSameEmail = await this.usersRepository.findByEmail(email)
+    // normalize email to lower case to ensure consistent lookups
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const userWithSameEmail = await this.usersRepository.findByEmail(normalizedEmail)
     if (userWithSameEmail) {
       throw new Error('UserAlreadyExistsError')
     }
@@ -33,7 +36,7 @@ export class RegisterUseCase {
  
     const user = await this.usersRepository.create({
         name,
-      email,
+      email: normalizedEmail,
       password: password_hash,
     })
 

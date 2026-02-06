@@ -21,7 +21,8 @@ app.register(fastifyJwt, {
 
 // CORS
 const allowedOrigins = [
-  'http://localhost:5173', 
+  'http://localhost:5173',
+  'http://localhost:5174',
   'https://projetoinit.onrender.com', 
 ];
 
@@ -46,10 +47,13 @@ await app.register(cors, {
 app.register(fastifyCookie);
 
 
+// register routes
 app.register(appRoutes);
 
+import { setupSocketHandlers } from './sockets/socket.js';
 
 const PORT = Number(process.env.PORT) || 3333;
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
+  setupSocketHandlers(app);
   console.log(`Servidor rodando na porta ${PORT}`);
 });

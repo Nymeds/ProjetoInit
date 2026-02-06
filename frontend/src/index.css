@@ -92,6 +92,11 @@
   --color-accent-brand: #1ccfc3;
   --color-accent-brand-light: #66eae1;
   --color-accent-red: #f54a26;
+
+  --color-chat-bubble-me: #1ccfc3;
+  --color-chat-bubble-other: #ffffff;
+  --color-chat-bubble-border: rgba(0,0,0,0.08);
+
 }
 
 
