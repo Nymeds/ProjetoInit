@@ -286,6 +286,7 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
               </div>
             </Card>
           </div>
+          
 
           <div>
             <Card className="bg-background-quaternary h-full flex flex-col">
@@ -326,6 +327,7 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
                   </div>
                 ))}
               </div>
+              
 
               <div className="p-4 border-t border-border-primary">
                 <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={'Escreva um comentário...'} className="w-full p-2 rounded-md bg-background-primary border border-border-primary text-accent-paragraph" rows={3} />

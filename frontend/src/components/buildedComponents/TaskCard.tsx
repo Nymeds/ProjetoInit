@@ -5,7 +5,8 @@ import { Text } from '../baseComponents/text';
 import { Button } from '../baseComponents/button';
 import { deleteTodo, updateTodo } from '../../api/todos';
 import type { Todo } from '../../types/types';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
 
 interface TaskCardProps {
   todo: Todo;
@@ -20,6 +21,8 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
+  const resolveImageUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`);
+  const coverImage = todo.images?.[0];
 
   const descRef = useRef<HTMLDivElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -80,17 +83,6 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-auto" style={{ maxHeight: 320 }}>
           <div className="space-y-4">
-            {todo.images?.length > 0 && (
-            <div className="w-full h-40 rounded-xl overflow-hidden border border-border-primary">
-              <img
-                src={`${API_URL}${todo.images[0].path}`}
-                alt={todo.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          )}
-
             <div className="flex items-start justify-between">
               <Text variant="heading-small" className="text-heading flex-1 pr-3 leading-relaxed truncate">
                 {todo.title}
@@ -103,7 +95,7 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
                 )}
               </div>
             </div>
-              
+
             <div className="flex items-center justify-between">
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                 todo.completed 
@@ -120,6 +112,17 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
                 {new Date(todo.createdAt).toLocaleDateString('pt-BR')}
               </Text>
             </div>
+
+            {coverImage && (
+              <div className="mt-2">
+                <img
+                  src={resolveImageUrl(coverImage.url)}
+                  alt={`Imagem da tarefa ${todo.title}`}
+                  className="max-h-40 w-full rounded border border-border-primary object-contain"
+                  loading="lazy"
+                />
+              </div>
+            )}
 
             {todo.description && (
               <div className="mt-1">
@@ -186,23 +189,3 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
     </Card>
   );
 }
-// export function TaskCardFake({onClick}: TaskCardProps) {
-  
-     
-//   return (<>
-//     <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
-//        <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
-//       <div className="space-y-4">
-//         <Text variant="heading-small">{"Atividade 1"}</Text>
-//         <div>{<CheckCircle />}</div>
-//       </div>
-//     </Card>
-//     <Card onClick={onClick} className="cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg">
-//        <div className="animate-pulse p-6 bg-background-tertiary rounded-2xl w-full h-40"></div>
-//       <div className="space-y-4">
-//         <Text variant="heading-small">{"Atividade 1"}</Text>
-//         <div>{<Clock />}</div>
-//       </div>
-//     </Card></>
-//   );
-// }
