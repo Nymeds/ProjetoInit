@@ -19,10 +19,12 @@ model User {
   password String
   role     Role   @default(MEMBER)
 
+  images   Image[]   // 👈 mudou
   todos    Todo[]
   groups   UserGroup[]
   messages Message[]
 }
+
 
 model Todo {
   id          Int      @id @default(autoincrement())
@@ -31,20 +33,26 @@ model Todo {
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  images   Image[]
+
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   groupId String?
-  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  group   Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   messages Message[]
 }
+
+
 
 model Group {
   id          String      @id @default(cuid())
   name        String      @unique
   description String?
   createdAt   DateTime    @default(now())
+
+  images      Image[]     // 👈 mudou
   members     UserGroup[]
   todos       Todo[]
   messages    Message[]
@@ -73,11 +81,13 @@ model Message {
   createdAt DateTime    @default(now())
   kind      MessageKind @default(COMMENT)
 
+  images    Image[]
+
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   groupId String?
-  group   Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group   Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   todoId Int?
   todo   Todo? @relation(fields: [todoId], references: [id], onDelete: Cascade)
@@ -85,3 +95,31 @@ model Message {
   @@index([groupId])
   @@index([todoId])
 }
+
+
+model Image {
+  id        String   @id @default(cuid())
+  filename  String
+  path      String
+  mimetype  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  todoId    Int?
+  todo      Todo?    @relation(fields: [todoId], references: [id], onDelete: Cascade)
+
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([todoId])
+  @@index([messageId])
+}
+

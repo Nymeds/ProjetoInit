@@ -1,195 +1,194 @@
+/* ========================================
+   TEMA TRELLO - Dashboard de Tarefas
+   ======================================== */
+
 @import "tailwindcss";
 
+/* ========================================
+   VARIÁVEIS DE COR
+   ======================================== */
 @theme {
-	--color-*: initial;
-	--color-white: #ffffff;
-	--color-black: #000000;
-	--color-background-primary: #040d18;
-	--color-background-secondary: #262337;
-	--color-background-tertiary: #3c3857;
-	--color-background-quaternary: #3c3857;
-  --color-background-danger:#f54a26;
-	--color-border-primary: #2c2c35;
-	--color-border-active: #4c4c5d;
-	--color-accent-brand: #1ccfc3;
-	--color-accent-brand-light: #66eae1;
-	--color-accent-red: #f54a26;
-	--color-heading: #fafcff;
-	--color-accent-paragraph: #f1f7ff;
-	--color-accent-span: #5c636c;
-	--color-placeholder: #a9a9a9;
-	--color-label: #ffffff;
-	--color-label-inverse: #040d18;
-
-	--font-sans: "Mulish", sans-serif;
-}
-
-/* Dark theme (default) */
-:root {
-  --font-sans: "Mulish", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  --bg-900: #040d18;
-  --bg-800: #0b1630;
-  --card-bg: rgba(255,255,255,0.03);
-  --glass-border: rgba(255,255,255,0.04);
-  --accent: #1ccfc3;
-  --accent-2: #66eae1;
-  --danger: #f54a26;
-  --text: #e7eef8;
-
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #172b4d;
   
-  --color-background-primary: #040d18;
-  --color-background-secondary: #262337;
-  --color-background-tertiary: #3c3857;
-  --color-background-quaternary: #3c3857;
-  --color-background-danger: #f54a26;
-  --color-border-primary: #2c2c35;
-  --color-border-active: #4c4c5d;
-  --color-accent-brand: #1ccfc3;
-  --color-accent-brand-light: #66eae1;
-  --color-accent-red: #f54a26;
-  --color-heading: #fafcff;
-  --color-accent-paragraph: #f1f7ff;
-  --color-accent-span: #5c636c;
-  --color-placeholder: #a9a9a9;
-  --color-label: #ffffff;
-  --color-label-inverse: #040d18;
-}
-
-
-:root:not(.dark) {
-  /* Fundos */
-  --bg-900: #e0e0e0;           /* fundo principal, mais suave que branco */
-  --bg-800: #f2f2f2;           /* fundo secundário */
-  --card-bg: rgba(217, 233, 235, 0.9); /* fundo de cards, levemente translúcido */
-  --glass-border: rgba(0,0,0,0.06);
-
-  /* Cores de destaque */
-  --accent: #1ccfc3;           /* brand principal */
-  --accent-2: #66eae1;         /* brand secundário */
-  --danger: #f54a26;           /* alerta/perigo */
-
-  /* Textos */
-  --text: #333333;             /* texto principal, mais escuro */
-  --color-heading: #111111;    /* títulos */
-  --color-accent-paragraph: #444444;  /* parágrafos */
-  --color-accent-span: #555555;       /* spans / textos menores */
-  --color-placeholder: #888888;       /* placeholder inputs */
-  --color-label: #333333;       /* labels de formulário */
-  --color-label-inverse: #ffffff; /* texto sobre cores escuras */
-
-  /* Backgrounds de seções */
-  --color-background-primary: #b8eafd;      /* principal */
-  --color-background-secondary: #92dffd;    /* secundário */
-  --color-background-tertiary: #f5f5f5;     /* terciário */
-  --color-background-quaternary: #ffffff;   /* quaternário */
-  --color-background-danger: #f54a26;       /* alerta */
-
+  /* Backgrounds - Paleta Trello */
+  --color-background-primary: #f0f2f5;
+  --color-background-secondary: #ffffff;
+  --color-background-tertiary: #ebecf0;
+  --color-background-quaternary: #fafbfc;
+  --color-background-danger: #eb5a46;
+  
   /* Bordas */
-  --color-border-primary: #cfcfcf;
-  --color-border-active: #b0b0b0;
-
-  /* Destaques da marca */
-  --color-accent-brand: #1ccfc3;
-  --color-accent-brand-light: #66eae1;
-  --color-accent-red: #f54a26;
-
-  --color-chat-bubble-me: #1ccfc3;
-  --color-chat-bubble-other: #ffffff;
-  --color-chat-bubble-border: rgba(0,0,0,0.08);
-
+  --color-border-primary: #dfe1e6;
+  --color-border-active: #0079bf;
+  --color-border-hover: #c1c7d0;
+  
+  /* Cores de Marca */
+  --color-accent-brand: #0079bf;
+  --color-accent-brand-light: #5ba4cf;
+  --color-accent-brand-dark: #055a8c;
+  
+  /* Cores de Status */
+  --color-accent-red: #eb5a46;
+  --color-accent-green: #61bd4f;
+  --color-accent-yellow: #f2d600;
+  --color-accent-purple: #c377e0;
+  --color-accent-pink: #ff78cb;
+  --color-accent-orange: #ff9f1a;
+  --color-accent-blue: #0079bf;
+  --color-accent-sky: #00c2e0;
+  --color-accent-lime: #51e898;
+  
+  /* Tipografia */
+  --color-heading: #172b4d;
+  --color-accent-paragraph: #5e6c84;
+  --color-accent-span: #6b778c;
+  --color-placeholder: #a5adba;
+  --color-label: #172b4d;
+  --color-label-inverse: #ffffff;
+  
+  /* Fonte */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Noto Sans", "Ubuntu", sans-serif;
 }
 
+/* ========================================
+   MODO ESCURO
+   ======================================== */
+.dark {
+  --color-background-primary: #1d2125;
+  --color-background-secondary: #22272b;
+  --color-background-tertiary: #282e33;
+  --color-background-quaternary: #2c333a;
+  
+  --color-border-primary: #383f45;
+  --color-border-active: #579dff;
+  
+  --color-accent-brand: #579dff;
+  --color-accent-brand-light: #85b8ff;
+  
+  --color-heading: #b6c2cf;
+  --color-accent-paragraph: #9fadbc;
+  --color-accent-span: #8c9bab;
+  --color-placeholder: #626f86;
+  --color-label: #b6c2cf;
+}
 
+/* ========================================
+   ESTILOS GLOBAIS
+   ======================================== */
 html, body, #root {
   height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   font-family: var(--font-sans);
-  color: var(--text);
-  background: linear-gradient(180deg, var(--bg-900) 0%, var(--bg-800) 100%);
+  color: var(--color-accent-paragraph);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.4;
-  transition: background 0.3s ease, color 0.3s ease;
+  line-height: 1.5;
+  font-size: 14px;
 }
 
+/* ========================================
+   CARDS
+   ======================================== */
 .card-surface {
-  background: var(--card-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(3,8,18,0.6);
+  background: var(--color-background-secondary);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
   padding: 1rem;
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-/* Light theme card adjustments */
-:root:not(.dark) .card-surface {
-  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+.card-surface:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.04);
-  transition: background 0.3s ease, border-color 0.3s ease;
+/* ========================================
+   SCROLLBAR CUSTOMIZADA
+   ======================================== */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
 }
 
-
-:root:not(.dark) .stat-icon {
-  background: linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01));
-  border: 1px solid rgba(0,0,0,0.08);
+::-webkit-scrollbar-track {
+  background: var(--color-background-tertiary);
+  border-radius: 6px;
 }
 
-.app-container {
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: 6px;
+  border: 2px solid var(--color-background-tertiary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* ========================================
+   ANIMAÇÕES
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ========================================
+   UTILITÁRIOS
+   ======================================== */
+.container {
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-  padding-top: 2.5rem;
-  padding-bottom: 2.5rem;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
-.modal-backdrop {
-  background-color: rgba(2,6,23,0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: background-color 0.3s ease;
+.text-heading {
+  color: var(--color-heading);
 }
 
-
-:root:not(.dark) .modal-backdrop {
-  background-color: rgba(255,255,255,0.8);
+.text-body {
+  color: var(--color-accent-paragraph);
 }
 
-
-* {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+.text-muted {
+  color: var(--color-accent-span);
 }
 
+/* ========================================
+   MODO CLARO (quando não está em dark mode)
+   ======================================== */
+:root:not(.dark) {
+  --bg-900: #f0f2f5;
+  --bg-800: #fafbfc;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --text: #172b4d;
+}
 
-@media (prefers-color-scheme: light) {
-  :root:not(.dark-theme) {
-    --bg-900: #e9e9e9;
-    --bg-800: #f8f8f8;
-    --card-bg: rgba(0,0,0,0.03);
-    --glass-border: rgba(0,0,0,0.08);
-    --text: #111111;
-
-    --color-background-primary: #e9e9e9;
-    --color-background-secondary: #f8f8f8;
-    --color-background-tertiary: #f1f7ff;
-    --color-background-quaternary: #ffffff;
-    --color-border-primary: #e0e0e0;
-    --color-heading: #111111;
-    --color-accent-paragraph: #333333;
-    --color-label: #111111;
-    --color-label-inverse: #ffffff;
-  }
+/* Modo escuro */
+.dark {
+  --bg-900: #1d2125;
+  --bg-800: #22272b;
+  --card-bg: rgba(34, 39, 43, 0.95);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --text: #b6c2cf;
 }

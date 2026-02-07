@@ -4,6 +4,8 @@ import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
 import { env } from "./env/index.js";
 import cors from '@fastify/cors';
+import multipart from "@fastify/multipart";
+import { setupSocketHandlers } from './sockets/socket.js';
 
 export const app = Fastify();
 
@@ -50,7 +52,12 @@ app.register(fastifyCookie);
 // register routes
 app.register(appRoutes);
 
-import { setupSocketHandlers } from './sockets/socket.js';
+
+app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB global
+  },
+});
 
 const PORT = Number(process.env.PORT) || 3333;
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {

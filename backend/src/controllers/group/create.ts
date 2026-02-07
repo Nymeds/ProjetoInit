@@ -17,7 +17,7 @@ export async function createGroup(request: FastifyRequest, reply: FastifyReply) 
     const repository = new PrismaGroupsRepository();
     const usersRepository = new PrismaUsersRepository();
     const useCase = new CreateGroupUseCase(repository,usersRepository);
-
+    
     const group = await useCase.execute({
       name,
         description: description ?? '',

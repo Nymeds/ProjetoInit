@@ -15,6 +15,7 @@ import { leaveGroup } from "../controllers/group/leave.js";
 import { me } from "../controllers/auth/auth-me.js";
 import { listGroups } from "../controllers/group/list.js";
 import { deleteGroup } from "../controllers/group/delete.js";
+import { uploadImage } from "../middlewares/upload-images.js";
 
 export async function appRoutes(app: FastifyInstance) {
   // Auth
@@ -24,7 +25,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/sessions/me', { preHandler: [verifyJwt] }, me);
 
   // Todos
-  app.post('/todo', { preHandler: [verifyJwt] }, create);
+  app.post('/todo', { preHandler: [verifyJwt, uploadImage] }, create);
   app.get('/todo', { preHandler: [verifyJwt] }, selectTodos); 
   app.delete<{ Params: { id: number } }>('/todo/:id', { preHandler: [verifyJwt] }, deleteTodo);
   app.put<{ Params: { id: string } }>('/todo/:id', { preHandler: [verifyJwt] }, updateTodo);
@@ -38,22 +39,40 @@ export async function appRoutes(app: FastifyInstance) {
   );
 
   // Groups
-  app.post('/groups', { preHandler: [verifyJwt] }, createGroup);
+  app.post('/groups', { preHandler: [verifyJwt, uploadImage] }, createGroup);
   app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
   app.delete<{ Params: { id: string } }>('/groups/:id', { preHandler: [verifyJwt] }, deleteGroup);
   app.delete<{ Params: { id: string } }>('/groups/:id/leave', { preHandler: [verifyJwt] }, leaveGroup);
 
   // Messages / Comments
   app.get<{ Params: { id: string } }>('/groups/:id/messages', { preHandler: [verifyJwt] }, (await import('../controllers/group/messages.js')).listGroupMessages);
-  app.post<{ Params: { id: string } }>('/groups/:id/messages', { preHandler: [verifyJwt] }, (await import('../controllers/group/messages.js')).createGroupMessage);
+  app.post<{ Params: { id: string } }>(
+  '/groups/:id/messages',
+  {
+    preHandler: [verifyJwt, uploadImage],
+  },
+  (await import('../controllers/group/messages.js')).createGroupMessage
+);
 
   app.get<{ Params: { id: number } }>('/todo/:id/comments', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).listTodoComments);
-  app.post<{ Params: { id: number } }>('/todo/:id/comments', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).createTodoComment);
-  app.put<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:commentId', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).updateTodoComment);
+  app.post<{ Params: { id: number } }>(
+  '/todo/:id/comments',
+  {
+    preHandler: [verifyJwt, uploadImage],
+  },
+  (await import('../controllers/todo/comments.js')).createTodoComment
+);
+app.put<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:commentId', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).updateTodoComment);
   app.delete<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:commentId', { preHandler: [verifyJwt] }, (await import('../controllers/todo/comments.js')).deleteTodoComment);
 
   // todo chat (separate from comments)
   app.get<{ Params: { id: number } }>('/todo/:id/chat', { preHandler: [verifyJwt] }, (await import('../controllers/todo/chat.js')).listTodoChat);
-  app.post<{ Params: { id: number } }>('/todo/:id/chat', { preHandler: [verifyJwt] }, (await import('../controllers/todo/chat.js')).createTodoChat);
+ app.post<{ Params: { id: number } }>(
+  '/todo/:id/chat',
+  {
+    preHandler: [verifyJwt, uploadImage],
+  },
+  (await import('../controllers/todo/chat.js')).createTodoChat
+);
 }
 
