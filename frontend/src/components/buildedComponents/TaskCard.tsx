@@ -17,12 +17,57 @@ interface TaskCardProps {
   laceholder?: boolean;
 }
 
-export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }: TaskCardProps) {
+export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
-  const resolveImageUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`);
+  
+  // Função melhorada para resolver URL de imagem
+  const resolveImageUrl = (image: any): string => {
+    console.log('🖼️ Resolvendo URL da imagem:', image);
+    
+    // Se já tem url completa
+    if (image.url && image.url.startsWith('http')) {
+      console.log('✅ URL completa encontrada:', image.url);
+      return image.url;
+    }
+    
+    // Se tem path, usar path
+    if (image.path) {
+      const url = `${API_BASE}/uploads/${image.filename}`;
+      console.log('✅ Construindo URL do path:', url);
+      return url;
+    }
+    
+    // Se tem url mas não é http, adicionar base
+    if (image.url) {
+      const url = image.url.startsWith('/') ? `${API_BASE}${image.url}` : `${API_BASE}/${image.url}`;
+      console.log('✅ Construindo URL relativa:', url);
+      return url;
+    }
+    
+    // Fallback: usar filename
+    if (image.filename) {
+      const url = `${API_BASE}/uploads/${image.filename}`;
+      console.log('✅ Usando filename como fallback:', url);
+      return url;
+    }
+    
+    console.error('❌ Não foi possível resolver URL da imagem');
+    return '';
+  };
+  
   const coverImage = todo.images?.[0];
+  const imageUrl = coverImage ? resolveImageUrl(coverImage) : null;
+
+  // Debug: logar dados da imagem
+  useEffect(() => {
+    if (coverImage) {
+      console.log('📋 Todo:', todo.title);
+      console.log('🖼️ Imagem completa:', coverImage);
+      console.log('🔗 URL resolvida:', imageUrl);
+    }
+  }, [todo, coverImage, imageUrl]);
 
   const descRef = useRef<HTMLDivElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -31,7 +76,6 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
     function check() {
       const el = descRef.current;
       if (!el) return;
-      // content element is the first child inside wrapper
       const content = el.firstElementChild as HTMLElement | null;
       if (!content) return;
       const overflowing = content.scrollHeight > el.clientHeight + 1;
@@ -51,21 +95,19 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
     try {
       await deleteTodo(todo.id.toString()); 
       onDeleted?.();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Erro ao deletar tarefa');
     } finally {
       setDeleting(false);
     }
   }
-  async function handleUpdate() {
   
+  async function handleUpdate() {
     setUpdating(true);
     setError(null);
     try {
       await updateTodo(todo.id.toString()); 
       onUpdated?.();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || `Erro ao marcar como concluida a tarefa ${todo.title}`);
     } finally {
@@ -79,7 +121,6 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
       bodyClassName="flex flex-col flex-1 overflow-hidden"
       className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className} flex flex-col`}
     >
-      {/* body limited to max height with internal scroll so each card keeps its independent size */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-auto" style={{ maxHeight: 320 }}>
           <div className="space-y-4">
@@ -113,14 +154,38 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
               </Text>
             </div>
 
-            {coverImage && (
-              <div className="mt-2">
+            {/* IMAGEM - COM DEBUG VISUAL */}
+            {imageUrl && (
+              <div className="mt-2 relative">
                 <img
-                  src={resolveImageUrl(coverImage.url)}
+                  src={imageUrl}
                   alt={`Imagem da tarefa ${todo.title}`}
-                  className="max-h-40 w-full rounded border border-border-primary object-contain"
+                  className="max-h-40 w-full rounded border border-border-primary object-contain bg-background-tertiary"
                   loading="lazy"
+                  onError={(e) => {
+                    console.error('❌ Erro ao carregar imagem:', imageUrl);
+                    console.error('Imagem completa:', coverImage);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Imagem carregada com sucesso:', imageUrl);
+                  }}
                 />
+                
+                {/* Badge de debug (remover em produção) */}
+                <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  {coverImage?.filename?.substring(0, 15)}...
+                </div>
+              </div>
+            )}
+
+            {/* Mensagem de debug se não houver imagem */}
+            {!imageUrl && todo.images && todo.images.length > 0 && (
+              <div className="mt-2 p-3 bg-accent-red/10 border border-accent-red/30 rounded text-xs">
+                ⚠️ Imagem presente mas URL não resolvida
+                <pre className="mt-1 text-[10px] overflow-auto">
+                  {JSON.stringify(todo.images[0], null, 2)}
+                </pre>
               </div>
             )}
 
@@ -132,7 +197,6 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
                   </Text>
                 </div>
 
-                {/* Ler mais caso seja grande - calculado em runtime */}
                 {isOverflowing && (
                   <div className="mt-2 flex justify-end">
                     <Button
@@ -163,29 +227,28 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
       </div>
 
       <div className="flex gap-2 justify-end mt-3">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }}
-              variant="danger"
-              disabled={deleting}
-            >
-              <Trash2 size={14} />
-            </Button>
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
+          variant="danger"
+          disabled={deleting}
+        >
+          <Trash2 size={14} />
+        </Button>
 
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleUpdate();
-              }}
-              variant="primary"
-              disabled={updating}
-            >
-              <CheckCircle size={14} />
-            </Button>
-          </div>
-
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleUpdate();
+          }}
+          variant="primary"
+          disabled={updating}
+        >
+          <CheckCircle size={14} />
+        </Button>
+      </div>
     </Card>
   );
 }
