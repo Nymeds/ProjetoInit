@@ -8,6 +8,8 @@ import { getTodoComments, postTodoComment, updateTodoComment, deleteTodoComment 
 import { useChat } from '../../hooks/useChat';
 import { useAuth } from '../../hooks/useAuth';
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
+
 interface TaskDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -31,6 +33,7 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const resolveImageUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`);
 
   useEffect(() => {
     if (!open || !todo) return;
@@ -258,6 +261,20 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
               <div className="p-4">
                 <Text variant="heading-small" className="text-heading mb-2">Descrição</Text>
                 <div className="text-accent-paragraph whitespace-pre-wrap">{todo.description ?? 'Sem descrição'}</div>
+                {todo.images && todo.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {todo.images.map((image) => (
+                      <div key={image.id} className="rounded border border-border-primary bg-background-primary/40 p-2">
+                        <img
+                          src={resolveImageUrl(image.url)}
+                          alt={`Imagem da tarefa ${todo.title}`}
+                          className="max-h-56 w-full rounded object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </Card>
 

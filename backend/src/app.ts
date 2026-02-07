@@ -1,4 +1,6 @@
 import Fastify from "fastify";
+import path from "node:path";
+import fs from "node:fs";
 import { appRoutes } from "./routes/appRoutes.js";
 import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
@@ -30,7 +32,6 @@ const allowedOrigins = [
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    
     if (!origin) return cb(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -45,29 +46,39 @@ await app.register(cors, {
   credentials: true,
 });
 
+app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB global
+  },
+  attachFieldsToBody: true,
+});
 
 app.register(fastifyCookie);
 
-app.register(multipart, {
-  attachFieldsToBody: true,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-});
+app.get('/uploads/:filename', async (request, reply) => {
+  const { filename } = request.params as { filename: string };
+  const safeName = path.basename(filename);
+  const filePath = path.resolve('uploads', safeName);
 
-// app.ts
-import fastifyStatic from '@fastify/static';
-import path from 'node:path';
+  if (!fs.existsSync(filePath)) {
+    return reply.status(404).send({ message: 'Arquivo não encontrado' });
+  }
 
-app.register(fastifyStatic, {
-  root: path.resolve(process.cwd(), 'uploads'),
-  prefix: '/uploads/', // => http://localhost:3333/uploads/<file>
+  const ext = path.extname(safeName).toLowerCase();
+  const mimeByExt: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+  };
+
+  reply.type(mimeByExt[ext] || 'application/octet-stream');
+  return reply.send(fs.createReadStream(filePath));
 });
 
 // register routes
 app.register(appRoutes);
-
-
 
 const PORT = Number(process.env.PORT) || 3333;
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
