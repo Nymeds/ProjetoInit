@@ -24,6 +24,7 @@ export function useTodos() {
 
   const loadTodos = useCallback(async () => {
     try {
+
       setLoading(true);
       const data = await todoService.getTodos();
       setTodos(normalizeList(data));

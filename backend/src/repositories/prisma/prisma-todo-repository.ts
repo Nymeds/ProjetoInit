@@ -15,8 +15,15 @@ export class PrismaTodosRepository implements TodosRepository {
   }
 
   async findById(id: number): Promise<Todo | null> {
-    return prisma.todo.findUnique({ where: { id } });
-  }
+  return prisma.todo.findUnique({
+    where: { id },
+    include: {
+      images: true,
+      group: true,
+    }
+  });
+}
+
 
   async findManyByUser(userId: string, groupId?: string): Promise<Todo[]> {
     const whereClause: any = { userId };
@@ -46,25 +53,33 @@ export class PrismaTodosRepository implements TodosRepository {
     await prisma.todo.delete({ where: { id } });
   }
 
-  async findAllVisibleForUser(userId: string): Promise<Todo[]> {
-   
-    const userGroups = await prisma.userGroup.findMany({
-      where: { userId },
-      select: { groupId: true },
-    });
+ async findAllVisibleForUser(userId: string): Promise<Todo[]> {
+  const userGroups = await prisma.userGroup.findMany({
+    where: { userId },
+    select: { groupId: true },
+  });
 
-    const groupIds = userGroups.map(g => g.groupId);
+  const groupIds = userGroups.map(g => g.groupId);
 
-  
-    return prisma.todo.findMany({
-      where: {
-        OR: [
-          { userId },
-          { groupId: { in: groupIds } },
-        ],
-      },
-    });
-  }
+  return prisma.todo.findMany({
+    where: {
+      OR: [
+        { userId },
+        { groupId: { in: groupIds } },
+      ],
+    },
+    include: {
+      images: true,   // 👈 AQUI ESTÁ O PONTO CHAVE
+      group: {
+        select: { id: true, name: true }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+}
+
 
   
   async isUserInGroup(userId: string, groupId: string): Promise<boolean> {

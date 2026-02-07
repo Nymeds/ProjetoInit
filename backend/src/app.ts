@@ -48,16 +48,26 @@ await app.register(cors, {
 
 app.register(fastifyCookie);
 
+app.register(multipart, {
+  attachFieldsToBody: true,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
+// app.ts
+import fastifyStatic from '@fastify/static';
+import path from 'node:path';
+
+app.register(fastifyStatic, {
+  root: path.resolve(process.cwd(), 'uploads'),
+  prefix: '/uploads/', // => http://localhost:3333/uploads/<file>
+});
 
 // register routes
 app.register(appRoutes);
 
 
-app.register(multipart, {
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB global
-  },
-});
 
 const PORT = Number(process.env.PORT) || 3333;
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {

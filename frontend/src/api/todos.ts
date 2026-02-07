@@ -17,35 +17,48 @@ export interface CreateTodoData {
   title: string;
   description?: string;
   groupId?: string;
+  image?: File | null;
 }
+
 
 // Criação de tarefa
 export async function createTodo(data: CreateTodoData) {
   const token = getToken();
   if (!token) throw new Error("Token JWT não encontrado");
 
-  const payload: Record<string, unknown> = { title: data.title };
-  if (data.description) payload.description = data.description;
-  if (data.groupId) payload.groupId = data.groupId;
+  const formData = new FormData();
+
+  formData.append("title", data.title);
+
+  if (data.description) {
+    formData.append("description", data.description);
+  }
+
+  if (data.groupId) {
+    formData.append("groupId", data.groupId);
+  }
+
+  if (data.image) {
+    formData.append("image", data.image);
+  }
 
   const res = await fetch(`${BASE}/todo`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // ❌ NÃO coloque Content-Type aqui
+    },
+    body: formData,
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => null);
-    let message = text || `Erro ao criar tarefa: ${res.status}`;
-    try {
-      const parsed = JSON.parse(text || '');
-      if (parsed?.message) message = parsed.message;
-    } catch {}
-    throw new Error(message);
+    const text = await res.text();
+    throw new Error(text || "Erro ao criar tarefa");
   }
 
   return res.json();
 }
+
 
 // Deleção de tarefa
 export async function deleteTodo(id: string) {

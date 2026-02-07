@@ -19,6 +19,7 @@ export default function NewTaskModal({ open, onClose, onCreated }: NewTaskModalP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
+  const [image, setImage] = useState<File | null>(null);
 
   const { data: groups = [], isLoading: groupsLoading, refetch } = useGroups();
 
@@ -42,7 +43,7 @@ export default function NewTaskModal({ open, onClose, onCreated }: NewTaskModalP
     setError(null);
 
     try {
-      await createTodo({ title, description, groupId: selectedGroup });
+      await createTodo({ title, description, groupId: selectedGroup, image });
       onCreated?.();
 
       setTitle("");
@@ -71,6 +72,19 @@ export default function NewTaskModal({ open, onClose, onCreated }: NewTaskModalP
             className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
           />
         </div>
+        <div>
+        <label>
+          <Text variant="label-small">Imagem (opcional)</Text>
+        </label>
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+          className="w-full text-sm text-accent-paragraph"
+        />
+      </div>
+
 
         <div>
           <label htmlFor="task-desc">
@@ -105,6 +119,7 @@ export default function NewTaskModal({ open, onClose, onCreated }: NewTaskModalP
             ))}
           </select>
         </div>
+        
 
         {error && (
           <Text variant="paragraph-small" className="text-danger">

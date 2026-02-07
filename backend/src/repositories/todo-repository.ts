@@ -7,6 +7,7 @@ export interface TodosRepository {
     title: string;
     userId: string;
     description?: string;
+    images?: string;
     groupId?: string;
   }): Promise<Todo>;
 
