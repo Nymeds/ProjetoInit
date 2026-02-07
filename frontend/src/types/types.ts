@@ -4,11 +4,7 @@ export interface Todo {
   title: string;
   description?: string;
   completed?: boolean;
-  images?: Array<{
-  id: string;
-  path: string;
-  filename: string;
-}>
+  images?: string[];
   createdAt: string | number | Date;
   
   group?: {
