@@ -7,7 +7,9 @@ export async function uploadImage(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const file = await request.file()
+  const body = (request.body ?? {}) as Record<string, unknown>
+  const bodyImage = body.image as { toBuffer?: () => Promise<Buffer> } | undefined
+  const file = bodyImage?.toBuffer ? (body.image as any) : await request.file()
 
   if (!file) {
     return

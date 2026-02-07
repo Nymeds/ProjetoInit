@@ -91,7 +91,16 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
                 )}
               </div>
             </div>
-
+              {coverImage && (
+              <div className="mt-2">
+                <img
+                  src={resolveImageUrl(coverImage.url)}
+                  alt={`Imagem da tarefa ${todo.title}`}
+                  className="max-h-40 w-full rounded border border-border-primary object-contain"
+                  loading="lazy"
+                />
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                 todo.completed 
@@ -109,16 +118,7 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
               </Text>
             </div>
 
-            {coverImage && (
-              <div className="mt-2">
-                <img
-                  src={resolveImageUrl(coverImage.url)}
-                  alt={`Imagem da tarefa ${todo.title}`}
-                  className="max-h-40 w-full rounded border border-border-primary object-contain"
-                  loading="lazy"
-                />
-              </div>
-            )}
+            
 
             {todo.description && (
               <div className="mt-1">
