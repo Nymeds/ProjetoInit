@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import ModalAnimado from "./DsBell"
-
+import footerGif from "../../assets/77036967_8LcpLVyKWHtvg2H.gif";
 export default function Footer() {
   const [showModal, setShowModal] = useState(false);
   const clickCount = useRef(0);
@@ -29,7 +29,7 @@ export default function Footer() {
     <>
       <footer className="fixed bottom-0 left-0 w-full bg-background-secondary/80 backdrop-blur-md px-6 py-0.4 flex items-center justify-between shadow-inner z-50">
         <motion.img
-          src="/77036967_8LcpLVyKWHtvg2H.gif"
+          src={footerGif}
           alt="GIF animado"
           className="w-12 h-12 cursor-pointer"
           initial={{ opacity: 0, x: -20 }}

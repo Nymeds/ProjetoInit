@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/baseComponents/button";
 import Card from "../components/baseComponents/card";
 import Footer from "../components/buildedComponents/Footer";
-
+import welcomeImage from "../assets/welcome.png";
 export default function Welcome() {
   const navigate = useNavigate();
 
@@ -20,7 +20,7 @@ export default function Welcome() {
         >
           {/* Logo */}
           <motion.img
-            src="/welcome.png"
+            src={welcomeImage}
             alt="Logo"
             className="w-32 h-32 mx-auto mb-6 drop-shadow-lg"
             initial={{ scale: 0.8, opacity: 0 }}
