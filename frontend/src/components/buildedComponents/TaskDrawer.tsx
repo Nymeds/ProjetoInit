@@ -261,9 +261,9 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
               <div className="p-4">
                 <Text variant="heading-small" className="text-heading mb-2">Descrição</Text>
                 <div className="text-accent-paragraph whitespace-pre-wrap">{todo.description ?? 'Sem descrição'}</div>
-                {todo.images && todo.images.length > 0 && (
+                {(todo.images?.length ?? 0) > 0 && (
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {todo.images.map((image) => (
+                    {todo.images?.map((image) => (
                       <div key={image.id} className="rounded border border-border-primary bg-background-primary/40 p-2">
                         <img
                           src={resolveImageUrl(image.url)}
@@ -286,7 +286,6 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
               </div>
             </Card>
           </div>
-          
 
           <div>
             <Card className="bg-background-quaternary h-full flex flex-col">
@@ -327,7 +326,6 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
                   </div>
                 ))}
               </div>
-              
 
               <div className="p-4 border-t border-border-primary">
                 <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={'Escreva um comentário...'} className="w-full p-2 rounded-md bg-background-primary border border-border-primary text-accent-paragraph" rows={3} />
