@@ -1,3 +1,5 @@
+import { id } from "zod/locales";
+
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
 
 function getToken() {
@@ -16,6 +18,12 @@ export interface CreateTodoData {
   description?: string;
   groupId?: string;
   imageFile?: File | null;
+}
+
+export interface UpdateTodoData {
+  id: string;
+  title?: string;
+  groupId?: string | null;
 }
 
 // Criação de tarefa
@@ -59,6 +67,37 @@ export async function createTodo(data: CreateTodoData) {
   }
 
   return res.json();
+}
+
+export async function moveTodo(id: string, groupId: string | null) {
+  if (!id) throw new Error("ID da tarefa é obrigatório");
+  const token = getToken();
+  if (!token) throw new Error("Token JWT não encontrado");
+
+  const res = await fetch(`${BASE}/todo/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ groupId }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => null);
+    let message = text || `Erro ao mover tarefa: ${res.status}`;
+    try {
+      const parsed = JSON.parse(text || '');
+      if (parsed?.message) message = parsed.message;
+    } catch {}
+    throw new Error(message);
+  }
+
+  try {
+    return await res.json();
+  } catch {
+    return undefined;
+  }
 }
 
 // Deleção de tarefa

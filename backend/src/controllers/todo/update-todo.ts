@@ -9,6 +9,7 @@ interface UpdateTodoRequestParams {
 
 const updateTodoBodySchema = z.object({
   title: z.string(),
+  groupId: z.string().nullable().optional(),
 })
 
 export async function updateTodo(
@@ -18,12 +19,12 @@ export async function updateTodo(
   try {
     const userId = (request.user as any).sub
     const todoId = Number(request.params.id)
-    const { title } = updateTodoBodySchema.parse(request.body)
+    const { title , groupId} = updateTodoBodySchema.parse(request.body)
 
     const todosRepository = new PrismaTodosRepository()
     const updateUseCase = new UpdateTodoUseCase(todosRepository)
 
-    const { todo } = await updateUseCase.execute({ todoId, userId, title })
+    const { todo } = await updateUseCase.execute({ todoId, userId, title , groupId })
 
     return reply.status(200).send({ todo })
   } catch (err: any) {

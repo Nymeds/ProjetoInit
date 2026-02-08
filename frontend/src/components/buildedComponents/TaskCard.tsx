@@ -14,10 +14,11 @@ interface TaskCardProps {
   className?: string;
   onClick?: () => void; 
   onUpdated?: () => void;
+    onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
   laceholder?: boolean;
 }
 
-export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }: TaskCardProps) {
+export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, onDragStart }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +74,8 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick }:
   return (
     <Card
       onClick={onClick}
+      draggable
+      onDragStart={(event) => onDragStart?.(event, todo)}
       bodyClassName="flex flex-col flex-1 overflow-hidden"
       className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className} flex flex-col`}
     >

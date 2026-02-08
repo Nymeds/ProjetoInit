@@ -43,7 +43,6 @@ export class PrismaTodosRepository implements TodosRepository {
       where: { id },
       data: {
         ...data,
-       
         groupId: data.groupId ?? existingTodo.groupId ?? undefined,
       },
     });

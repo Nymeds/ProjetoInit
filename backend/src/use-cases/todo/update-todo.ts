@@ -4,7 +4,8 @@ import type { Todo } from '@prisma/client'
 interface UpdateTodoUseCaseRequest {
   todoId: number
   userId: string
-  title: string
+  title?: string
+  groupId?: string
 }
 
 interface UpdateTodoUseCaseResponse {
@@ -14,12 +15,19 @@ interface UpdateTodoUseCaseResponse {
 export class UpdateTodoUseCase {
   constructor(private todosRepository: TodosRepository) {}
 
-  async execute({ todoId, userId, title }: UpdateTodoUseCaseRequest): Promise<UpdateTodoUseCaseResponse> {
+  async execute({ todoId, userId, title , groupId }: UpdateTodoUseCaseRequest): Promise<UpdateTodoUseCaseResponse> {
     
     const todo = await this.todosRepository.findById(todoId)
 
     if (!todo) {
       throw new Error('Tarefa nao encontrada')
+    }
+
+     if (groupId !== undefined && groupId !== null) {
+      const isGroupMember = await this.todosRepository.isUserInGroup(userId, groupId)
+      if (!isGroupMember) {
+        throw new Error('Não autorizado para mover essa tarefa para esse grupo')
+      }
     }
 
 
