@@ -50,7 +50,7 @@ export function Login() {
           transition={{ duration: 0.6 }}
         />
         <Text variant="paragraph-medium" className="text-accent-paragraph mb-6">
-          Dashboard do Rafael 2.0
+          Dashboard
         </Text>
 
         {/* CARD DO FORMULÁRIO */}

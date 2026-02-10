@@ -9,7 +9,12 @@ export async function uploadImage(
 ) {
   const body = (request.body ?? {}) as Record<string, unknown>
   const bodyImage = body.image as { toBuffer?: () => Promise<Buffer> } | undefined
-  const file = bodyImage?.toBuffer ? (body.image as any) : await request.file()
+  const isMultipart = request.isMultipart()
+  const file = bodyImage?.toBuffer
+    ? (body.image as any)
+    : isMultipart
+      ? await request.file()
+      : null
 
   if (!file) {
     return
