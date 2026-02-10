@@ -10,7 +10,6 @@ export function useTodos(options?: { enabled?: boolean }) {
     queryKey: ["todos"],
     queryFn: async () => {
       const { data } = await api.get("/todo");
-      console.log('todos', data);
       return data.todos ?? [];
     },
     enabled: !!user && (options?.enabled ?? true), 

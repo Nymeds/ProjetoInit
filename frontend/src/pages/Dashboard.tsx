@@ -73,7 +73,6 @@ export function Dashboard() {
   const todostotalTasks= todosWithGroup;
   const todosCompleted = todosWithGroup.filter((todo: any) => todo.completed)
   const todospendingTasks = todosWithGroup.filter((todo: any) => todo.completed === false)
-  console.log('pendentes ', todospendingTasks)
   const [highlightCompleted, setHighlightCompleted] = useState(false);
   const [statsFilter, setStatsFilter] = useState<boolean | null>(null); // null = all, true = completed, false = pending
   const triggerHighlight = (filter: boolean | null) => {
