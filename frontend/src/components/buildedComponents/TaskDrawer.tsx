@@ -256,11 +256,16 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
         </div>
 
         <div className="p-6 overflow-auto grid grid-cols-1 md:grid-cols-[1fr_360px] gap-6">
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             <Card className="bg-background-quaternary">
               <div className="p-4">
-                <Text variant="heading-small" className="text-heading mb-2">Descrição</Text>
-                <div className="text-accent-paragraph whitespace-pre-wrap">{todo.description ?? 'Sem descrição'}</div>
+                <Text variant="heading-small" className="text-heading mb-2">Descriçã oo</Text>
+                <div className="  text-accent-paragraph
+                                  whitespace-pre-wrap
+                                  break-words
+                                  max-h-60
+                                  overflow-y-auto
+                                  pr-2">{todo.description ?? 'Sem descrição'}</div>
                 {(todo.images?.length ?? 0) > 0 && (
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {todo.images?.map((image) => (

@@ -142,7 +142,14 @@ export default function TaskInfo({ open, onClose, todo, onCreated }: TaskInfoPro
         <div className="space-y-2 mb-6">
           <Text as="div" variant="paragraph-small" className="text-gray-300">
             <span className="font-semibold">Descrição:</span>
-            <div className="whitespace-pre-wrap mt-1 text-accent-paragraph">{todo.description ?? "Sem descrição"}</div>
+            <div className="
+              mt-1
+              text-accent-paragraph
+              whitespace-normal
+              break-words
+            ">
+              {todo.description ?? "Sem descrição"}
+            </div>
           </Text>
 
           <Text variant="paragraph-small" className="text-gray-300">

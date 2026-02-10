@@ -17,10 +17,7 @@ export function DashboardStats({
   total, 
   completed, 
   pending, 
-  completionRate, 
-  todosCompleted,
-  todosPending,
-  todostotalTasks,
+  completionRate,
   onHighlight
 }: DashboardStatsProps) {
   
