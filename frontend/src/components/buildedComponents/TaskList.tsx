@@ -11,9 +11,19 @@ interface TaskListProps {
   onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
   onSelect?: (todo: Todo) => void;
   highlightCompleted?: boolean;
+  statsFilter?: boolean | null; // null = todos, true = completos, false = pendentes
 }
 
-export function TaskList({ todos, isLoading, onDeleted,onUpdated,onDragStart, onSelect , highlightCompleted = false  }: TaskListProps) {
+export function TaskList({ 
+  todos, 
+  isLoading, 
+  onDeleted,
+  onUpdated,
+  onDragStart, 
+  onSelect, 
+  highlightCompleted = false,
+  statsFilter = null
+}: TaskListProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -45,17 +55,29 @@ export function TaskList({ todos, isLoading, onDeleted,onUpdated,onDragStart, on
 
   return (
     <div className="grid items-start grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {todos.map((todo) => (
-        <TaskCard
-          key={todo.id}
-          todo={todo}
-          onDeleted={onDeleted}
-          onUpdated={onUpdated}
-          onDragStart={onDragStart}
-          onClick={() => onSelect?.(todo)}
-          isHighlighted={highlightCompleted && todo.completed} 
-        />
-      ))}
+      {todos.map((todo) => {
+        // Lógica de highlight:
+        // - Se highlightCompleted está false, não destaca nada
+        // - Se statsFilter é null, destaca todos
+        // - Se statsFilter é true, destaca apenas completos
+        // - Se statsFilter é false, destaca apenas pendentes
+        const shouldHighlight = highlightCompleted && (
+          statsFilter === null || 
+          todo.completed === statsFilter
+        );
+
+        return (
+          <TaskCard
+            key={todo.id}
+            todo={todo}
+            onDeleted={onDeleted}
+            onUpdated={onUpdated}
+            onDragStart={onDragStart}
+            onClick={() => onSelect?.(todo)}
+            isHighlighted={shouldHighlight}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -72,15 +72,19 @@ export function Dashboard() {
 
   const todostotalTasks= todosWithGroup;
   const todosCompleted = todosWithGroup.filter((todo: any) => todo.completed)
-  const todospendingTasks = todosWithGroup.filter((todo: any) => todo.pending)
+  const todospendingTasks = todosWithGroup.filter((todo: any) => todo.completed === false)
+  console.log('pendentes ', todospendingTasks)
   const [highlightCompleted, setHighlightCompleted] = useState(false);
-   const triggerHighlight = () => {
-    setHighlightCompleted(true);
-    
-    setTimeout(() => {
-      setHighlightCompleted(false);
-    }, 3000); // 3 segundos
-  };
+  const [statsFilter, setStatsFilter] = useState<boolean | null>(null); // null = all, true = completed, false = pending
+  const triggerHighlight = (filter: boolean | null) => {
+  setStatsFilter(filter);
+  setHighlightCompleted(true);
+  
+  setTimeout(() => {
+    setHighlightCompleted(false);
+    setStatsFilter(null);
+  }, 3000);
+};
   useEffect(() => {
     if (!selectedTodo) return;
     const found = todosWithGroup.find((t: any) => t.id === selectedTodo.id);
@@ -187,14 +191,15 @@ export function Dashboard() {
                         </span>
                       </div>
 
-                      <TaskList
-                        todos={groupTodos}
-                        isLoading={todosLoading}
-                        onDeleted={invalidateTodosAndGroups}
-                        onUpdated={invalidateTodosAndGroups}
-                        onSelect={(todo) => setSelectedTodo(todo)}
-                        highlightCompleted={highlightCompleted}
-                      />
+                     <TaskList
+                      todos={groupTodos}
+                      isLoading={todosLoading}
+                      onDeleted={invalidateTodosAndGroups}
+                      onUpdated={invalidateTodosAndGroups}
+                      onSelect={(todo) => setSelectedTodo(todo)}
+                      highlightCompleted={highlightCompleted}
+                      statsFilter={statsFilter}
+                    />
                     </div>
                   ))}
                 </div>
