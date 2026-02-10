@@ -10,9 +10,10 @@ interface TaskListProps {
   onUpdated?: () => void;
   onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
   onSelect?: (todo: Todo) => void;
+  highlightCompleted?: boolean;
 }
 
-export function TaskList({ todos, isLoading, onDeleted,onUpdated,onDragStart, onSelect }: TaskListProps) {
+export function TaskList({ todos, isLoading, onDeleted,onUpdated,onDragStart, onSelect , highlightCompleted = false  }: TaskListProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -52,6 +53,7 @@ export function TaskList({ todos, isLoading, onDeleted,onUpdated,onDragStart, on
           onUpdated={onUpdated}
           onDragStart={onDragStart}
           onClick={() => onSelect?.(todo)}
+          isHighlighted={highlightCompleted && todo.completed} 
         />
       ))}
     </div>

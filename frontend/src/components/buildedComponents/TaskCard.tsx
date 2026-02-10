@@ -14,13 +14,22 @@ interface TaskCardProps {
   className?: string;
   onClick?: () => void; 
   onUpdated?: () => void;
-    onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
-  laceholder?: boolean;
+  onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
+  placeholder?: boolean;
+  isHighlighted?: boolean;
 }
 
-export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, onDragStart }: TaskCardProps) {
+export function TaskCard({ 
+  todo, 
+  onDeleted,
+  onUpdated, 
+  className = '', 
+  onClick, 
+  onDragStart, 
+  isHighlighted = false
+}: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
-  const [updating, setUpdating] = useState(false)
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resolveImageUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`);
   const coverImage = todo.images?.[0];
@@ -77,7 +86,15 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, o
       draggable
       onDragStart={(event) => onDragStart?.(event, todo)}
       bodyClassName="flex flex-col flex-1 overflow-hidden"
-      className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className} flex flex-col`}
+      className={`
+        cursor-pointer bg-background-secondary p-6 transition-all duration-500 ease-out
+        ${isHighlighted 
+          ? 'border-2 border-accent-brand shadow-xl ring-4 ring-accent-brand/30 scale-105' 
+          : 'border border-border-primary hover:border-accent-brand hover:scale-105 hover:shadow-lg'
+        }
+        ${className} 
+        flex flex-col
+      `}
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-auto" style={{ maxHeight: 320 }}>
@@ -94,7 +111,7 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, o
                 )}
               </div>
             </div>
-              {coverImage && (
+            {coverImage && (
               <div className="mt-2">
                 <img
                   src={resolveImageUrl(coverImage.url)}
@@ -120,8 +137,6 @@ export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, o
                 {new Date(todo.createdAt).toLocaleDateString('pt-BR')}
               </Text>
             </div>
-
-            
 
             {todo.description && (
               <div className="mt-1">

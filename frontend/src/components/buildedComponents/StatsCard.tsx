@@ -11,7 +11,7 @@ type StatsCardProps = {
   onClick?: () => void;
 };
 
-export function StatsCard({ title, value, icon: Icon, color , onClick }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, color , onClick  }: StatsCardProps) {
   const colorMap: Record<
     string,
     { bgClass: string; textClass: string; gradientClass: string }

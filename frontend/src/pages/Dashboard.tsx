@@ -54,7 +54,7 @@ export function Dashboard() {
     todosWithGroup.forEach((todo: any) => {
       const groupKey = todo.group?.id || 'sem-grupo';
       if (!map[groupKey]) map[groupKey] = [];
-      map[groupKey].push(todo);
+      map[groupKey].push(todo)
     });
     return map;
   }, [todosWithGroup]);
@@ -70,8 +70,17 @@ export function Dashboard() {
   const pendingTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const todostotalTasks= todosWithGroup;
   const todosCompleted = todosWithGroup.filter((todo: any) => todo.completed)
- 
+  const todospendingTasks = todosWithGroup.filter((todo: any) => todo.pending)
+  const [highlightCompleted, setHighlightCompleted] = useState(false);
+   const triggerHighlight = () => {
+    setHighlightCompleted(true);
+    
+    setTimeout(() => {
+      setHighlightCompleted(false);
+    }, 3000); // 3 segundos
+  };
   useEffect(() => {
     if (!selectedTodo) return;
     const found = todosWithGroup.find((t: any) => t.id === selectedTodo.id);
@@ -123,7 +132,15 @@ export function Dashboard() {
                 <Text variant="paragraph-medium" className="text-accent-paragraph">Acompanhe seu progresso e produtividade</Text>
               </div>
               <div>  
-                  <DashboardStats total={totalTasks} completed={completedTasks} pending={pendingTasks} completionRate={completionRate} todosCompleted={todosCompleted} />
+                  <DashboardStats 
+                  total={totalTasks} 
+                  completed={completedTasks} 
+                  pending={pendingTasks} 
+                  completionRate={completionRate} 
+                  todosCompleted={todosCompleted} 
+                  todosPending={todospendingTasks}
+                  todostotalTasks={todostotalTasks}
+                  onHighlight={triggerHighlight}/>
               </div>
             </div>
           </Card>
@@ -176,6 +193,7 @@ export function Dashboard() {
                         onDeleted={invalidateTodosAndGroups}
                         onUpdated={invalidateTodosAndGroups}
                         onSelect={(todo) => setSelectedTodo(todo)}
+                        highlightCompleted={highlightCompleted}
                       />
                     </div>
                   ))}
