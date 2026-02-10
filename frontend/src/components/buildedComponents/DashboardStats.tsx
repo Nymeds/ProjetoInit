@@ -31,7 +31,6 @@ export function DashboardStats({
         value={total} 
         icon={BarChart3}
         onClick={() => {
-          console.log('Todas as tarefas:', todostotalTasks);
           onHighlight(null); // null = mostrar todas
         }}
       />
@@ -41,7 +40,6 @@ export function DashboardStats({
         icon={CheckCircle} 
         color="accent-brand"
         onClick={() => {
-          console.log('Tarefas concluídas:', todosCompleted);
           onHighlight(true); // true = mostrar completas
         }}
       />
@@ -51,7 +49,6 @@ export function DashboardStats({
         icon={Clock} 
         color="accent-red"
         onClick={() => {
-          console.log('Tarefas pendentes:', todosPending);
           onHighlight(false); // false = mostrar pendentes
         }}
       />
