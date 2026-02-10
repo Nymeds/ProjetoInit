@@ -43,14 +43,30 @@ export default function Card({
   className = '',
   ...props
 }: CardProps) {
+  const isClickable = typeof props.onClick === 'function';
   const floatingClasses = floating
     ? 'backdrop-blur-sm bg-[rgba(255,255,255,0.02)] border-[rgba(255,255,255,0.04)] shadow-lg'
     : '';
 
   return (
     <div
-      className={`card-surface ${floatingClasses} ${className}`}
       {...props}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!isClickable) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          props.onClick?.(e as any);
+        }
+      }}
+      className={`
+        card-surface
+        ${floatingClasses}
+        ${isClickable ? 'cursor-pointer hover:scale-105 transition-transform' : ''}
+        ${className}
+      `}
     >
       {header ? <div className="mb-4">{header}</div> : null}
 

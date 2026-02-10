@@ -8,9 +8,10 @@ type StatsCardProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon?: React.ComponentType<any>;
   color?: 'accent-brand' | 'accent-red' | 'accent-brand-light';
+  onClick?: () => void;
 };
 
-export function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, color , onClick }: StatsCardProps) {
   const colorMap: Record<
     string,
     { bgClass: string; textClass: string; gradientClass: string }
@@ -35,7 +36,7 @@ export function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
   const chosen = color ? colorMap[color] : colorMap['accent-brand'];
 
   return (
-    <Card className="bg-background-secondary p-6 border border-border-primary text-center transition-all duration-300 hover:scale-105">
+    <Card onClick={onClick} className="bg-background-secondary p-6 border border-border-primary text-center transition-all duration-300 hover:scale-105" >
       <div className="flex items-center justify-center mb-4">
         <div className={`p-3 rounded-xl ${chosen.bgClass}`}>
           {Icon ? (

@@ -6,17 +6,17 @@ import { useAuth } from '../hooks/useAuth';
 import { useTodos } from '../hooks/useTodos';
 import { useGroups } from '../hooks/useGroups';
 import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
-import { StatsCard } from '../components/buildedComponents/StatsCard';
 import { TaskList } from '../components/buildedComponents/TaskList';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
 import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
 import TaskDrawer from '../components/buildedComponents/TaskDrawer';
 import { GroupSidebar } from '../components/buildedComponents/GroupSidebar';
-import { BarChart3, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
+import { BarChart3, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
 import type { Todo } from '../types/types';
+import { DashboardStats } from '../components/buildedComponents/DashboardStats';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -70,6 +70,8 @@ export function Dashboard() {
   const pendingTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const todosCompleted = todosWithGroup.filter((todo: any) => todo.completed)
+ 
   useEffect(() => {
     if (!selectedTodo) return;
     const found = todosWithGroup.find((t: any) => t.id === selectedTodo.id);
@@ -120,12 +122,8 @@ export function Dashboard() {
                 <Text variant="heading-medium" className="text-heading mb-2">Resumo das Atividades</Text>
                 <Text variant="paragraph-medium" className="text-accent-paragraph">Acompanhe seu progresso e produtividade</Text>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard title="Total de Tarefas" value={totalTasks} icon={BarChart3} />
-                <StatsCard title="Concluídas" value={completedTasks} icon={CheckCircle} color="accent-brand" />
-                <StatsCard title="Pendentes" value={pendingTasks} icon={Clock} color="accent-red" />
-                <StatsCard title="Taxa de Conclusão" value={`${completionRate}%`} icon={TrendingUp} color="accent-brand-light" />
+              <div>  
+                  <DashboardStats total={totalTasks} completed={completedTasks} pending={pendingTasks} completionRate={completionRate} todosCompleted={todosCompleted} />
               </div>
             </div>
           </Card>
