@@ -2,14 +2,16 @@ import Fastify from "fastify";
 import path from "node:path";
 import fs from "node:fs";
 import { appRoutes } from "./routes/appRoutes.js";
-import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
+import fastifyJwt from '@fastify/jwt';
 import { env } from "./env/index.js";
 import cors from '@fastify/cors';
 import multipart from "@fastify/multipart";
 import { setupSocketHandlers } from './sockets/socket.js';
 
 export const app = Fastify();
+
+app.register(fastifyCookie);
 
 // JWT
 app.register(fastifyJwt, {
@@ -52,8 +54,6 @@ app.register(multipart, {
   },
   attachFieldsToBody: true,
 });
-
-app.register(fastifyCookie);
 
 app.get('/uploads/:filename', async (request, reply) => {
   const { filename } = request.params as { filename: string };

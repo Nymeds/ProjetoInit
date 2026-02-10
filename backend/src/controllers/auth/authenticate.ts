@@ -31,7 +31,15 @@ export async function authenticate(
       { sign: { sub: user.id, expiresIn: '7d' } }
     );
 
-    return reply.status(200).send({ token: accessToken, refreshToken });
+    return reply
+      .setCookie('refreshToken', refreshToken, {
+        path: '/',
+        secure: false,
+        sameSite: true,
+        httpOnly: true,
+      })
+      .status(200)
+      .send({ token: accessToken, refreshToken });
 
   } catch (err: any) {
     return reply.status(400).send({ message: err.message || 'Erro ao autenticar' });
