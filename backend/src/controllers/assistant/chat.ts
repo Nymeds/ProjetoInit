@@ -175,9 +175,51 @@ async function runTool(
       })),
     };
   }
+  if (call.name === 'marcar_concluida'){
+     const args = searchTasksArgsSchema.parse(call.args || {});
+
+    const userGroups = await prisma.userGroup.findMany({
+      where: { userId },
+      select: { groupId: true },
+    });
+    const groupIds = userGroups.map((g) => g.groupId);
+
+    const tasks = await prisma.todo.findMany({
+      where: {
+        OR: [{ userId }, { groupId: { in: groupIds } }],
+        AND: [
+          {
+            OR: [
+              { title: { contains: args.query } },
+              { description: { contains: args.query } },
+            ],
+          },
+        ],
+      },
+      include: { group: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: args.limit ?? 5,
+    });
+
+    return {
+      ok: true,
+      query: args.query,
+      tasks: tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        completed: t.completed,
+        group: t.group ?? null,
+      })),
+    };
+
+  }
 
   return { ok: false, error: 'Ferramenta desconhecida.' };
+
+
 }
+
 
 export async function assistantChat(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -255,6 +297,20 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
           required: ['query'],
         },
       },
+      {
+        name: 'marcar_concluida',
+        description: 'Marcar tarefas como concluidas',
+        parametersJsonSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Titulo da tarefa' },
+            description: { type: 'string', description: 'Descricao da tarefa (opcional)' },
+            groupName: { type: 'string', description: 'Nome do grupo (opcional)' },
+          },
+          required: ['title'],
+        },
+      },
+      
     ];
 
     // Chamada inicial para o modelo
