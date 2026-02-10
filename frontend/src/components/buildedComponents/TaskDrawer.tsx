@@ -154,10 +154,6 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
     }
   }
 
-  if (!open || !todo) return null;
-
-  // draggable modal hooks (declared above)
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -224,6 +220,8 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
     // clicking on backdrop closes the modal
     onClose();
   }
+
+  if (!open || !todo) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">

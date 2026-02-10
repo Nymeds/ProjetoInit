@@ -19,12 +19,12 @@ model User {
   password String
   role     Role   @default(MEMBER)
 
-  images   Image[]   // 👈 mudou
-  todos    Todo[]
-  groups   UserGroup[]
-  messages Message[]
+  images          Image[] // 👈 mudou
+  todos           Todo[]
+  groups          UserGroup[]
+  messages        Message[]
+  assistantThread AssistantThread?
 }
-
 
 model Todo {
   id          Int      @id @default(autoincrement())
@@ -33,29 +33,27 @@ model Todo {
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  images   Image[]
+  images Image[]
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   groupId String?
-  group   Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   messages Message[]
 }
 
-
-
 model Group {
-  id          String      @id @default(cuid())
-  name        String      @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
   description String?
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime @default(now())
 
-  images      Image[]     // 👈 mudou
-  members     UserGroup[]
-  todos       Todo[]
-  messages    Message[]
+  images   Image[] // 👈 mudou
+  members  UserGroup[]
+  todos    Todo[]
+  messages Message[]
 }
 
 model UserGroup {
@@ -75,19 +73,25 @@ enum MessageKind {
   CHAT
 }
 
+enum AssistantRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
 model Message {
   id        String      @id @default(cuid())
   content   String
   createdAt DateTime    @default(now())
   kind      MessageKind @default(COMMENT)
 
-  images    Image[]
+  images Image[]
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   groupId String?
-  group   Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   todoId Int?
   todo   Todo? @relation(fields: [todoId], references: [id], onDelete: Cascade)
@@ -96,6 +100,29 @@ model Message {
   @@index([todoId])
 }
 
+model AssistantThread {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AssistantMessage[]
+
+  @@index([userId])
+}
+
+model AssistantMessage {
+  id        String        @id @default(cuid())
+  role      AssistantRole
+  content   String
+  createdAt DateTime      @default(now())
+
+  threadId String
+  thread   AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}
 
 model Image {
   id        String   @id @default(cuid())
@@ -105,14 +132,14 @@ model Image {
   size      Int
   createdAt DateTime @default(now())
 
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  groupId   String?
-  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  todoId    Int?
-  todo      Todo?    @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  todoId Int?
+  todo   Todo? @relation(fields: [todoId], references: [id], onDelete: Cascade)
 
   messageId String?
   message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -122,4 +149,3 @@ model Image {
   @@index([todoId])
   @@index([messageId])
 }
-

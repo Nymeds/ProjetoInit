@@ -10,6 +10,7 @@ import { TaskList } from '../components/buildedComponents/TaskList';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
 import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
 import TaskDrawer from '../components/buildedComponents/TaskDrawer';
+import ElisaAssistant from '../components/buildedComponents/ElisaAssistant';
 import { GroupSidebar } from '../components/buildedComponents/GroupSidebar';
 import { BarChart3, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
@@ -227,6 +228,9 @@ export function Dashboard() {
         onCreated={invalidateTodosAndGroups}
         todo={selectedTodo}
       />
+
+      {/* ELISA: botao flutuante no dashboard */}
+      <ElisaAssistant onAction={invalidateTodosAndGroups} />
     </div>
   );
 }

@@ -16,6 +16,8 @@ import { me } from "../controllers/auth/auth-me.js";
 import { listGroups } from "../controllers/group/list.js";
 import { deleteGroup } from "../controllers/group/delete.js";
 import { uploadImage } from "../middlewares/upload-images.js";
+import { assistantChat } from "../controllers/assistant/chat.js";
+import { assistantHistory } from "../controllers/assistant/history.js";
 
 export async function appRoutes(app: FastifyInstance) {
   // Auth
@@ -23,6 +25,10 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/sessions', authenticate);
   app.patch('/token/refresh', refresh);
   app.get('/sessions/me', { preHandler: [verifyJwt] }, me);
+
+  // ELISA (assistente virtual)
+  app.get('/assistant/history', { preHandler: [verifyJwt] }, assistantHistory);
+  app.post('/assistant/chat', { preHandler: [verifyJwt] }, assistantChat);
 
   // Todos
   app.post('/todo', { preHandler: [verifyJwt, uploadImage] }, create);
