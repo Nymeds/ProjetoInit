@@ -14,7 +14,7 @@ Regras:
 - Se o usuario pedir para criar grupo, use a ferramenta "criar_grupo".
 - Se o usuario pedir para encontrar tarefa, use a ferramenta "buscar_tarefas".
 - Se o usuario pedir para mudar o status de uma tarefa ou dizer que concluiu, use a ferramenta "marcar_concluida".
-- Se o usuario pedir para mudar um grupo use a ferramenta "mover_para_grupo".
+- Se o usuario pedir para mover tarefa entre grupos, use a ferramenta "mover_para_grupo".
 - Se faltar informacao, faca perguntas objetivas antes de agir.
 `;
 
@@ -49,11 +49,38 @@ const markTaskDoneArgsSchema = z.object({
   groupName: z.string().optional(),
 });
 
+const moveTaskArgsSchema = z.object({
+  // Preferir taskId evita ambiguidades quando existem tarefas com titulos parecidos.
+  taskId: z.coerce.number().int().positive().optional(),
+  // Mantido para linguagem natural quando o usuario nao informa ID.
+  title: z.string().min(1).optional(),
+  // Opcional para restringir a busca da tarefa ao grupo de origem.
+  fromGroupName: z.string().optional(),
+  // Nome do grupo de destino.
+  groupNameDestination: z.string().optional(),
+  // Quando true, move a tarefa para "sem grupo" (groupId = null).
+  moveToNoGroup: z.boolean().optional(),
+}).superRefine((args, ctx) => {
+  if (!args.taskId && !args.title) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe taskId ou title para identificar a tarefa.',
+    });
+  }
+
+  if (!args.moveToNoGroup && !args.groupNameDestination) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe groupNameDestination ou moveToNoGroup=true.',
+    });
+  }
+});
+
 type AssistantAction =
   | { type: 'task_created'; id: number }
   | { type: 'group_created'; id: string }
-  | { type: 'task_completed'; id: number };
-  //| { type: 'task_moved', id: string };
+  | { type: 'task_completed'; id: number }
+  | { type: 'task_moved'; id: number; groupId: string | null };
 
 function extractTextFromResponse(response: any): string | undefined {
   const parts = response?.candidates?.[0]?.content?.parts;
@@ -255,54 +282,89 @@ async function runTool(
     };
   }
   if (call.name === 'mover_para_grupo') {
-    const args = markTaskDoneArgsSchema.parse(call.args || {});
-    let groupId: string | undefined;
-    console.log("args",args);
-    if (args.groupName) {
-      const group = await prisma.group.findFirst({
+    const args = moveTaskArgsSchema.parse(call.args || {});
+    let destinationGroupId: string | null = null;
+
+    // Resolve destino: por nome de grupo ou "sem grupo".
+    if (!args.moveToNoGroup) {
+      const destinationGroup = await prisma.group.findFirst({
         where: {
-          name: args.groupName,
+          name: args.groupNameDestination,
           members: { some: { userId } },
         },
       });
 
-      if (!group) {
-        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+      if (!destinationGroup) {
+        return { ok: false, error: 'Grupo de destino nao encontrado para este usuario.' };
       }
 
-      groupId = group.id;
+      destinationGroupId = destinationGroup.id;
     }
 
+    // Busca grupos do usuario para filtrar somente tarefas acessiveis.
     const userGroups = await prisma.userGroup.findMany({
       where: { userId },
       select: { groupId: true },
     });
     const groupIds = userGroups.map((g) => g.groupId);
-    console.log("grupos do usuario",userGroups);
-    console.log("Id do grupo",groupIds);
 
+    let fromGroupId: string | null | undefined = undefined;
+    if (args.fromGroupName) {
+      const fromGroup = await prisma.group.findFirst({
+        where: {
+          name: args.fromGroupName,
+          members: { some: { userId } },
+        },
+      });
 
-    const task = await prisma.todo.findFirst({
+      if (!fromGroup) {
+        return { ok: false, error: 'Grupo de origem nao encontrado para este usuario.' };
+      }
+
+      fromGroupId = fromGroup.id;
+    }
+
+    // Se veio taskId, faz busca exata. Se veio titulo, pode trazer varias para desambiguar.
+    const candidateTasks = await prisma.todo.findMany({
       where: {
         OR: [{ userId }, { groupId: { in: groupIds } }],
-        title: { contains: args.title },
-        ...(groupId ? { groupId } : {}),
+        ...(args.taskId ? { id: args.taskId } : { title: { contains: args.title ?? '' } }),
+        ...(fromGroupId !== undefined ? { groupId: fromGroupId } : {}),
       },
       include: { group: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
+      take: args.taskId ? 1 : 10,
     });
-    console.log("tarefa encontrada",task)
-    if (!task) {
+
+    if (candidateTasks.length === 0) {
       return { ok: false, error: 'Tarefa nao encontrada para mover.' };
     }
 
+    if (!args.taskId && candidateTasks.length > 1) {
+      return {
+        ok: false,
+        error: 'Encontrei mais de uma tarefa com esse titulo. Informe taskId para mover a tarefa correta.',
+        candidates: candidateTasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          group: t.group?.name ?? null,
+        })),
+      };
+    }
+
+    const task = candidateTasks[0];
+    if ((task.groupId ?? null) === destinationGroupId) {
+      return { ok: false, error: 'A tarefa ja esta no destino informado.' };
+    }
+
+    // Move a tarefa para o destino (ou remove do grupo quando destino = null).
     const updatedTask = await prisma.todo.update({
       where: { id: task.id },
-      data: { groupId },
-      include: { group: { select: { id: true, name: true } } },
+      data: { groupId: destinationGroupId },
+      include: { group: { select: { id: true, name: true }  } },
     });
 
-    //actions.push({ type: 'task_moved', id: updatedTask.id });
+    actions.push({ type: 'task_moved', id: updatedTask.id, groupId: destinationGroupId });
 
     return {
       ok: true,
@@ -413,14 +475,20 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
       },
       {
         name: 'mover_para_grupo',
-        description: 'Mover uma tarefa para um grupo selecionado pelo usuario',
+        description: 'Move uma tarefa para outro grupo ou para sem grupo',
         parametersJsonSchema: {
           type: 'object',
           properties: {
-            title: { type: 'string', description: 'Titulo da tarefa' },
+            taskId: { type: 'integer', description: 'ID da tarefa (preferencial para evitar ambiguidade)' },
+            title: { type: 'string', description: 'Titulo da tarefa (use quando nao tiver taskId)' },
+            fromGroupName: { type: 'string', description: 'Grupo de origem (opcional, para desambiguar)' },
             groupNameDestination: { type: 'string', description: 'Nome do grupo destino' },
+            moveToNoGroup: { type: 'boolean', description: 'Se true, move para sem grupo' },
           },
-          required: ['title', 'groupNameDestination'],
+          anyOf: [
+            { required: ['taskId'] },
+            { required: ['title'] },
+          ],
         },
       },
       

@@ -5,7 +5,7 @@ interface UpdateTodoUseCaseRequest {
   todoId: number
   userId: string
   title?: string
-  groupId?: string
+  groupId?: string | null
 }
 
 interface UpdateTodoUseCaseResponse {
@@ -35,7 +35,7 @@ export class UpdateTodoUseCase {
       throw new Error('Não autorizado para atualizar essa tarefa')
     }
 
-    const updatedTodo = await this.todosRepository.update(todoId, { title })
+    const updatedTodo = await this.todosRepository.update(todoId, { title, groupId })
 
     return { todo: updatedTodo }
   }
