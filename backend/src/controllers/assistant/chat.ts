@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
+import type { Prisma } from '@prisma/client';
 import { env } from '../../env/index.js';
 import { prisma } from '../../utils/prismaClient.js';
 
@@ -15,11 +16,14 @@ Regras:
 - Se o usuario pedir para encontrar tarefa, use a ferramenta "buscar_tarefas".
 - Se o usuario pedir para mudar o status de uma tarefa ou dizer que concluiu, use a ferramenta "marcar_concluida".
 - Se o usuario pedir para mover tarefa entre grupos, use a ferramenta "mover_para_grupo".
+- Se o usuario pedir varias acoes na mesma mensagem, execute TODAS em sequencia, na ordem solicitada.
+- Nao finalize a resposta antes de tentar executar todas as acoes pedidas.
 - Se faltar informacao, faca perguntas objetivas antes de agir.
 `;
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const MAX_CONTEXT_MESSAGES = 20;
+const MAX_TOOL_ROUNDS = 5;
 
 // Cliente Gemini (ELISA) usando a chave do env
 const ai = new GoogleGenAI({ apiKey: env.IAAPIKEY });
@@ -82,6 +86,98 @@ type AssistantAction =
   | { type: 'task_completed'; id: number }
   | { type: 'task_moved'; id: number; groupId: string | null };
 
+type ToolResult = {
+  ok: boolean;
+  error?: string;
+  errorId?: string;
+  candidates?: Array<{ id: number; title: string; group: string | null }>;
+  [key: string]: unknown;
+};
+
+type ToolFailure = {
+  tool: string;
+  args: unknown;
+  result: ToolResult;
+};
+
+class ToolExecutionFailed extends Error {
+  failure: ToolFailure;
+
+  constructor(failure: ToolFailure) {
+    super(failure.result.error || 'Falha ao executar ferramenta.');
+    this.name = 'ToolExecutionFailed';
+    this.failure = failure;
+  }
+}
+
+function toSafeJson(value: unknown) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return String(value);
+  }
+}
+
+function extractErrorDetails(err: unknown) {
+  if (err instanceof z.ZodError) {
+    return {
+      type: 'ZodError',
+      message: err.message,
+      issues: err.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+        code: issue.code,
+      })),
+    };
+  }
+
+  if (err instanceof Error) {
+    return {
+      type: err.name,
+      message: err.message,
+      stack: err.stack,
+    };
+  }
+
+  return {
+    type: 'UnknownError',
+    value: toSafeJson(err),
+  };
+}
+
+function buildErrorId(prefix: string) {
+  return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
+}
+
+function buildRetryQuestion(failure: ToolFailure): string {
+  const errorText = failure.result.error || 'Nao consegui concluir essa acao.';
+
+  if (Array.isArray(failure.result.candidates) && failure.result.candidates.length > 0) {
+    const options = failure.result.candidates
+      .slice(0, 5)
+      .map((candidate) => `${candidate.id} (${candidate.title})`)
+      .join(', ');
+
+    return `${errorText} Me informe o taskId correto para eu tentar novamente. Opcoes encontradas: ${options}.`;
+  }
+
+  if (errorText.includes('Grupo nao encontrado')) {
+    return `${errorText} Qual o nome exato do grupo?`;
+  }
+
+  if (errorText.includes('Tarefa nao encontrada')) {
+    return `${errorText} Pode me informar o taskId da tarefa ou o titulo exato?`;
+  }
+
+  if (errorText.includes('Ja existe um grupo com esse nome')) {
+    return `${errorText} Me passe outro nome para o grupo.`;
+  }
+
+  return `${errorText} Pode me passar os dados que faltam para eu tentar novamente?`;
+}
+
+type DbClient = Prisma.TransactionClient;
+
 function extractTextFromResponse(response: any): string | undefined {
   const parts = response?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return undefined;
@@ -107,6 +203,7 @@ function toModelRole(role: string) {
 }
 
 async function runTool(
+  db: DbClient,
   call: { name: string; args: unknown },
   userId: string,
   actions: AssistantAction[],
@@ -117,7 +214,7 @@ async function runTool(
     let groupId: string | undefined;
 
     if (args.groupName) {
-      const group = await prisma.group.findFirst({
+      const group = await db.group.findFirst({
         where: {
           name: args.groupName,
           members: { some: { userId } },
@@ -131,7 +228,7 @@ async function runTool(
       groupId = group.id;
     }
 
-    const todo = await prisma.todo.create({
+    const todo = await db.todo.create({
       data: {
         title: args.title,
         description: args.description ?? null,
@@ -158,12 +255,12 @@ async function runTool(
   if (call.name === 'criar_grupo') {
     const args = createGroupArgsSchema.parse(call.args || {});
 
-    const exists = await prisma.group.findUnique({ where: { name: args.name } });
+    const exists = await db.group.findUnique({ where: { name: args.name } });
     if (exists) {
       return { ok: false, error: 'Ja existe um grupo com esse nome.' };
     }
 
-    const group = await prisma.group.create({
+    const group = await db.group.create({
       data: {
         name: args.name,
         description: args.description ?? null,
@@ -188,13 +285,13 @@ async function runTool(
   if (call.name === 'buscar_tarefas') {
     const args = searchTasksArgsSchema.parse(call.args || {});
 
-    const userGroups = await prisma.userGroup.findMany({
+    const userGroups = await db.userGroup.findMany({
       where: { userId },
       select: { groupId: true },
     });
     const groupIds = userGroups.map((g) => g.groupId);
 
-    const tasks = await prisma.todo.findMany({
+    const tasks = await db.todo.findMany({
       where: {
         OR: [{ userId }, { groupId: { in: groupIds } }],
         AND: [
@@ -228,7 +325,7 @@ async function runTool(
     let groupId: string | undefined;
 
     if (args.groupName) {
-      const group = await prisma.group.findFirst({
+      const group = await db.group.findFirst({
         where: {
           name: args.groupName,
           members: { some: { userId } },
@@ -242,13 +339,13 @@ async function runTool(
       groupId = group.id;
     }
 
-    const userGroups = await prisma.userGroup.findMany({
+    const userGroups = await db.userGroup.findMany({
       where: { userId },
       select: { groupId: true },
     });
     const groupIds = userGroups.map((g) => g.groupId);
 
-    const task = await prisma.todo.findFirst({
+    const task = await db.todo.findFirst({
       where: {
         OR: [{ userId }, { groupId: { in: groupIds } }],
         title: { contains: args.title },
@@ -262,7 +359,7 @@ async function runTool(
       return { ok: false, error: 'Tarefa nao encontrada para marcar como concluida.' };
     }
 
-    const updatedTask = await prisma.todo.update({
+    const updatedTask = await db.todo.update({
       where: { id: task.id },
       data: { completed: true },
       include: { group: { select: { id: true, name: true } } },
@@ -287,7 +384,7 @@ async function runTool(
 
     // Resolve destino: por nome de grupo ou "sem grupo".
     if (!args.moveToNoGroup) {
-      const destinationGroup = await prisma.group.findFirst({
+      const destinationGroup = await db.group.findFirst({
         where: {
           name: args.groupNameDestination,
           members: { some: { userId } },
@@ -302,7 +399,7 @@ async function runTool(
     }
 
     // Busca grupos do usuario para filtrar somente tarefas acessiveis.
-    const userGroups = await prisma.userGroup.findMany({
+    const userGroups = await db.userGroup.findMany({
       where: { userId },
       select: { groupId: true },
     });
@@ -310,7 +407,7 @@ async function runTool(
 
     let fromGroupId: string | null | undefined = undefined;
     if (args.fromGroupName) {
-      const fromGroup = await prisma.group.findFirst({
+      const fromGroup = await db.group.findFirst({
         where: {
           name: args.fromGroupName,
           members: { some: { userId } },
@@ -325,7 +422,7 @@ async function runTool(
     }
 
     // Se veio taskId, faz busca exata. Se veio titulo, pode trazer varias para desambiguar.
-    const candidateTasks = await prisma.todo.findMany({
+    const candidateTasks = await db.todo.findMany({
       where: {
         OR: [{ userId }, { groupId: { in: groupIds } }],
         ...(args.taskId ? { id: args.taskId } : { title: { contains: args.title ?? '' } }),
@@ -358,7 +455,7 @@ async function runTool(
     }
 
     // Move a tarefa para o destino (ou remove do grupo quando destino = null).
-    const updatedTask = await prisma.todo.update({
+    const updatedTask = await db.todo.update({
       where: { id: task.id },
       data: { groupId: destinationGroupId },
       include: { group: { select: { id: true, name: true }  } },
@@ -506,18 +603,83 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
     });
 
     let finalText: string | undefined = extractTextFromResponse(firstResponse);
-    const functionCalls = firstResponse.functionCalls ?? [];
+    const toolFailures: Array<{ tool: string; error: string; errorId?: string }> = [];
+    let currentResponse: any = firstResponse;
 
-    if (functionCalls.length > 0) {
-      // Executa as ferramentas solicitadas pelo modelo
-      const toolResults = [];
-      for (const call of functionCalls) {
-        const result = await runTool(call, userId, actions);
-        toolResults.push({ name: call.name, response: result });
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const functionCalls = currentResponse?.functionCalls ?? [];
+      if (functionCalls.length === 0) break;
+
+      // Executa todas as ferramentas da rodada em transacao.
+      // Se uma falhar, interrompe a rodada e faz rollback.
+      let toolResults: Array<{ name: string; response: ToolResult }> = [];
+      try {
+        const txData = await prisma.$transaction(async (tx) => {
+          const txActions: AssistantAction[] = [];
+          const txResults: Array<{ name: string; response: ToolResult }> = [];
+
+          for (const call of functionCalls) {
+            let result: ToolResult;
+            try {
+              result = await runTool(tx, call, userId, txActions);
+            } catch (toolErr) {
+              const toolErrorId = buildErrorId('assistant_tool_error');
+              console.error('[assistant:tool:exception]', {
+                errorId: toolErrorId,
+                userId,
+                threadId: thread.id,
+                toolName: call?.name,
+                toolArgs: toSafeJson(call?.args),
+                error: extractErrorDetails(toolErr),
+              });
+
+              result = {
+                ok: false,
+                error: 'Falha interna ao executar ferramenta.',
+                errorId: toolErrorId,
+              };
+            }
+
+            if (result.ok === false) {
+              console.error('[assistant:tool:not_completed]', {
+                userId,
+                threadId: thread.id,
+                toolName: call?.name,
+                toolArgs: toSafeJson(call?.args),
+                toolResponse: toSafeJson(result),
+                rollback: true,
+              });
+
+              throw new ToolExecutionFailed({
+                tool: call?.name || 'ferramenta_desconhecida',
+                args: call?.args,
+                result,
+              });
+            }
+
+            txResults.push({ name: call.name, response: result });
+          }
+
+          return { txActions, txResults };
+        });
+
+        actions.push(...txData.txActions);
+        toolResults = txData.txResults;
+      } catch (toolFlowErr) {
+        if (toolFlowErr instanceof ToolExecutionFailed) {
+          toolFailures.push({
+            tool: toolFlowErr.failure.tool,
+            error: toolFlowErr.failure.result.error || 'Falha sem detalhe.',
+            errorId: toolFlowErr.failure.result.errorId,
+          });
+          finalText = buildRetryQuestion(toolFlowErr.failure);
+          break;
+        }
+
+        throw toolFlowErr;
       }
 
-      // Adiciona a chamada da funcao e a resposta da funcao no contexto
-      const modelCallContent = firstResponse.candidates?.[0]?.content;
+      const modelCallContent = currentResponse?.candidates?.[0]?.content;
       if (modelCallContent) contents.push(modelCallContent);
 
       contents.push({
@@ -525,7 +687,7 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
         parts: toolResults.map((r) => ({ functionResponse: r })),
       });
 
-      const finalResponse: any = await ai.models.generateContent({
+      currentResponse = await ai.models.generateContent({
         model: MODEL_NAME,
         contents,
         config: {
@@ -535,10 +697,12 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
         },
       });
 
-      finalText = extractTextFromResponse(finalResponse) ?? finalText;
+      finalText = extractTextFromResponse(currentResponse) ?? finalText;
     }
 
-    const safeText = (finalText || 'Sem resposta da ELISA.').trim();
+    const safeText = (finalText || (actions.length > 0
+      ? 'Acao concluida com sucesso. Se quiser, eu detalho o que foi feito.'
+      : 'Nao consegui gerar uma resposta de texto agora. Pode repetir o pedido com mais detalhes?')).trim();
 
     const assistantMessage = await prisma.assistantMessage.create({
       data: {
@@ -552,10 +716,20 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
       userMessage,
       message: assistantMessage,
       actions,
+      toolFailures,
     });
   } catch (err: any) {
+    const errorId = buildErrorId('assistant_chat_error');
+    console.error('[assistant:chat:failed]', {
+      errorId,
+      userId: (request.user as { sub?: string } | undefined)?.sub,
+      body: toSafeJson(request.body),
+      error: extractErrorDetails(err),
+    });
+
     return reply.status(500).send({
       message: err?.message || 'Erro ao conversar com a ELISA.',
+      errorId,
     });
   }
 }
