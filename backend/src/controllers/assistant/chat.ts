@@ -16,6 +16,8 @@ Regras:
 - Se o usuario pedir para encontrar tarefa, use a ferramenta "buscar_tarefas".
 - Se o usuario pedir para mudar o status de uma tarefa ou dizer que concluiu, use a ferramenta "marcar_concluida".
 - Se o usuario pedir para mover tarefa entre grupos, use a ferramenta "mover_para_grupo".
+- Se o usuario pedir para mover tarefa para sem grupo, use a ferramenta "mover_para_grupo" com moveToNoGroup=true.
+- Se o usuario pedir para saber quantas pessoas estao no grupo use a ferramenta "list_group_members".
 - Se o usuario pedir varias acoes na mesma mensagem, execute TODAS em sequencia, na ordem solicitada.
 - Nao finalize a resposta antes de tentar executar todas as acoes pedidas.
 - Se faltar informacao, faca perguntas objetivas antes de agir.
@@ -51,6 +53,10 @@ const searchTasksArgsSchema = z.object({
 const markTaskDoneArgsSchema = z.object({
   title: z.string().min(1),
   groupName: z.string().optional(),
+});
+
+const listGroupMembersArgsSchema = z.object({
+  groupName: z.string().min(1),
 });
 
 const moveTaskArgsSchema = z.object({
@@ -474,10 +480,23 @@ async function runTool(
       },
     };
   }
+  if (call.name === 'list_group_members') {
+  const args = listGroupMembersArgsSchema.parse(call.args || {});
+
+    const group = await prisma.group.findFirst({
+      where: {
+        name: args.groupName,
+        members: { some: { userId } },
+      },
+      include: { members: { select: { userId: true } } },
+    });
+
+    console.log('Group members for', args.groupName, group?.members);
+
+  }
 
   return { ok: false, error: 'Ferramenta desconhecida.' };
-
-
+  
 }
 
 
@@ -587,8 +606,21 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
             { required: ['title'] },
           ],
         },
+
       },
-      
+      {
+        name: 'list_group_members',
+        description: 'Lista os membros de um grupo',
+        parametersJsonSchema: {
+          type: 'object',
+          properties: {
+            groupName: { type: 'string', description: 'Nome do grupo' },
+          },
+          required: ['groupName'],
+        },
+        
+
+      }
     ];
 
     // Chamada inicial para o modelo
@@ -699,6 +731,7 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
 
       finalText = extractTextFromResponse(currentResponse) ?? finalText;
     }
+    
 
     const safeText = (finalText || (actions.length > 0
       ? 'Acao concluida com sucesso. Se quiser, eu detalho o que foi feito.'
