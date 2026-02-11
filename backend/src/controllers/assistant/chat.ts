@@ -13,6 +13,8 @@ Regras:
 - Se o usuario pedir para criar tarefa, use a ferramenta "criar_tarefa".
 - Se o usuario pedir para criar grupo, use a ferramenta "criar_grupo".
 - Se o usuario pedir para encontrar tarefa, use a ferramenta "buscar_tarefas".
+- Se o usuario pedir para mudar o status de uma tarefa ou dizer que concluiu, use a ferramenta "marcar_concluida".
+- Se o usuario pedir para mudar um grupo use a ferramenta "mover_para_grupo".
 - Se faltar informacao, faca perguntas objetivas antes de agir.
 `;
 
@@ -42,9 +44,28 @@ const searchTasksArgsSchema = z.object({
   limit: z.coerce.number().int().min(1).max(10).optional(),
 });
 
+const markTaskDoneArgsSchema = z.object({
+  title: z.string().min(1),
+  groupName: z.string().optional(),
+});
+
 type AssistantAction =
   | { type: 'task_created'; id: number }
-  | { type: 'group_created'; id: string };
+  | { type: 'group_created'; id: string }
+  | { type: 'task_completed'; id: number };
+  //| { type: 'task_moved', id: string };
+
+function extractTextFromResponse(response: any): string | undefined {
+  const parts = response?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return undefined;
+
+  const text = parts
+    .filter((part: any) => typeof part?.text === 'string')
+    .map((part: any) => part.text)
+    .join('');
+
+  return text || undefined;
+}
 
 async function getOrCreateThread(userId: string) {
   return prisma.assistantThread.upsert({
@@ -175,8 +196,24 @@ async function runTool(
       })),
     };
   }
-  if (call.name === 'marcar_concluida'){
-     const args = searchTasksArgsSchema.parse(call.args || {});
+  if (call.name === 'marcar_concluida') {
+    const args = markTaskDoneArgsSchema.parse(call.args || {});
+    let groupId: string | undefined;
+
+    if (args.groupName) {
+      const group = await prisma.group.findFirst({
+        where: {
+          name: args.groupName,
+          members: { some: { userId } },
+        },
+      });
+
+      if (!group) {
+        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+      }
+
+      groupId = group.id;
+    }
 
     const userGroups = await prisma.userGroup.findMany({
       where: { userId },
@@ -184,35 +221,99 @@ async function runTool(
     });
     const groupIds = userGroups.map((g) => g.groupId);
 
-    const tasks = await prisma.todo.findMany({
+    const task = await prisma.todo.findFirst({
       where: {
         OR: [{ userId }, { groupId: { in: groupIds } }],
-        AND: [
-          {
-            OR: [
-              { title: { contains: args.query } },
-              { description: { contains: args.query } },
-            ],
-          },
-        ],
+        title: { contains: args.title },
+        ...(groupId ? { groupId } : {}),
       },
       include: { group: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 5,
     });
+
+    if (!task) {
+      return { ok: false, error: 'Tarefa nao encontrada para marcar como concluida.' };
+    }
+
+    const updatedTask = await prisma.todo.update({
+      where: { id: task.id },
+      data: { completed: true },
+      include: { group: { select: { id: true, name: true } } },
+    });
+
+    actions.push({ type: 'task_completed', id: updatedTask.id });
 
     return {
       ok: true,
-      query: args.query,
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        completed: t.completed,
-        group: t.group ?? null,
-      })),
+      task: {
+        id: updatedTask.id,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        completed: updatedTask.completed,
+        group: updatedTask.group ?? null,
+      },
     };
+  }
+  if (call.name === 'mover_para_grupo') {
+    const args = markTaskDoneArgsSchema.parse(call.args || {});
+    let groupId: string | undefined;
+    console.log("args",args);
+    if (args.groupName) {
+      const group = await prisma.group.findFirst({
+        where: {
+          name: args.groupName,
+          members: { some: { userId } },
+        },
+      });
 
+      if (!group) {
+        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+      }
+
+      groupId = group.id;
+    }
+
+    const userGroups = await prisma.userGroup.findMany({
+      where: { userId },
+      select: { groupId: true },
+    });
+    const groupIds = userGroups.map((g) => g.groupId);
+    console.log("grupos do usuario",userGroups);
+    console.log("Id do grupo",groupIds);
+
+
+    const task = await prisma.todo.findFirst({
+      where: {
+        OR: [{ userId }, { groupId: { in: groupIds } }],
+        title: { contains: args.title },
+        ...(groupId ? { groupId } : {}),
+      },
+      include: { group: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    console.log("tarefa encontrada",task)
+    if (!task) {
+      return { ok: false, error: 'Tarefa nao encontrada para mover.' };
+    }
+
+    const updatedTask = await prisma.todo.update({
+      where: { id: task.id },
+      data: { groupId },
+      include: { group: { select: { id: true, name: true } } },
+    });
+
+    //actions.push({ type: 'task_moved', id: updatedTask.id });
+
+    return {
+      ok: true,
+      task: {
+        id: updatedTask.id,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        completed: updatedTask.completed,
+        group: updatedTask.group ?? null,
+      },
+    };
   }
 
   return { ok: false, error: 'Ferramenta desconhecida.' };
@@ -248,7 +349,7 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
       take: MAX_CONTEXT_MESSAGES,
     });
 
-    const contents = history
+    const contents: any[] = history
       .slice()
       .reverse()
       .map((m) => ({
@@ -310,6 +411,18 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
           required: ['title'],
         },
       },
+      {
+        name: 'mover_para_grupo',
+        description: 'Mover uma tarefa para um grupo selecionado pelo usuario',
+        parametersJsonSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Titulo da tarefa' },
+            groupNameDestination: { type: 'string', description: 'Nome do grupo destino' },
+          },
+          required: ['title', 'groupNameDestination'],
+        },
+      },
       
     ];
 
@@ -324,7 +437,7 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
       },
     });
 
-    let finalText: string | undefined = firstResponse.text;
+    let finalText: string | undefined = extractTextFromResponse(firstResponse);
     const functionCalls = firstResponse.functionCalls ?? [];
 
     if (functionCalls.length > 0) {
@@ -354,7 +467,7 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
         },
       });
 
-      finalText = finalResponse.text ?? finalText;
+      finalText = extractTextFromResponse(finalResponse) ?? finalText;
     }
 
     const safeText = (finalText || 'Sem resposta da ELISA.').trim();
