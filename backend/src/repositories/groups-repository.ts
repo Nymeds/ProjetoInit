@@ -14,4 +14,9 @@ export interface GroupsRepository {
   findAll(): Promise<Group[]>;
   findManyByUser(userId: string): Promise<Group[]>;
   removeMember(groupId: string, userId: string): Promise<void>;
+  update(
+    id: string,
+    data: { name?: string; description?: string | null }
+  ): Promise<Group>;
+
 }

@@ -23,6 +23,7 @@ const makeGroupsRepository = (): GroupsRepository => ({
   findAll: vi.fn(),
   findManyByUser: vi.fn(),
   removeMember: vi.fn(),
+  update: vi.fn(),
 });
 
 const makeUsersRepository = (): UsersRepository => ({

@@ -188,7 +188,8 @@ export function GroupSidebar({ onHide }: { onHide?: () => void }) {
 
                     {/* Info do grupo */}
                     <div className="flex-1 min-w-0">
-                      <Text variant="label-small" className="truncate text-heading font-medium">
+                      <Text   variant="label-small"
+                          className="block truncate text-heading font-medium">
                         {group.name}
                       </Text>
                       <div className="flex items-center gap-1 mt-0.5">
@@ -265,6 +266,13 @@ export function GroupSidebar({ onHide }: { onHide?: () => void }) {
                         >
                           Abrir chat
                         </Button>
+                         <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); }}
+                        >
+                          Editar Grupo
+                        </Button>
 
                         <Button
                           variant="danger"
@@ -311,6 +319,7 @@ export function GroupSidebar({ onHide }: { onHide?: () => void }) {
                 >
                   <Trash2 size={12} />
                 </Button>
+                
               </div>
             ))}
           </div>
