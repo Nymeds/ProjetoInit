@@ -1,6 +1,4 @@
- 
-
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
+import { api, toApiError } from "./auth";
 
 export interface CreateGroupData {
   name: string;
@@ -8,55 +6,93 @@ export interface CreateGroupData {
   userEmails: string[];
 }
 
-// Criação de grupo
-export async function createGroup(data: CreateGroupData) {
-  const token = localStorage.getItem("token") || "";
-  const res = await fetch(`${BASE}/groups`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData?.message || `Erro ao criar grupo: ${res.status}`);
-  }
-
-  return res.json();
+export interface GroupUser {
+  id: string;
+  name: string;
+  email: string;
 }
 
-// Deleção de grupo
-export async function deleteGroup(id: string) {
-  if (!id) throw new Error("ID do grupo é obrigatório");
-  const token = localStorage.getItem("token") || "";
-  const res = await fetch(`${BASE}/groups/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Erro ao deletar grupo (status ${res.status})`);
-  }
-
-  return res.json();
+export interface GroupMember {
+  userId: string;
+  groupId: string;
+  user: GroupUser;
 }
 
-export async function leaveGroup(id: string) {
-  if (!id) throw new Error("ID do grupo é obrigatório");
-  const token = localStorage.getItem("token") || "";
-  const res = await fetch(`${BASE}/groups/${id}/leave`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export interface GroupResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  members?: GroupMember[];
+}
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Erro ao sair do grupo (status ${res.status})`);
+export interface GroupActionResponse {
+  message: string;
+  group?: GroupResponse;
+}
+
+function normalizeRequiredText(value: string, fieldLabel: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(`${fieldLabel} e obrigatorio`);
   }
 
-  return res.json();
+  return normalized;
+}
+
+function normalizeGroupId(id: string): string {
+  return normalizeRequiredText(id, "ID do grupo");
+}
+
+function normalizeEmails(emails: string[]): string[] {
+  const normalized = emails
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email !== "");
+
+  if (normalized.length === 0) {
+    throw new Error("Informe ao menos um email para o grupo");
+  }
+
+  return normalized;
+}
+
+export async function createGroup(data: CreateGroupData): Promise<GroupResponse> {
+  const name = normalizeRequiredText(data.name, "Nome do grupo");
+  const description = data.description?.trim() || undefined;
+  const userEmails = normalizeEmails(data.userEmails);
+
+  try {
+    const response = await api.post<GroupResponse>("/groups", {
+      name,
+      description,
+      userEmails,
+    });
+
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao criar grupo");
+  }
+}
+
+export async function deleteGroup(id: string): Promise<GroupActionResponse> {
+  const groupId = normalizeGroupId(id);
+
+  try {
+    const response = await api.delete<GroupActionResponse>(`/groups/${encodeURIComponent(groupId)}`);
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao deletar grupo");
+  }
+}
+
+export async function leaveGroup(id: string): Promise<GroupActionResponse> {
+  const groupId = normalizeGroupId(id);
+
+  try {
+    const response = await api.delete<GroupActionResponse>(
+      `/groups/${encodeURIComponent(groupId)}/leave`,
+    );
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao sair do grupo");
+  }
 }

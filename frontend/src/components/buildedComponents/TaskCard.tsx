@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import type { DragEvent as ReactDragEvent } from 'react';
 import { CheckCircle, Clock, Calendar, Trash2 } from 'lucide-react';
 import Card from '../baseComponents/card';
 import { Text } from '../baseComponents/text';
@@ -14,7 +15,7 @@ interface TaskCardProps {
   className?: string;
   onClick?: () => void; 
   onUpdated?: () => void;
-  onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
+  onDragStart?: (event: ReactDragEvent<HTMLDivElement>, todo: Todo) => void;
   placeholder?: boolean;
   isHighlighted?: boolean;
 }

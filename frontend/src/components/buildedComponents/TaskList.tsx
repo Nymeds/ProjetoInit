@@ -1,4 +1,5 @@
 import { TaskCard } from './TaskCard';
+import type { DragEvent as ReactDragEvent } from 'react';
 import { Text } from '../baseComponents/text';
 import { CheckCircle } from 'lucide-react';
 import type { Todo } from '../../types/types';
@@ -8,7 +9,7 @@ interface TaskListProps {
   isLoading?: boolean;
   onDeleted?: () => void;
   onUpdated?: () => void;
-  onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
+  onDragStart?: (event: ReactDragEvent<HTMLDivElement>, todo: Todo) => void;
   onSelect?: (todo: Todo) => void;
   highlightCompleted?: boolean;
   statsFilter?: boolean | null; // null = todos, true = completos, false = pendentes

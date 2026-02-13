@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useMemo } from 'react';
+import type { DragEvent as ReactDragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
@@ -18,6 +19,7 @@ import Card from '../components/baseComponents/card';
 import { Button } from '../components/baseComponents/button';
 import type { Todo } from '../types/types';
 import { DashboardStats } from '../components/buildedComponents/DashboardStats';
+import { moveTodo } from '../api/todos';
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -30,6 +32,9 @@ export function Dashboard() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [gridPinnedGroupIds, setGridPinnedGroupIds] = useState<string[]>([]);
 
   const navigate = useNavigate();
 
@@ -59,6 +64,37 @@ export function Dashboard() {
     });
     return map;
   }, [todosWithGroup]);
+
+  const groupEntries = useMemo(() => {
+    const map = new Map<string, Todo[]>();
+    Object.entries(todosGrouped).forEach(([id, list]) => {
+      map.set(id, list as Todo[]);
+    });
+    gridPinnedGroupIds.forEach((id) => {
+      if (!map.has(id)) map.set(id, []);
+    });
+
+    const ordered: Array<[string, Todo[]]> = [];
+    const used = new Set<string>();
+
+    groups.forEach((g: any) => {
+      if (map.has(g.id)) {
+        ordered.push([g.id, map.get(g.id)!]);
+        used.add(g.id);
+      }
+    });
+
+    if (map.has('sem-grupo')) {
+      ordered.push(['sem-grupo', map.get('sem-grupo')!]);
+      used.add('sem-grupo');
+    }
+
+    for (const [id, list] of map.entries()) {
+      if (!used.has(id)) ordered.push([id, list]);
+    }
+
+    return ordered;
+  }, [todosGrouped, gridPinnedGroupIds, groups]);
 
   const getGroupName = (groupId: string) => {
     if (groupId === 'sem-grupo') return 'Sem grupo';
@@ -91,6 +127,51 @@ export function Dashboard() {
     if (!found) setSelectedTodo(null);
   }, [todosWithGroup, selectedTodo]);
 
+  function toggleGroupPinned(id: string) {
+    setGridPinnedGroupIds((prev) => (
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    ));
+  }
+
+  function handleDragStart(event: ReactDragEvent<HTMLDivElement>, todo: Todo) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(todo.id));
+    setDraggingTodo(todo);
+  }
+
+  function handleDragOver(event: ReactDragEvent<HTMLDivElement>, groupId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    if (dragOverGroupId !== groupId) setDragOverGroupId(groupId);
+  }
+
+  function handleDragLeave(event: ReactDragEvent<HTMLDivElement>, groupId: string) {
+    event.preventDefault();
+    if (dragOverGroupId === groupId) setDragOverGroupId(null);
+  }
+
+  async function handleDrop(event: ReactDragEvent<HTMLDivElement>, groupId: string) {
+    event.preventDefault();
+    setDragOverGroupId(null);
+
+    const idFromData = event.dataTransfer.getData('text/plain');
+    const todo = draggingTodo || todosWithGroup.find((t: any) => String(t.id) === idFromData);
+    if (!todo) return;
+
+    const targetGroupId = groupId === 'sem-grupo' ? null : groupId;
+    const currentGroupId = todo.group?.id ?? null;
+    if (currentGroupId === targetGroupId) return;
+
+    try {
+      await moveTodo(String(todo.id), targetGroupId, todo.title);
+      invalidateTodosAndGroups();
+    } catch (err) {
+      console.error('Erro ao mover tarefa:', err);
+    } finally {
+      setDraggingTodo(null);
+    }
+  }
+
   function handleLogout() {
     logout();
     navigate('/login');
@@ -112,7 +193,11 @@ export function Dashboard() {
       {showSidebar ? (
         <div className="hidden lg:flex flex-col w-64 flex-shrink-0 fixed top-0 left-0 h-full bg-background-secondary/30 border-r border-border-primary">
           <div className="p-1">
-            <GroupSidebar onHide={() => setShowSidebar(false)} />
+            <GroupSidebar
+              onHide={() => setShowSidebar(false)}
+              gridPinnedGroupIds={gridPinnedGroupIds}
+              onToggleGroupPinned={toggleGroupPinned}
+            />
           </div>
         </div>
       ) : (
@@ -182,8 +267,16 @@ export function Dashboard() {
 
               {totalTasks > 0 && (
                 <div className="space-y-8">
-                  {Object.entries(todosGrouped).map(([groupId, groupTodos]) => (
-                    <div key={groupId} className="space-y-4">
+                  {groupEntries.map(([groupId, groupTodos]) => (
+                    <div
+                      key={groupId}
+                      className={`space-y-4 rounded-2xl p-3 transition-colors ${
+                        dragOverGroupId === groupId ? 'bg-accent-brand/10 ring-2 ring-accent-brand/40' : ''
+                      }`}
+                      onDragOver={(event) => handleDragOver(event, groupId)}
+                      onDragLeave={(event) => handleDragLeave(event, groupId)}
+                      onDrop={(event) => handleDrop(event, groupId)}
+                    >
                       <div className="flex items-center gap-3 pb-2 border-b border-border-primary/50">
                         <Text variant="heading-small" className="text-heading font-semibold">{getGroupName(groupId)}</Text>
                         <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-accent-brand/10 text-accent-brand text-sm font-medium">
@@ -196,6 +289,7 @@ export function Dashboard() {
                       isLoading={todosLoading}
                       onDeleted={invalidateTodosAndGroups}
                       onUpdated={invalidateTodosAndGroups}
+                      onDragStart={handleDragStart}
                       onSelect={(todo) => setSelectedTodo(todo)}
                       highlightCompleted={highlightCompleted}
                       statsFilter={statsFilter}

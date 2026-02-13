@@ -1,17 +1,5 @@
-import { id } from "zod/locales";
-
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
-
-function getToken() {
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("@app:token") ||
-    localStorage.getItem("@ignite:token") ||
-    localStorage.getItem("access_token") ||
-    sessionStorage.getItem("token") ||
-    ""
-  );
-}
+import { api, toApiError } from "./auth";
+import type { Todo } from "../types/types";
 
 export interface CreateTodoData {
   title: string;
@@ -20,138 +8,109 @@ export interface CreateTodoData {
   imageFile?: File | null;
 }
 
-export interface UpdateTodoData {
-  id: string;
-  title?: string;
-  groupId?: string | null;
+export interface TodoResponse {
+  todo: Todo;
 }
 
-// Criação de tarefa
-export async function createTodo(data: CreateTodoData) {
-  const token = getToken();
-  if (!token) throw new Error("Token JWT não encontrado");
+export interface DeleteTodoResponse {
+  message: string;
+}
 
+function normalizeRequiredText(value: string, fieldLabel: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(`${fieldLabel} e obrigatorio`);
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalText(value?: string | null): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function normalizeTodoId(id: string): string {
+  return normalizeRequiredText(id, "ID da tarefa");
+}
+
+// Cria tarefa com payload JSON ou multipart quando houver imagem.
+export async function createTodo(data: CreateTodoData): Promise<TodoResponse> {
+  const title = normalizeRequiredText(data.title, "Titulo da tarefa");
+  const description = normalizeOptionalText(data.description);
+  const groupId = normalizeOptionalText(data.groupId);
   const hasImage = Boolean(data.imageFile);
-  let body: FormData | string;
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-
-  if (hasImage) {
-    const formData = new FormData();
-    formData.append("title", data.title);
-    if (data.description) formData.append("description", data.description);
-    if (data.groupId) formData.append("groupId", data.groupId);
-    if (data.imageFile) formData.append("image", data.imageFile);
-    body = formData;
-  } else {
-    const payload: Record<string, unknown> = { title: data.title };
-    if (data.description) payload.description = data.description;
-    if (data.groupId) payload.groupId = data.groupId;
-    headers["Content-Type"] = "application/json";
-    body = JSON.stringify(payload);
-  }
-
-  const res = await fetch(`${BASE}/todo`, {
-    method: "POST",
-    headers,
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => null);
-    let message = text || `Erro ao criar tarefa: ${res.status}`;
-    try {
-      const parsed = JSON.parse(text || '');
-      if (parsed?.message) message = parsed.message;
-    } catch {}
-    throw new Error(message);
-  }
-
-  return res.json();
-}
-
-export async function moveTodo(id: string, groupId: string | null) {
-  if (!id) throw new Error("ID da tarefa é obrigatório");
-  const token = getToken();
-  if (!token) throw new Error("Token JWT não encontrado");
-
-  const res = await fetch(`${BASE}/todo/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ groupId }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => null);
-    let message = text || `Erro ao mover tarefa: ${res.status}`;
-    try {
-      const parsed = JSON.parse(text || '');
-      if (parsed?.message) message = parsed.message;
-    } catch {}
-    throw new Error(message);
-  }
 
   try {
-    return await res.json();
-  } catch {
-    return undefined;
+    if (hasImage) {
+      const formData = new FormData();
+      formData.append("title", title);
+
+      if (description) {
+        formData.append("description", description);
+      }
+
+      if (groupId) {
+        formData.append("groupId", groupId);
+      }
+
+      if (data.imageFile) {
+        formData.append("image", data.imageFile);
+      }
+
+      const response = await api.post<TodoResponse>("/todo", formData);
+      return response.data;
+    }
+
+    const response = await api.post<TodoResponse>("/todo", {
+      title,
+      description,
+      groupId,
+    });
+
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao criar tarefa");
   }
 }
 
-// Deleção de tarefa
-export async function deleteTodo(id: string) {
-  if (!id) throw new Error("ID da tarefa é obrigatório");
-  const token = getToken();
-  if (!token) throw new Error("Token JWT não encontrado");
-
-  const res = await fetch(`${BASE}/todo/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => null);
-    let message = text || `Erro ao deletar tarefa: ${res.status}`;
-    try {
-      const parsed = JSON.parse(text || '');
-      if (parsed?.message) message = parsed.message;
-    } catch {}
-    throw new Error(message);
-  }
+// Move a tarefa de grupo reutilizando o endpoint de update.
+export async function moveTodo(id: string, groupId: string | null, title: string): Promise<TodoResponse> {
+  const todoId = normalizeTodoId(id);
+  const normalizedTitle = normalizeRequiredText(title, "Titulo da tarefa");
+  const normalizedGroupId = normalizeOptionalText(groupId) ?? null;
 
   try {
-    return await res.json();
-  } catch {
-    return undefined;
+    const response = await api.put<TodoResponse>(`/todo/${encodeURIComponent(todoId)}`, {
+      title: normalizedTitle,
+      groupId: normalizedGroupId,
+    });
+
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao mover tarefa");
   }
 }
 
-// Atualizar status de tarefa
-export async function updateTodo(id: string) {
-  if (!id) throw new Error("ID da tarefa é obrigatório");
-  const token = getToken();
-  if (!token) throw new Error("Token JWT não encontrado");
-
-  const res = await fetch(`${BASE}/todo/${encodeURIComponent(id)}/complete`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => null);
-    let message = text || `Erro ao atualizar tarefa: ${res.status}`;
-    try {
-      const parsed = JSON.parse(text || '');
-      if (parsed?.message) message = parsed.message;
-    } catch {}
-    throw new Error(message);
-  }
+export async function deleteTodo(id: string): Promise<DeleteTodoResponse> {
+  const todoId = normalizeTodoId(id);
 
   try {
-    return await res.json();
-  } catch {
-    return undefined;
+    const response = await api.delete<DeleteTodoResponse>(`/todo/${encodeURIComponent(todoId)}`);
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao deletar tarefa");
+  }
+}
+
+// Mantido como updateTodo para preservar contrato atual do frontend.
+export async function updateTodo(id: string): Promise<TodoResponse> {
+  const todoId = normalizeTodoId(id);
+
+  try {
+    const response = await api.patch<TodoResponse>(`/todo/${encodeURIComponent(todoId)}/complete`);
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao atualizar tarefa");
   }
 }

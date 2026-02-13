@@ -16,7 +16,7 @@ export interface TodosRepository {
 
   update(
     id: number, 
-    data: { title?: string; completed?: boolean; description?: string; groupId?: string } 
+    data: { title?: string; completed?: boolean; description?: string; groupId?: string | null } 
   ): Promise<Todo>;
 
   delete(id: number): Promise<void>;

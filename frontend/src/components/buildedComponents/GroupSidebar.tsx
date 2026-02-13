@@ -31,7 +31,15 @@ function getAvatarColor(index: number) {
   return avatarColors[index % avatarColors.length];
 }
 
-export function GroupSidebar({ onHide }: { onHide?: () => void }) {
+export function GroupSidebar({
+  onHide,
+  gridPinnedGroupIds = [],
+  onToggleGroupPinned,
+}: {
+  onHide?: () => void;
+  gridPinnedGroupIds?: string[];
+  onToggleGroupPinned?: (groupId: string) => void;
+}) {
   const { data: groups = [], refetch, isLoading } = useGroups();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -221,6 +229,17 @@ export function GroupSidebar({ onHide }: { onHide?: () => void }) {
                     <div className="mb-2">
                       <Text variant="paragraph-small" className="font-semibold">Descrição</Text>
                       <Text variant="paragraph-small" className="text-accent-paragraph">{group.description ?? 'Sem descrição'}</Text>
+                      <label className="mt-3 inline-flex items-center gap-2 text-sm text-accent-paragraph">
+                        <input
+                          type="checkbox"
+                          checked={gridPinnedGroupIds.includes(group.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onToggleGroupPinned?.(group.id);
+                          }}
+                        />
+                        Mostrar grupo na grid
+                      </label>
                     </div>
 
                     <div>
