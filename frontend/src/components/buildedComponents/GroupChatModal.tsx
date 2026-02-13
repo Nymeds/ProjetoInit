@@ -41,10 +41,10 @@ export function GroupChatModal({ open, onClose, groupId }: { open: boolean; onCl
       setMessages((prev) => {
         const tmpIdx = prev.findIndex(
           (m) =>
-            typeof m.id === 'string' &&
-            m.id.startsWith('tmp-') &&
-            m.content === msg.content &&
-            (m.authorId === user?.id || m.authorId === 'me' || m.authorName === 'Você')
+            typeof m.id === 'string'
+            && m.id.startsWith('tmp-')
+            && m.content === msg.content
+            && (m.authorId === user?.id || m.authorId === 'me' || m.authorName === 'Voce'),
         );
         if (tmpIdx !== -1) {
           const copy = [...prev];
@@ -79,7 +79,7 @@ export function GroupChatModal({ open, onClose, groupId }: { open: boolean; onCl
     try {
       try {
         sendGroupMessage(groupId, content);
-        setMessages((s) => [...s, { id: `tmp-${Date.now()}`, content, authorName: 'Você', createdAt: new Date().toISOString(), groupId }]);
+        setMessages((s) => [...s, { id: `tmp-${Date.now()}`, content, authorName: 'Voce', createdAt: new Date().toISOString(), groupId }]);
       } catch (err) {
         const res = await postGroupMessage(groupId, content);
         setMessages((s) => [...s, res.message]);
@@ -98,42 +98,44 @@ export function GroupChatModal({ open, onClose, groupId }: { open: boolean; onCl
         <div ref={listRef} className="flex-1 overflow-auto p-3 space-y-3 bg-background-primary/10 rounded-md max-h-[55vh] sm:max-h-[65vh] md:max-h-[70vh]">
           {loading && <Text variant="paragraph-small" className="text-accent-paragraph">Carregando...</Text>}
           {!loading && messages.length === 0 && <Text variant="paragraph-small" className="text-accent-paragraph">Nenhuma mensagem</Text>}
+
           {messages.map((m) => {
-  const isMe =
-    m.authorId === user?.id ||
-    m.authorId === 'me' ||
-    m.authorName === 'Você';
+            const isElisa = typeof m.content === 'string' && /^elisa:/i.test(m.content.trim());
+            const isMe = !isElisa && (
+              m.authorId === user?.id
+              || m.authorId === 'me'
+              || m.authorName === 'Voce'
+            );
 
-  return (
-    <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`
-          p-3 rounded-lg border shadow-sm backdrop-blur-sm
-          max-w-[95%] md:max-w-[85%] lg:max-w-[70%]
-          ${isMe
-            ? 'ml-auto text-white bg-[var(--color-accent-brand)] border-transparent'
-            : 'text-accent-paragraph bg-[var(--card-bg)] border-[var(--glass-border)]'
-          }
-        `}
-      >
-        <div className="text-sm font-medium opacity-80">
-          {m.authorName ?? m.authorId}
-        </div>
+            return (
+              <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`
+                    p-3 rounded-lg border shadow-sm backdrop-blur-sm
+                    max-w-[95%] md:max-w-[85%] lg:max-w-[70%]
+                    ${isElisa
+                      ? 'text-slate-50 bg-emerald-700 border-emerald-400/40'
+                      : isMe
+                        ? 'ml-auto text-white bg-[var(--color-accent-brand)] border-transparent'
+                        : 'text-accent-paragraph bg-[var(--card-bg)] border-[var(--glass-border)]'
+                    }
+                  `}
+                >
+                  <div className="text-sm font-medium opacity-80">
+                    {isElisa ? 'ELISA' : (m.authorName ?? m.authorId)}
+                  </div>
 
-        <div className="whitespace-pre-wrap mt-1">
-          {m.content}
-        </div>
+                  <div className="whitespace-pre-wrap mt-1">
+                    {isElisa ? String(m.content).replace(/^elisa:\s*/i, '') : m.content}
+                  </div>
 
-        <div className="text-xs opacity-60 mt-1">
-          {m.createdAt
-            ? new Date(m.createdAt).toLocaleString()
-            : ''}
-        </div>
-      </div>
-    </div>
-  );
-})}
-
+                  <div className="text-xs opacity-60 mt-1">
+                    {m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="flex-shrink-0">

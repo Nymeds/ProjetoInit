@@ -15,6 +15,7 @@ import { leaveGroup } from "../controllers/group/leave.js";
 import { me } from "../controllers/auth/auth-me.js";
 import { listGroups } from "../controllers/group/list.js";
 import { deleteGroup } from "../controllers/group/delete.js";
+import { updateGroup } from "../controllers/group/update.js";
 import { uploadImage } from "../middlewares/upload-images.js";
 import { assistantChat } from "../controllers/assistant/chat.js";
 import { assistantHistory } from "../controllers/assistant/history.js";
@@ -47,6 +48,7 @@ export async function appRoutes(app: FastifyInstance) {
   // Groups
   app.post('/groups', { preHandler: [verifyJwt, uploadImage] }, createGroup);
   app.get('/groups', { preHandler: [verifyJwt] }, listGroups);
+  app.put<{ Params: { id: string } }>('/groups/:id', { preHandler: [verifyJwt] }, updateGroup);
   app.delete<{ Params: { id: string } }>('/groups/:id', { preHandler: [verifyJwt] }, deleteGroup);
   app.delete<{ Params: { id: string } }>('/groups/:id/leave', { preHandler: [verifyJwt] }, leaveGroup);
 

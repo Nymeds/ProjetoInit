@@ -1,12 +1,12 @@
 import type { TodosRepository } from '../../repositories/todo-repository.js'
-import type { Todo } from '@prisma/client'
+import type { TodoWithImagesAndGroup } from '../../repositories/todo-repository.js'
 
 interface SelectTodosUseCaseRequest {
   userId: string
 }
 
 interface SelectTodosUseCaseResponse {
-  todos: Todo[]
+  todos: TodoWithImagesAndGroup[]
 }
 
 export class SelectTodosUseCase {

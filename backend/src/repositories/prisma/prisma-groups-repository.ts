@@ -78,4 +78,14 @@ export class PrismaGroupsRepository implements GroupsRepository {
       include: { members: { include: { user: true } } },
     });
   }
+  async update(id: string, data: { name?: string; description?: string | null }): Promise<Group> {
+    return prisma.group.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+      },
+      include: { members: { include: { user: true } } },
+    });
+  }
 }

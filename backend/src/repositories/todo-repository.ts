@@ -1,7 +1,12 @@
-import type { Todo } from '@prisma/client';
+import type { Image, Todo } from '@prisma/client';
+
+export type TodoWithImagesAndGroup = Todo & {
+  images: Image[];
+  group: { id: string; name: string } | null;
+};
 
 export interface TodosRepository {
-  findAllVisibleForUser(userId: string): Promise<Todo[]>;
+  findAllVisibleForUser(userId: string): Promise<TodoWithImagesAndGroup[]>;
 
   create(data: { 
     title: string;

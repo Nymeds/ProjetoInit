@@ -3,6 +3,14 @@ import { PrismaGroupsRepository } from '../repositories/prisma/prisma-groups-rep
 import { PrismaMessagesRepository } from '../repositories/prisma/prisma-messages-repository.js';
 import { CreateGroupMessageUseCase } from '../use-cases/messages/create-for-group.js';
 import { CreateTodoMessageUseCase } from '../use-cases/messages/create-for-todo.js';
+import {
+  maybeHandleAssistantFollowUpInGroup,
+  maybeHandleTaskConfirmationInGroup,
+  maybePromptTaskActionInGroup,
+  maybeStoreGroupSummaryMemory,
+  processAssistantMentionInGroup,
+  sendElisaMessageToGroup,
+} from '../controllers/assistant/chat.js';
 
 import { Server } from 'socket.io';
 
@@ -69,6 +77,67 @@ export function setupSocketHandlers(app: FastifyInstance) {
         const { message } = await useCase.execute({ groupId: payload.groupId, authorId: userId, content: payload.content });
 
         io.to(`group:${payload.groupId}`).emit('group:message', message);
+
+        try {
+          await maybeStoreGroupSummaryMemory({ groupId: payload.groupId });
+        } catch (summaryErr) {
+          console.error('group:summary_memory failed', summaryErr);
+        }
+
+        const shouldTriggerElisa = /\belisa\b/i.test(payload.content);
+        if (shouldTriggerElisa) {
+          try {
+            await processAssistantMentionInGroup({
+              userId,
+              groupId: payload.groupId,
+              rawMessage: payload.content,
+              io,
+            });
+          } catch (assistantErr) {
+            console.error('group:elisa_mention failed', assistantErr);
+            await sendElisaMessageToGroup({
+              groupId: payload.groupId,
+              userId,
+              content: `ELISA: Nao consegui executar sua solicitacao. Motivo: ${(assistantErr as any)?.message || 'erro interno'}`,
+              io,
+            });
+          }
+          return;
+        }
+
+        const handledConfirmation = await maybeHandleTaskConfirmationInGroup({
+          groupId: payload.groupId,
+          userId,
+          content: payload.content,
+          io,
+        });
+        if (handledConfirmation) return;
+
+        const handledFollowUp = await maybeHandleAssistantFollowUpInGroup({
+          groupId: payload.groupId,
+          userId,
+          content: payload.content,
+          io,
+        });
+        if (handledFollowUp) return;
+
+        try {
+          await maybePromptTaskActionInGroup({
+            groupId: payload.groupId,
+            userId,
+            content: payload.content,
+            io,
+          });
+        } catch (proactiveErr) {
+          console.error('group:elisa_proactive failed', proactiveErr);
+          await sendElisaMessageToGroup({
+            groupId: payload.groupId,
+            userId,
+            content: `ELISA: Deu erro ao analisar sua mensagem agora. Motivo: ${(proactiveErr as any)?.message || 'erro interno'}`,
+            io,
+            registerFollowUp: false,
+          });
+        }
       } catch (err) {
         // ignore socket errors for now
         console.error('group:send_message failed', err);
