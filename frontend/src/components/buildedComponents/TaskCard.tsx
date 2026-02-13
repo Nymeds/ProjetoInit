@@ -1,11 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import type { DragEvent as ReactDragEvent } from 'react';
 import { CheckCircle, Clock, Calendar, Trash2 } from 'lucide-react';
 import Card from '../baseComponents/card';
 import { Text } from '../baseComponents/text';
 import { Button } from '../baseComponents/button';
 import { deleteTodo, updateTodo } from '../../api/todos';
 import type { Todo } from '../../types/types';
+import type { DragEvent } from 'react';
+
+
+interface TaskCardProps {
+  todo: Todo;
+  onDeleted?: () => void;
+  className?: string;
+  onClick?: () => void; 
+  onUpdated?: () => void;
+  onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
+  laceholder?: boolean;
+}
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
 
@@ -15,22 +26,13 @@ interface TaskCardProps {
   className?: string;
   onClick?: () => void; 
   onUpdated?: () => void;
-  onDragStart?: (event: ReactDragEvent<HTMLDivElement>, todo: Todo) => void;
-  placeholder?: boolean;
-  isHighlighted?: boolean;
+    onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
+  laceholder?: boolean;
 }
 
-export function TaskCard({ 
-  todo, 
-  onDeleted,
-  onUpdated, 
-  className = '', 
-  onClick, 
-  onDragStart, 
-  isHighlighted = false
-}: TaskCardProps) {
+export function TaskCard({ todo, onDeleted,onUpdated, className = '', onClick, onDragStart }: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
   const resolveImageUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`);
   const coverImage = todo.images?.[0];
@@ -87,15 +89,7 @@ export function TaskCard({
       draggable
       onDragStart={(event) => onDragStart?.(event, todo)}
       bodyClassName="flex flex-col flex-1 overflow-hidden"
-      className={`
-        cursor-pointer bg-background-secondary p-6 transition-all duration-500 ease-out
-        ${isHighlighted 
-          ? 'border-2 border-accent-brand shadow-xl ring-4 ring-accent-brand/30 scale-105' 
-          : 'border border-border-primary hover:border-accent-brand hover:scale-105 hover:shadow-lg'
-        }
-        ${className} 
-        flex flex-col
-      `}
+      className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${className} flex flex-col`}
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-auto" style={{ maxHeight: 320 }}>
@@ -112,7 +106,7 @@ export function TaskCard({
                 )}
               </div>
             </div>
-            {coverImage && (
+              {coverImage && (
               <div className="mt-2">
                 <img
                   src={resolveImageUrl(coverImage.url)}
@@ -138,6 +132,8 @@ export function TaskCard({
                 {new Date(todo.createdAt).toLocaleDateString('pt-BR')}
               </Text>
             </div>
+
+            
 
             {todo.description && (
               <div className="mt-1">
