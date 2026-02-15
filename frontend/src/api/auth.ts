@@ -12,6 +12,12 @@ export interface LoginResponse {
   refreshToken?: string;
 }
 
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  password?: string;
+}
+
 function readStoredToken(): string {
   for (const key of TOKEN_STORAGE_KEYS) {
     const value = localStorage.getItem(key);
@@ -116,5 +122,14 @@ export async function loginRequest(email: string, password: string): Promise<Log
     }
 
     throw toApiError(error, "Erro ao conectar ao servidor");
+  }
+}
+
+export async function updateMyProfile(payload: UpdateProfilePayload): Promise<{ user: { id: string; name: string; email: string; role: "ADMIN" | "MEMBER" } }> {
+  try {
+    const { data } = await api.patch("/users/me", payload);
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Erro ao atualizar perfil");
   }
 }

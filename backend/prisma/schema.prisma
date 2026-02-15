@@ -12,6 +12,12 @@ enum Role {
   MEMBER
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id       String @id @default(cuid())
   name     String
@@ -24,6 +30,25 @@ model User {
   groups          UserGroup[]
   messages        Message[]
   assistantThread AssistantThread?
+  sentFriendRequests     Friendship[] @relation("FriendshipRequester")
+  receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  requesterId String
+  addresseeId String
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@index([status])
 }
 
 model Todo {

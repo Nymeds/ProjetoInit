@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useTodos } from '../hooks/useTodos';
 import { useGroups } from '../hooks/useGroups';
+import { useChat } from '../hooks/useChat';
 import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
 import { TaskList } from '../components/buildedComponents/TaskList';
 import NewTaskModal from '../components/buildedComponents/NewTaskModal';
@@ -13,6 +14,7 @@ import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
 import TaskDrawer from '../components/buildedComponents/TaskDrawer';
 import ElisaAssistant from '../components/buildedComponents/ElisaAssistant';
 import { GroupSidebar } from '../components/buildedComponents/GroupSidebar';
+import { UserSettingsModal } from '../components/buildedComponents/UserSettingsModal';
 import { BarChart3, Plus } from 'lucide-react';
 import { Text } from '../components/baseComponents/text';
 import Card from '../components/baseComponents/card';
@@ -25,6 +27,7 @@ export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const { data: todos, isLoading: todosLoading } = useTodos({ enabled: !!user });
   const { data: groups = [] } = useGroups();
+  const { joinGroup, leaveGroup, on } = useChat();
 
   const queryClient = useQueryClient();
 
@@ -35,6 +38,7 @@ export function Dashboard() {
   const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [gridPinnedGroupIds, setGridPinnedGroupIds] = useState<string[]>([]);
+  const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -46,6 +50,24 @@ export function Dashboard() {
     queryClient.invalidateQueries({ queryKey: ['todos'] });
     queryClient.invalidateQueries({ queryKey: ['groups'] });
   }
+
+  useEffect(() => {
+    if (!user) return;
+
+    const groupIds = groups.map((g: any) => g.id).filter(Boolean);
+    if (groupIds.length === 0) return;
+
+    groupIds.forEach((groupId: string) => joinGroup(groupId));
+
+    const offGroupMessage = on('group:message', () => {
+      invalidateTodosAndGroups();
+    });
+
+    return () => {
+      offGroupMessage();
+      groupIds.forEach((groupId: string) => leaveGroup(groupId));
+    };
+  }, [user, groups, joinGroup, leaveGroup, on]);
 
   const todosWithGroup = useMemo(() => {
     if (!todos) return [];
@@ -210,7 +232,12 @@ export function Dashboard() {
         <div className="max-w-7xl mx-auto p-6 space-y-8">
           <Card className="bg-background-quaternary border border-border-primary">
             <div className="p-6">
-              <DashboardHeader user={user} onLogout={handleLogout} onToggleSidebar={() => setShowSidebar((s) => !s)} />
+              <DashboardHeader
+                user={user}
+                onLogout={handleLogout}
+                onToggleSidebar={() => setShowSidebar((s) => !s)}
+                onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
+              />
             </div>
           </Card>
 
@@ -325,6 +352,8 @@ export function Dashboard() {
 
       {/* ELISA: botao flutuante no dashboard */}
       <ElisaAssistant onAction={invalidateTodosAndGroups} />
+
+      <UserSettingsModal open={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
     </div>
   );
 }

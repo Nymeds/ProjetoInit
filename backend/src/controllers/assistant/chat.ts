@@ -1,9 +1,20 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
-import type { Prisma } from '@prisma/client';
 import { env } from '../../env/index.js';
 import { prisma } from '../../utils/prismaClient.js';
+import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js';
+import { PrismaGroupsRepository } from '../../repositories/prisma/prisma-groups-repository.js';
+import { PrismaUsersRepository } from '../../repositories/prisma/prisma-users-repository.js';
+import { PrismaMessagesRepository } from '../../repositories/prisma/prisma-messages-repository.js';
+import { CreateTodoUseCase } from '../../use-cases/todo/create-todo.js';
+import { SelectTodosUseCase } from '../../use-cases/todo/select-todo.js';
+import { CompleteTodoUseCase } from '../../use-cases/todo/complete-todo.js';
+import { UpdateTodoUseCase } from '../../use-cases/todo/update-todo.js';
+import { CreateGroupUseCase } from '../../use-cases/groups/create.js';
+import { ListGroupsUseCase } from '../../use-cases/groups/list-groups.js';
+import { ListGroupMessagesUseCase } from '../../use-cases/messages/list-by-group.js';
+import { CreateGroupMessageUseCase } from '../../use-cases/messages/create-for-group.js';
 
 const SYSTEM_INSTRUCTION = `
 Voce e a ELISA.
@@ -40,6 +51,18 @@ const INTERNAL_GROUP_ORCHESTRATION_PREFIXES = [
 
 const ai = new GoogleGenAI({ apiKey: env.IAAPIKEY });
 const proactiveTaskPromptCooldown = new Map<string, number>();
+const todosRepository = new PrismaTodosRepository();
+const groupsRepository = new PrismaGroupsRepository();
+const usersRepository = new PrismaUsersRepository();
+const messagesRepository = new PrismaMessagesRepository();
+const createTodoUseCase = new CreateTodoUseCase(todosRepository);
+const selectTodosUseCase = new SelectTodosUseCase(todosRepository);
+const completeTodoUseCase = new CompleteTodoUseCase(todosRepository);
+const updateTodoUseCase = new UpdateTodoUseCase(todosRepository);
+const createGroupUseCase = new CreateGroupUseCase(groupsRepository, usersRepository);
+const listGroupsUseCase = new ListGroupsUseCase(groupsRepository);
+const listGroupMessagesUseCase = new ListGroupMessagesUseCase(messagesRepository);
+const createGroupMessageUseCase = new CreateGroupMessageUseCase(messagesRepository);
 
 const chatBodySchema = z.object({
   message: z.string().min(1, 'Mensagem obrigatoria'),
@@ -56,6 +79,7 @@ const createTaskArgsSchema = z.object({
 const createGroupArgsSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  userEmails: z.array(z.string().email()).min(2),
 });
 
 const searchTasksArgsSchema = z.object({
@@ -217,8 +241,6 @@ function buildRetryQuestion(failure: ToolFailure): string {
 
   return `${errorText} Pode me passar os dados que faltam para eu tentar novamente?`;
 }
-
-type DbClient = Prisma.TransactionClient;
 
 function extractTextFromResponse(response: any): string | undefined {
   const parts = response?.candidates?.[0]?.content?.parts;
@@ -535,42 +557,6 @@ function buildThreadContents(
   return selected
     .reverse()
     .map((m) => ({ role: toModelRole(m.role), parts: [{ text: m.content }] }));
-}
-
-async function resolveGroupForUser(
-  db: DbClient,
-  userId: string,
-  args: { groupId?: string; groupName?: string },
-  fallbackGroupId?: string,
-) {
-  if (args.groupId) {
-    return db.group.findFirst({
-      where: {
-        id: args.groupId,
-        members: { some: { userId } },
-      },
-    });
-  }
-
-  if (args.groupName) {
-    return db.group.findFirst({
-      where: {
-        name: args.groupName,
-        members: { some: { userId } },
-      },
-    });
-  }
-
-  if (fallbackGroupId) {
-    return db.group.findFirst({
-      where: {
-        id: fallbackGroupId,
-        members: { some: { userId } },
-      },
-    });
-  }
-
-  return null;
 }
 
 function buildGroupHistoryPrompt(
@@ -908,8 +894,12 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
       description: 'Criar grupo',
       parametersJsonSchema: {
         type: 'object',
-        properties: { name: { type: 'string' }, description: { type: 'string' } },
-        required: ['name'],
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          userEmails: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name', 'userEmails'],
       },
     },
     buscar_tarefas: {
@@ -974,8 +964,8 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
 
   const selected = new Set<string>();
 
-  if (/criar.*tarefa|nova tarefa/.test(text)) selected.add('criar_tarefa');
-  if (/criar.*grupo|novo grupo/.test(text)) selected.add('criar_grupo');
+  if (/\b(criar|cria|crie)\b.*\btarefa\b|\bnova tarefa\b/.test(text)) selected.add('criar_tarefa');
+  if (/\b(criar|cria|crie)\b.*\bgrupo\b|\bnovo grupo\b/.test(text)) selected.add('criar_grupo');
   if (/buscar|procur|encontr|listar tarefa/.test(text)) selected.add('buscar_tarefas');
   if (/conclu|finaliz|completei|marcar.*conclu/.test(text)) selected.add('marcar_concluida');
   if (/mover|trocar.*grupo|sem grupo/.test(text)) selected.add('mover_para_grupo');
@@ -995,410 +985,326 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
   return Array.from(selected).map((name) => all[name]);
 }
 
+async function resolveUserGroup(
+  userId: string,
+  args: { groupId?: string; groupName?: string },
+  fallbackGroupId?: string,
+) {
+  const { groups } = await listGroupsUseCase.execute(userId);
+
+  if (args.groupId) {
+    return (groups as any[]).find((group) => group.id === args.groupId) ?? null;
+  }
+
+  if (args.groupName) {
+    return (groups as any[]).find((group) => group.name?.toLowerCase() === args.groupName?.toLowerCase()) ?? null;
+  }
+
+  if (fallbackGroupId) {
+    return (groups as any[]).find((group) => group.id === fallbackGroupId) ?? null;
+  }
+
+  return null;
+}
+
+function toToolTask(todo: any, group: { id: string; name: string } | null = null) {
+  return {
+    id: todo.id,
+    title: todo.title,
+    description: todo.description ?? null,
+    completed: Boolean(todo.completed),
+    group,
+  };
+}
+
 async function runTool(
-  db: DbClient,
   call: { name: string; args: unknown },
   userId: string,
   actions: AssistantAction[],
   runtime: AssistantRuntimeContext,
 ) {
-  if (call.name === 'criar_tarefa') {
-    const args = createTaskArgsSchema.parse(call.args || {});
-    let groupId: string | undefined;
+  try {
+    if (call.name === 'criar_tarefa') {
+      const args = createTaskArgsSchema.parse(call.args || {});
+      let groupId: string | undefined;
+      let groupData: { id: string; name: string } | null = null;
 
-    if (args.groupName) {
-      const group = await db.group.findFirst({
-        where: {
-          name: args.groupName,
-          members: { some: { userId } },
-        },
-      });
+      if (args.groupName) {
+        const group = await resolveUserGroup(userId, { groupName: args.groupName });
+        if (!group) {
+          return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+        }
 
-      if (!group) {
-        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+        groupId = group.id;
+        groupData = { id: group.id, name: group.name };
       }
 
-      groupId = group.id;
-    }
-
-    const todo = await db.todo.create({
-      data: {
+      const { todo } = await createTodoUseCase.execute({
         title: args.title,
-        description: args.description ?? null,
         userId,
+        description: args.description,
         groupId,
-      },
-      include: { group: { select: { id: true, name: true } } },
-    });
+      });
 
-    actions.push({ type: 'task_created', id: todo.id });
+      const task = toToolTask(todo, groupData);
 
-    return {
-      ok: true,
-      task: {
-        id: todo.id,
-        title: todo.title,
-        description: todo.description,
-        completed: todo.completed,
-        group: todo.group ?? null,
-      },
-    };
-  }
+      actions.push({ type: 'task_created', id: task.id });
 
-  if (call.name === 'criar_grupo') {
-    const args = createGroupArgsSchema.parse(call.args || {});
-
-    const exists = await db.group.findUnique({ where: { name: args.name } });
-    if (exists) {
-      return { ok: false, error: 'Ja existe um grupo com esse nome.' };
+      return {
+        ok: true,
+        task,
+      };
     }
 
-    const group = await db.group.create({
-      data: {
+    if (call.name === 'criar_grupo') {
+      const args = createGroupArgsSchema.parse(call.args || {});
+      const group = await createGroupUseCase.execute({
         name: args.name,
-        description: args.description ?? null,
-        members: {
-          create: [{ userId }],
-        },
-      },
-    });
-
-    actions.push({ type: 'group_created', id: group.id });
-
-    return {
-      ok: true,
-      group: {
-        id: group.id,
-        name: group.name,
-        description: group.description,
-      },
-    };
-  }
-
-  if (call.name === 'buscar_tarefas') {
-    const args = searchTasksArgsSchema.parse(call.args || {});
-
-    const userGroups = await db.userGroup.findMany({
-      where: { userId },
-      select: { groupId: true },
-    });
-    const groupIds = userGroups.map((g) => g.groupId);
-
-    const tasks = await db.todo.findMany({
-      where: {
-        OR: [{ userId }, { groupId: { in: groupIds } }],
-        AND: [
-          {
-            OR: [
-              { title: { contains: args.query } },
-              { description: { contains: args.query } },
-            ],
-          },
-        ],
-      },
-      include: { group: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 5,
-    });
-
-    return {
-      ok: true,
-      query: args.query,
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        completed: t.completed,
-        group: t.group ?? null,
-      })),
-    };
-  }
-
-  if (call.name === 'marcar_concluida') {
-    const args = markTaskDoneArgsSchema.parse(call.args || {});
-    let groupId: string | undefined;
-
-    if (args.groupName) {
-      const group = await db.group.findFirst({
-        where: {
-          name: args.groupName,
-          members: { some: { userId } },
-        },
+        description: args.description,
+        userEmails: args.userEmails,
       });
+
+      actions.push({ type: 'group_created', id: group.id });
+
+      return {
+        ok: true,
+        group: {
+          id: group.id,
+          name: group.name,
+          description: group.description,
+        },
+      };
+    }
+
+    if (call.name === 'buscar_tarefas') {
+      const args = searchTasksArgsSchema.parse(call.args || {});
+      const { todos } = await selectTodosUseCase.execute({ userId });
+      const query = args.query.toLowerCase();
+      const tasks = todos
+        .filter((todo) =>
+          todo.title.toLowerCase().includes(query)
+          || (todo.description ?? '').toLowerCase().includes(query),
+        )
+        .slice(0, args.limit ?? 5)
+        .map((todo) => toToolTask(
+          todo,
+          todo.group ? { id: todo.group.id, name: todo.group.name } : null,
+        ));
+
+      return {
+        ok: true,
+        query: args.query,
+        tasks,
+      };
+    }
+
+    if (call.name === 'marcar_concluida') {
+      const args = markTaskDoneArgsSchema.parse(call.args || {});
+      const { todos } = await selectTodosUseCase.execute({ userId });
+      const selected = todos.find((todo) => {
+        const titleMatches = todo.title.toLowerCase().includes(args.title.toLowerCase());
+        if (!titleMatches) return false;
+
+        if (!args.groupName) return true;
+        return todo.group?.name?.toLowerCase() === args.groupName.toLowerCase();
+      });
+
+      if (!selected) {
+        return { ok: false, error: 'Tarefa nao encontrada para marcar como concluida.' };
+      }
+
+      const { todo } = await completeTodoUseCase.execute({
+        todoId: selected.id,
+        userId,
+      });
+
+      const task = toToolTask(
+        todo,
+        selected.group ? { id: selected.group.id, name: selected.group.name } : null,
+      );
+
+      actions.push({ type: 'task_completed', id: task.id });
+
+      return {
+        ok: true,
+        task,
+      };
+    }
+
+    if (call.name === 'mover_para_grupo') {
+      const args = moveTaskArgsSchema.parse(call.args || {});
+      let destinationGroupId: string | null = null;
+      let destinationGroup: { id: string; name: string } | null = null;
+
+      if (!args.moveToNoGroup) {
+        const resolved = await resolveUserGroup(userId, { groupName: args.groupNameDestination });
+        if (!resolved) {
+          return { ok: false, error: 'Grupo de destino nao encontrado para este usuario.' };
+        }
+
+        destinationGroupId = resolved.id;
+        destinationGroup = { id: resolved.id, name: resolved.name };
+      }
+
+      const { todos } = await selectTodosUseCase.execute({ userId });
+      const candidates = todos.filter((todo) => {
+        if (args.taskId && todo.id !== args.taskId) return false;
+        if (!args.taskId && !(todo.title.toLowerCase().includes((args.title ?? '').toLowerCase()))) return false;
+        if (!args.fromGroupName) return true;
+        return todo.group?.name?.toLowerCase() === args.fromGroupName.toLowerCase();
+      });
+
+      if (candidates.length === 0) {
+        return { ok: false, error: 'Tarefa nao encontrada para mover.' };
+      }
+
+      if (!args.taskId && candidates.length > 1) {
+        return {
+          ok: false,
+          error: 'Encontrei mais de uma tarefa com esse titulo. Informe taskId para mover a tarefa correta.',
+          candidates: candidates.map((todo) => ({
+            id: todo.id,
+            title: todo.title,
+            group: todo.group?.name ?? null,
+          })),
+        };
+      }
+
+      const selected = candidates[0];
+      const currentGroupId = selected.group?.id ?? null;
+      if (currentGroupId === destinationGroupId) {
+        return { ok: false, error: 'A tarefa ja esta no destino informado.' };
+      }
+
+      const { todo } = await updateTodoUseCase.execute({
+        todoId: selected.id,
+        userId,
+        title: selected.title,
+        groupId: destinationGroupId,
+      });
+
+      const task = toToolTask(todo, destinationGroup);
+
+      actions.push({ type: 'task_moved', id: task.id, groupId: task.group?.id ?? null });
+
+      return {
+        ok: true,
+        task,
+      };
+    }
+
+    if (call.name === 'list_group_members') {
+      const args = listGroupMembersArgsSchema.parse(call.args || {});
+      const group = await resolveUserGroup(
+        userId,
+        { groupId: args.groupId, groupName: args.groupName },
+        runtime.sourceGroupId,
+      );
 
       if (!group) {
         return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
       }
 
-      groupId = group.id;
-    }
+      const members = (group.members ?? [])
+        .map((member: any) => member.user)
+        .filter(Boolean)
+        .map((member: any) => ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+        }))
+        .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
 
-    const userGroups = await db.userGroup.findMany({
-      where: { userId },
-      select: { groupId: true },
-    });
-    const groupIds = userGroups.map((g) => g.groupId);
-
-    const task = await db.todo.findFirst({
-      where: {
-        OR: [{ userId }, { groupId: { in: groupIds } }],
-        title: { contains: args.title },
-        ...(groupId ? { groupId } : {}),
-      },
-      include: { group: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!task) {
-      return { ok: false, error: 'Tarefa nao encontrada para marcar como concluida.' };
-    }
-
-    const updatedTask = await db.todo.update({
-      where: { id: task.id },
-      data: { completed: true },
-      include: { group: { select: { id: true, name: true } } },
-    });
-
-    actions.push({ type: 'task_completed', id: updatedTask.id });
-
-    return {
-      ok: true,
-      task: {
-        id: updatedTask.id,
-        title: updatedTask.title,
-        description: updatedTask.description,
-        completed: updatedTask.completed,
-        group: updatedTask.group ?? null,
-      },
-    };
-  }
-
-  if (call.name === 'mover_para_grupo') {
-    const args = moveTaskArgsSchema.parse(call.args || {});
-    let destinationGroupId: string | null = null;
-
-    if (!args.moveToNoGroup) {
-      const destinationGroup = await db.group.findFirst({
-        where: {
-          name: args.groupNameDestination,
-          members: { some: { userId } },
-        },
-      });
-
-      if (!destinationGroup) {
-        return { ok: false, error: 'Grupo de destino nao encontrado para este usuario.' };
-      }
-
-      destinationGroupId = destinationGroup.id;
-    }
-
-    const userGroups = await db.userGroup.findMany({
-      where: { userId },
-      select: { groupId: true },
-    });
-    const groupIds = userGroups.map((g) => g.groupId);
-
-    let fromGroupId: string | null | undefined;
-    if (args.fromGroupName) {
-      const fromGroup = await db.group.findFirst({
-        where: {
-          name: args.fromGroupName,
-          members: { some: { userId } },
-        },
-      });
-
-      if (!fromGroup) {
-        return { ok: false, error: 'Grupo de origem nao encontrado para este usuario.' };
-      }
-
-      fromGroupId = fromGroup.id;
-    }
-
-    const candidateTasks = await db.todo.findMany({
-      where: {
-        OR: [{ userId }, { groupId: { in: groupIds } }],
-        ...(args.taskId ? { id: args.taskId } : { title: { contains: args.title ?? '' } }),
-        ...(fromGroupId !== undefined ? { groupId: fromGroupId } : {}),
-      },
-      include: { group: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: args.taskId ? 1 : 10,
-    });
-
-    if (candidateTasks.length === 0) {
-      return { ok: false, error: 'Tarefa nao encontrada para mover.' };
-    }
-
-    if (!args.taskId && candidateTasks.length > 1) {
       return {
-        ok: false,
-        error: 'Encontrei mais de uma tarefa com esse titulo. Informe taskId para mover a tarefa correta.',
-        candidates: candidateTasks.map((t) => ({
-          id: t.id,
-          title: t.title,
-          group: t.group?.name ?? null,
+        ok: true,
+        group: {
+          id: group.id,
+          name: group.name,
+        },
+        count: members.length,
+        members,
+      };
+    }
+
+    if (call.name === 'list_group_history') {
+      const args = listGroupHistoryArgsSchema.parse(call.args || {});
+      const group = await resolveUserGroup(
+        userId,
+        { groupId: args.groupId, groupName: args.groupName },
+        runtime.sourceGroupId,
+      );
+
+      if (!group) {
+        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+      }
+
+      const { messages } = await listGroupMessagesUseCase.execute(group.id);
+      const recent = messages.slice(-(args.limit ?? 10));
+
+      return {
+        ok: true,
+        group: {
+          id: group.id,
+          name: group.name,
+        },
+        messages: recent.map((message) => ({
+          id: message.id,
+          authorId: message.authorId,
+          authorName: message.authorName ?? message.authorId,
+          content: message.content,
+          createdAt: message.createdAt.toISOString(),
         })),
       };
     }
 
-    const task = candidateTasks[0];
-    if ((task.groupId ?? null) === destinationGroupId) {
-      return { ok: false, error: 'A tarefa ja esta no destino informado.' };
-    }
+    if (call.name === 'avisar_no_grupo') {
+      const args = postGroupNoticeArgsSchema.parse(call.args || {});
+      const group = await resolveUserGroup(
+        userId,
+        { groupId: args.groupId, groupName: args.groupName },
+        runtime.sourceGroupId,
+      );
 
-    const updatedTask = await db.todo.update({
-      where: { id: task.id },
-      data: { groupId: destinationGroupId },
-      include: { group: { select: { id: true, name: true } } },
-    });
+      if (!group) {
+        return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
+      }
 
-    actions.push({ type: 'task_moved', id: updatedTask.id, groupId: destinationGroupId });
-
-    return {
-      ok: true,
-      task: {
-        id: updatedTask.id,
-        title: updatedTask.title,
-        description: updatedTask.description,
-        completed: updatedTask.completed,
-        group: updatedTask.group ?? null,
-      },
-    };
-  }
-
-  if (call.name === 'list_group_members') {
-    const args = listGroupMembersArgsSchema.parse(call.args || {});
-    const group = await resolveGroupForUser(
-      db,
-      userId,
-      { groupId: args.groupId, groupName: args.groupName },
-      runtime.sourceGroupId,
-    );
-
-    if (!group) {
-      return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
-    }
-
-    const members = await db.userGroup.findMany({
-      where: { groupId: group.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { user: { name: 'asc' } },
-    });
-
-    return {
-      ok: true,
-      group: {
-        id: group.id,
-        name: group.name,
-      },
-      count: members.length,
-      members: members.map((m) => ({
-        id: m.user.id,
-        name: m.user.name,
-        email: m.user.email,
-      })),
-    };
-  }
-
-  if (call.name === 'list_group_history') {
-    const args = listGroupHistoryArgsSchema.parse(call.args || {});
-    const group = await resolveGroupForUser(
-      db,
-      userId,
-      { groupId: args.groupId, groupName: args.groupName },
-      runtime.sourceGroupId,
-    );
-
-    if (!group) {
-      return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
-    }
-
-    const messages = await db.message.findMany({
-      where: { groupId: group.id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 10,
-    });
-
-    return {
-      ok: true,
-      group: {
-        id: group.id,
-        name: group.name,
-      },
-      messages: messages
-        .slice()
-        .reverse()
-        .map((m) => ({
-          id: m.id,
-          authorId: m.authorId,
-          authorName: m.author?.name ?? m.authorId,
-          content: m.content,
-          createdAt: m.createdAt.toISOString(),
-        })),
-    };
-  }
-
-  if (call.name === 'avisar_no_grupo') {
-    const args = postGroupNoticeArgsSchema.parse(call.args || {});
-    const group = await resolveGroupForUser(
-      db,
-      userId,
-      { groupId: args.groupId, groupName: args.groupName },
-      runtime.sourceGroupId,
-    );
-
-    if (!group) {
-      return { ok: false, error: 'Grupo nao encontrado para este usuario.' };
-    }
-
-    const message = await db.message.create({
-      data: {
-        content: normalizeElisaContent(args.content),
+      const { message } = await createGroupMessageUseCase.execute({
         groupId: group.id,
         authorId: userId,
-      },
-      include: {
-        author: {
-          select: { name: true },
+        content: normalizeElisaContent(args.content),
+      });
+
+      const result = {
+        group: { id: group.id, name: group.name },
+        groupMessage: {
+          id: message.id,
+          content: message.content,
+          createdAt: message.createdAt.toISOString(),
+          kind: message.kind,
+          authorId: message.authorId,
+          authorName: message.authorName ?? null,
+          groupId: message.groupId,
+          todoId: message.todoId,
         },
-      },
-    });
+      };
 
-    actions.push({ type: 'group_message_sent', id: message.id, groupId: group.id });
+      actions.push({ type: 'group_message_sent', id: result.groupMessage.id, groupId: result.group.id });
 
+      return {
+        ok: true,
+        ...result,
+      };
+    }
+
+    return { ok: false, error: 'Ferramenta desconhecida.' };
+  } catch (err: any) {
     return {
-      ok: true,
-      group: { id: group.id, name: group.name },
-      groupMessage: {
-        id: message.id,
-        content: message.content,
-        createdAt: message.createdAt.toISOString(),
-        kind: message.kind,
-        authorId: message.authorId,
-        authorName: message.author?.name ?? null,
-        groupId: message.groupId,
-        todoId: message.todoId,
-      },
+      ok: false,
+      error: err?.message || 'Falha ao executar ferramenta.',
+      ...(Array.isArray(err?.candidates) ? { candidates: err.candidates } : {}),
     };
   }
-
-  return { ok: false, error: 'Ferramenta desconhecida.' };
 }
 
 export async function processAssistantMessage({
@@ -1531,57 +1437,52 @@ export async function processAssistantMessage({
     let toolResults: Array<{ name: string; response: ToolResult }> = [];
 
     try {
-      const txData = await prisma.$transaction(async (tx) => {
-        const txActions: AssistantAction[] = [];
-        const txResults: Array<{ name: string; response: ToolResult }> = [];
+      const roundActions: AssistantAction[] = [];
+      const roundResults: Array<{ name: string; response: ToolResult }> = [];
 
-        for (const call of functionCalls) {
-          let result: ToolResult;
-          try {
-            result = await runTool(tx, call, userId, txActions, runtime);
-          } catch (toolErr) {
-            const toolErrorId = buildErrorId('assistant_tool_error');
-              console.error('[assistant:tool:exception]', {
-                errorId: toolErrorId,
-                userId,
-                threadId: thread?.id,
-                toolName: call?.name,
-                toolArgs: toSafeJson(call?.args),
-                error: extractErrorDetails(toolErr),
-            });
+      for (const call of functionCalls) {
+        let result: ToolResult;
+        try {
+          result = await runTool(call, userId, roundActions, runtime);
+        } catch (toolErr) {
+          const toolErrorId = buildErrorId('assistant_tool_error');
+          console.error('[assistant:tool:exception]', {
+            errorId: toolErrorId,
+            userId,
+            threadId: thread?.id,
+            toolName: call?.name,
+            toolArgs: toSafeJson(call?.args),
+            error: extractErrorDetails(toolErr),
+          });
 
-            result = {
-              ok: false,
-              error: 'Falha interna ao executar ferramenta.',
-              errorId: toolErrorId,
-            };
-          }
-
-          if (result.ok === false) {
-            console.error('[assistant:tool:not_completed]', {
-              userId,
-              threadId: thread?.id,
-              toolName: call?.name,
-              toolArgs: toSafeJson(call?.args),
-              toolResponse: toSafeJson(result),
-              rollback: true,
-            });
-
-            throw new ToolExecutionFailed({
-              tool: call?.name || 'ferramenta_desconhecida',
-              args: call?.args,
-              result,
-            });
-          }
-
-          txResults.push({ name: call.name, response: result });
+          result = {
+            ok: false,
+            error: 'Falha interna ao executar ferramenta.',
+            errorId: toolErrorId,
+          };
         }
 
-        return { txActions, txResults };
-      });
+        if (result.ok === false) {
+          console.error('[assistant:tool:not_completed]', {
+            userId,
+            threadId: thread?.id,
+            toolName: call?.name,
+            toolArgs: toSafeJson(call?.args),
+            toolResponse: toSafeJson(result),
+          });
 
-      actions.push(...txData.txActions);
-      toolResults = txData.txResults;
+          throw new ToolExecutionFailed({
+            tool: call?.name || 'ferramenta_desconhecida',
+            args: call?.args,
+            result,
+          });
+        }
+
+        roundResults.push({ name: call.name, response: result });
+      }
+
+      actions.push(...roundActions);
+      toolResults = roundResults;
     } catch (toolFlowErr) {
       if (toolFlowErr instanceof ToolExecutionFailed) {
         toolFailures.push({

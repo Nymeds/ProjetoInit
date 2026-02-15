@@ -12,6 +12,9 @@ export function useTodos(options?: { enabled?: boolean }) {
       const { data } = await api.get("/todo");
       return data.todos ?? [];
     },
-    enabled: !!user && (options?.enabled ?? true), 
+    enabled: !!user && (options?.enabled ?? true),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 15000,
   });
 }

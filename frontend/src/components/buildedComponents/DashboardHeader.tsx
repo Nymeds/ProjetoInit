@@ -9,9 +9,10 @@ interface DashboardHeaderProps {
   user: UserType;
   onLogout: () => void;
   onToggleSidebar?: () => void;
+  onOpenProfileSettings?: () => void;
 }
 
-export function DashboardHeader({ user, onLogout, onToggleSidebar }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, onToggleSidebar, onOpenProfileSettings }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row justify-between items-center mb-12 space-y-6 lg:space-y-0">
       
@@ -54,6 +55,11 @@ export function DashboardHeader({ user, onLogout, onToggleSidebar }: DashboardHe
           {onToggleSidebar && (
             <Button variant="ghost" onClick={onToggleSidebar} className="p-2 mr-2">
               <Menu className="w-5 h-5" />
+            </Button>
+          )}
+          {onOpenProfileSettings && (
+            <Button variant="secondary" onClick={onOpenProfileSettings} className="px-3 py-2 text-sm">
+              Editar Perfil
             </Button>
           )}
           <ThemeToggle />

@@ -1,74 +1,91 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Modal } from "../baseComponents/Modal";
-import Card from "../baseComponents/card";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
-import { createGroup } from "../../api/groups";
+import { createGroup, updateGroup, type GroupResponse } from "../../api/groups";
+import { listFriends } from "../../api/friends";
 import { useAuth } from "../../hooks/useAuth";
+
+interface FriendItem {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface NewUserGroupFormProps {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  mode?: "create" | "edit";
+  groupToEdit?: GroupResponse | null;
 }
 
-export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGroupFormProps) {
+export default function NewUserGroupForm({
+  open,
+  onClose,
+  onCreated,
+  mode = "create",
+  groupToEdit = null,
+}: NewUserGroupFormProps) {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userEmails, setUserEmails] = useState<string[]>([]);
+  const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [removeUserIds, setRemoveUserIds] = useState<string[]>([]);
+
+  const existingMemberIds = useMemo(() => {
+    return new Set((groupToEdit?.members ?? []).map((member) => member.userId));
+  }, [groupToEdit]);
 
   useEffect(() => {
-    if (open) {
-      setUserEmails(user?.email ? [user.email] : []);
+    if (!open) return;
+
+    if (mode === "edit" && groupToEdit) {
+      setGroupName(groupToEdit.name ?? "");
+      setDescription(groupToEdit.description ?? "");
+    } else {
+      setGroupName("");
+      setDescription("");
     }
-  }, [open, user?.email]);
+
+    setSelectedFriendIds([]);
+    setRemoveUserIds([]);
+    setError(null);
+
+    listFriends()
+      .then((data) => {
+        setFriends(data.friends.map((friend) => ({ id: friend.id, name: friend.name, email: friend.email })));
+      })
+      .catch(() => setFriends([]));
+  }, [open, mode, groupToEdit]);
 
   if (!open) return null;
 
-  function handleEmailChange(index: number, value: string) {
-    const newEmails = [...userEmails];
-    newEmails[index] = value;
-    setUserEmails(newEmails);
+  function toggleFriendSelection(friendId: string) {
+    setSelectedFriendIds((prev) => (
+      prev.includes(friendId)
+        ? prev.filter((id) => id !== friendId)
+        : [...prev, friendId]
+    ));
   }
 
-  function handleAddEmail() {
-    setUserEmails([...userEmails, ""]);
-  }
-
-  function handleRemoveEmail(index: number) {
-    setUserEmails(userEmails.filter((_, i) => i !== index));
+  function toggleRemoveUser(userId: string) {
+    setRemoveUserIds((prev) => (
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    ));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!groupName.trim()) {
-      setError("Nome do grupo é obrigatório");
-      return;
-    }
-
-    // Validações: pelo menos 2 membros e sem emails duplicados
-    const cleaned = userEmails.map((s) => s.trim()).filter((s) => s !== "");
-    if (cleaned.length < 2) {
-      setError("O grupo precisa ter pelo menos 2 membros");
-      return;
-    }
-
-    const lower = cleaned.map((s) => s.toLowerCase());
-    const unique = new Set(lower);
-    if (unique.size !== lower.length) {
-      setError("Emails duplicados não são permitidos");
-      return;
-    }
-
-    // Simple email format check
-    const invalid = cleaned.find((em) => !/^\S+@\S+\.\S+$/.test(em));
-    if (invalid) {
-      setError(`Email inválido: ${invalid}`);
+      setError("Nome do grupo e obrigatorio");
       return;
     }
 
@@ -76,123 +93,151 @@ export default function NewUserGroupForm({ open, onClose, onCreated }: NewUserGr
     setError(null);
 
     try {
-      const payload = {
-        name: groupName,
-        description,
-        userEmails: cleaned,
-      };
+      const selectedFriends = friends.filter((friend) => selectedFriendIds.includes(friend.id));
+      const selectedFriendEmails = selectedFriends.map((friend) => friend.email.toLowerCase());
 
-      await createGroup(payload);
+      if (mode === "edit") {
+        if (!groupToEdit?.id) throw new Error("Grupo invalido para edicao");
+
+        const addUserEmails = selectedFriendEmails.filter((email) => {
+          const existing = (groupToEdit.members ?? []).some((member) => member.user.email.toLowerCase() === email);
+          return !existing;
+        });
+
+        await updateGroup(groupToEdit.id, {
+          name: groupName,
+          description,
+          addUserEmails,
+          removeUserIds,
+        });
+      } else {
+        const creatorEmail = user?.email?.trim().toLowerCase();
+        const userEmails = Array.from(
+          new Set([...(creatorEmail ? [creatorEmail] : []), ...selectedFriendEmails]),
+        );
+
+        if (userEmails.length < 2) {
+          setError("Adicione pelo menos um amigo para criar o grupo");
+          setLoading(false);
+          return;
+        }
+
+        await createGroup({
+          name: groupName,
+          description,
+          userEmails,
+        });
+      }
+
       onCreated?.();
       onClose();
-
-      // Reset campos
-      setGroupName("");
-      setDescription("");
-      setUserEmails(user?.email ? [user.email] : []);
     } catch (err: any) {
-      let backendMsg = "Erro desconhecido";
-
-      const data = err.response?.data;
-
-      if (data) {
-        if (typeof data === "object" && "message" in data) {
-          backendMsg = data.message; 
-        } else if (typeof data === "string") {
-          backendMsg = data;
-        }
-      } else if (err.message) {
-        backendMsg = err.message;
-      }
-
-      
-      if (backendMsg.includes("Unique constraint failed")) {
-        backendMsg = "Já existe um grupo com esse nome";
-      }
-
-      setError(backendMsg);
+      const backendMsg =
+        err?.response?.data?.message
+        || err?.response?.data
+        || err?.message
+        || "Erro desconhecido";
+      setError(String(backendMsg));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Novo Grupo" className="max-w-md" fullScreenOnMobile>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={mode === "edit" ? "Editar Grupo" : "Novo Grupo"}
+      className="max-w-lg"
+      fullScreenOnMobile
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Nome do grupo */}
-          <div>
-            <label htmlFor="group-name">
-              <Text variant="label-small">Nome do grupo</Text>
-            </label>
-            <input
-              id="group-name"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              placeholder="Ex: Marketing"
-              className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
-            />
-          </div>
+        <div>
+          <label htmlFor="group-name">
+            <Text variant="label-small">Nome do grupo</Text>
+          </label>
+          <input
+            id="group-name"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            placeholder="Ex: Marketing"
+            className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
+          />
+        </div>
 
-          {/* Emails */}
-          <div>
-            <Text variant="label-small">Membros (emails)</Text>
-            {userEmails.map((email, index) => (
-              <div key={index} className="flex items-center gap-2 mt-2">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => handleEmailChange(index, e.target.value)}
-                  placeholder={`email${index + 1}@exemplo.com`}
-                  className="flex-1 p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
-                />
-                {userEmails.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveEmail(index)}
-                    className="text-danger hover:text-white px-2"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={handleAddEmail}
-              className="text-accent-brand mt-2 text-sm hover:underline"
-            >
-              + Adicionar outro
-            </button>
-          </div>
+        <div>
+          <label htmlFor="group-desc">
+            <Text variant="label-small">Descricao (opcional)</Text>
+          </label>
+          <textarea
+            id="group-desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Detalhes sobre o grupo"
+            className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
+            rows={3}
+          />
+        </div>
 
-          {/* Descrição */}
-          <div>
-            <label htmlFor="group-desc">
-              <Text variant="label-small">Descrição (opcional)</Text>
-            </label>
-            <textarea
-              id="group-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalhes sobre o grupo"
-              className="w-full p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
-              rows={3}
-            />
+        {mode === "edit" && groupToEdit && (
+          <div className="space-y-2">
+            <Text variant="label-small">Membros atuais (remover)</Text>
+            <div className="max-h-36 overflow-auto space-y-2 rounded border border-border-primary p-2">
+              {(groupToEdit.members ?? []).map((member) => (
+                <label key={member.userId} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={removeUserIds.includes(member.userId)}
+                    disabled={member.userId === user?.id}
+                    onChange={() => toggleRemoveUser(member.userId)}
+                  />
+                  <span>{member.user.name} ({member.user.email})</span>
+                  {member.userId === user?.id && <span className="text-xs text-accent-paragraph">(voce)</span>}
+                </label>
+              ))}
+            </div>
           </div>
+        )}
 
-          {/* Erro */}
-          {error && (
-            <Text variant="paragraph-small" className="text-danger">
-              {error}
-            </Text>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? "Criando..." : "Criar Grupo"}
-            </Button>
+        <div className="space-y-2">
+          <Text variant="label-small">{mode === "edit" ? "Adicionar amigos ao grupo" : "Escolha amigos para o grupo"}</Text>
+          <div className="max-h-44 overflow-auto space-y-2 rounded border border-border-primary p-2">
+            {friends.length === 0 && (
+              <Text variant="paragraph-small" className="text-accent-paragraph">
+                Voce ainda nao tem amigos aceitos.
+              </Text>
+            )}
+            {friends.map((friend) => {
+              const alreadyInGroup = mode === "edit" ? existingMemberIds.has(friend.id) : false;
+              return (
+                <label key={friend.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedFriendIds.includes(friend.id)}
+                    disabled={alreadyInGroup}
+                    onChange={() => toggleFriendSelection(friend.id)}
+                  />
+                  <span>{friend.name} ({friend.email})</span>
+                  {alreadyInGroup && <span className="text-xs text-accent-paragraph">ja no grupo</span>}
+                </label>
+              );
+            })}
           </div>
-        </form>
+        </div>
+
+        {error && (
+          <Text variant="paragraph-small" className="text-danger">
+            {error}
+          </Text>
+        )}
+
+        <div className="flex justify-end">
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? (mode === "edit" ? "Salvando..." : "Criando...") : (mode === "edit" ? "Salvar" : "Criar Grupo")}
+          </Button>
+        </div>
+      </form>
     </Modal>
   );
 }
+

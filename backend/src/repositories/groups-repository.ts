@@ -13,6 +13,7 @@ export interface GroupsRepository {
   findById(id: string): Promise<Group | null>;
   findAll(): Promise<Group[]>;
   findManyByUser(userId: string): Promise<Group[]>;
+  addMember?(groupId: string, userEmail: string): Promise<unknown>;
   removeMember(groupId: string, userId: string): Promise<void>;
   update(
     id: string,

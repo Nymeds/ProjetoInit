@@ -11,5 +11,8 @@ export function useGroups() {
       
       return data.groups ?? [];
     },
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 15000,
   });
 }
