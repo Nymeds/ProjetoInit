@@ -305,7 +305,7 @@ export function GroupSidebar({
 
                         <Button
                           variant="danger"
-                          className="w-full px-2 py-1 text-xs leading-tight"
+                          className="w-full px-1 py-1 text-xs leading-tight"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); openDeleteModal(group); }}
                         >

@@ -340,6 +340,10 @@ export function Dashboard() {
         open={isCreateGroupOpen}
         onClose={() => setIsCreateGroupOpen(false)}
         onCreated={invalidateTodosAndGroups}
+        onGoToAddFriends={() => {
+          setIsCreateGroupOpen(false);
+          setIsUserSettingsOpen(true);
+        }}
       />
 
       <TaskDrawer

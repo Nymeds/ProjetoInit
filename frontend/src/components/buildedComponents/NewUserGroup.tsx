@@ -17,6 +17,7 @@ interface NewUserGroupFormProps {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  onGoToAddFriends?: () => void;
   mode?: "create" | "edit";
   groupToEdit?: GroupResponse | null;
 }
@@ -25,6 +26,7 @@ export default function NewUserGroupForm({
   open,
   onClose,
   onCreated,
+  onGoToAddFriends,
   mode = "create",
   groupToEdit = null,
 }: NewUserGroupFormProps) {
@@ -203,9 +205,21 @@ export default function NewUserGroupForm({
           <Text variant="label-small">{mode === "edit" ? "Adicionar amigos ao grupo" : "Escolha amigos para o grupo"}</Text>
           <div className="max-h-44 overflow-auto space-y-2 rounded border border-border-primary p-2">
             {friends.length === 0 && (
-              <Text variant="paragraph-small" className="text-accent-paragraph">
-                Voce ainda nao tem amigos aceitos.
-              </Text>
+              <div className="space-y-2">
+                <Text variant="paragraph-small" className="text-accent-paragraph">
+                  Voce ainda nao tem amigos aceitos. Adicione amigos no seu perfil para iniciar um grupo.
+                </Text>
+                {onGoToAddFriends && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={onGoToAddFriends}
+                  >
+                    Adicionar amigos
+                  </Button>
+                )}
+              </div>
             )}
             {friends.map((friend) => {
               const alreadyInGroup = mode === "edit" ? existingMemberIds.has(friend.id) : false;

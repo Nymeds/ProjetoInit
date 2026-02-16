@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../baseComponents/Modal";
 import { Button } from "../baseComponents/button";
@@ -54,6 +55,7 @@ export function UserSettingsModal({ open, onClose }: UserSettingsModalProps) {
 
   async function handleSaveProfile() {
     if (!hasProfileChanges) return;
+    if (!user) return;
 
     setLoading(true);
     setError(null);
@@ -69,6 +71,7 @@ export function UserSettingsModal({ open, onClose }: UserSettingsModalProps) {
       setUser(updatedUser);
       setPassword("");
       setSuccess("Perfil atualizado com sucesso");
+     
     } catch (err: any) {
       setError(err?.message || "Erro ao atualizar perfil");
     } finally {
@@ -112,6 +115,11 @@ export function UserSettingsModal({ open, onClose }: UserSettingsModalProps) {
     <Modal open={open} onClose={onClose} title="Perfil e Amigos" className="max-w-2xl" fullScreenOnMobile>
       <div className="space-y-5">
         <section className="space-y-3">
+
+          <Text variant="paragraph-small" className="text-accent-paragraph">
+            Olá {user.name}! Seus dados pessoais e seus amigos podem ser editados aqui.
+          </Text>
+
           <Text variant="heading-small" className="text-heading">Editar Perfil</Text>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
@@ -147,7 +155,7 @@ export function UserSettingsModal({ open, onClose }: UserSettingsModalProps) {
             <input
               value={friendEmail}
               onChange={(e) => setFriendEmail(e.target.value)}
-              placeholder="Email do amigo"
+              placeholder="Email"
               className="flex-1 p-2 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand"
             />
             <Button variant="primary" disabled={sendingFriendRequest || !friendEmail.trim()} onClick={handleSendFriendRequest}>
@@ -178,7 +186,7 @@ export function UserSettingsModal({ open, onClose }: UserSettingsModalProps) {
           <div className="space-y-2">
             <Text variant="heading-small" className="text-heading">Amigos</Text>
             {friends.length === 0 && (
-              <Text variant="paragraph-small" className="text-accent-paragraph">Voce ainda nao tem amigos</Text>
+              <Text variant="paragraph-small" className="text-accent-paragraph">Voce ainda nao tem amigos :(</Text>
             )}
             {friends.map((friend) => (
               <div key={friend.id} className="p-2 rounded border border-border-primary">

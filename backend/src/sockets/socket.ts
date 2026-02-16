@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { PrismaGroupsRepository } from '../repositories/prisma/prisma-groups-repository.js';
 import { PrismaMessagesRepository } from '../repositories/prisma/prisma-messages-repository.js';
+import { env } from '../env/index.js';
 import { CreateGroupMessageUseCase } from '../use-cases/messages/create-for-group.js';
 import { CreateTodoMessageUseCase } from '../use-cases/messages/create-for-todo.js';
 import {
@@ -18,16 +19,31 @@ export function setupSocketHandlers(app: FastifyInstance) {
   // if io is already created, skip
   if ((app as any).io) return;
 
+  const configuredOrigins = env.CORS_ORIGINS
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = new Set([
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://projetoinit.onrender.com',
+    ...configuredOrigins,
+  ]);
+
   // create socket.io server and attach to Fastify underlying http server
   const io = new Server(app.server as any, {
     cors: {
-      origin: [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'https://projetoinit.onrender.com'
-      ],
-      methods: ['GET', 'POST']
-    }
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.has(origin)) return callback(null, true);
+        if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
+        if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return callback(null, true);
+        return callback(new Error(`Socket.IO CORS blocked origin: ${origin}`), false);
+      },
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
   });
 
   (app as any).io = io;
@@ -38,11 +54,13 @@ export function setupSocketHandlers(app: FastifyInstance) {
     try {
       const decoded: any = token ? await app.jwt.verify(token) : null;
       if (!decoded?.sub) {
+        app.log.warn({ socketId: socket.id }, '[socket] missing/invalid auth payload');
         socket.disconnect(true);
         return;
       }
       socket.data.userId = decoded.sub;
     } catch (err) {
+      app.log.warn({ socketId: socket.id, err }, '[socket] jwt verification failed');
       socket.disconnect(true);
       return;
     }

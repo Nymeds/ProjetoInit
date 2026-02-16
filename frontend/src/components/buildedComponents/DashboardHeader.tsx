@@ -58,7 +58,7 @@ export function DashboardHeader({ user, onLogout, onToggleSidebar, onOpenProfile
             </Button>
           )}
           {onOpenProfileSettings && (
-            <Button variant="secondary" onClick={onOpenProfileSettings} className="px-3 py-2 text-sm">
+            <Button variant="primary" onClick={onOpenProfileSettings} className="px-3 py-2 text-sm">
               Editar Perfil
             </Button>
           )}

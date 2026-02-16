@@ -1,35 +1,19 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { prisma } from '../../utils/prismaClient.js'
+import { PrismaFriendsRepository } from '../../repositories/prisma/prisma-friends-repository.js'
+import { ListAcceptedFriendsUseCase } from '../../use-cases/friends/list-accepted-friends.js'
 
 export async function listFriends(request: FastifyRequest, reply: FastifyReply) {
   try {
     const userId = (request.user as { sub: string }).sub
 
-    const friendships = await (prisma as any).friendship.findMany({
-      where: {
-        status: 'ACCEPTED',
-        OR: [{ requesterId: userId }, { addresseeId: userId }],
-      },
-      include: {
-        requester: { select: { id: true, name: true, email: true } },
-        addressee: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
-
-    const friends = friendships.map((friendship: any) => {
-      const isRequester = friendship.requesterId === userId
-      const friend = isRequester ? friendship.addressee : friendship.requester
-      return {
-        friendshipId: friendship.id,
-        id: friend.id,
-        name: friend.name,
-        email: friend.email,
-      }
-    })
+    const friendsRepository = new PrismaFriendsRepository()
+    const useCase = new ListAcceptedFriendsUseCase(friendsRepository)
+    const { friends } = await useCase.execute(userId)
 
     return reply.status(200).send({ friends })
   } catch (err: any) {
+    request.log.error({ err }, '[friends] listFriends failed')
     return reply.status(400).send({ message: err?.message || 'Erro ao listar amigos' })
   }
 }
@@ -67,6 +51,7 @@ export async function listFriendRequests(request: FastifyRequest, reply: Fastify
       })),
     })
   } catch (err: any) {
+    request.log.error({ err }, '[friends] listFriendRequests failed')
     return reply.status(400).send({ message: err?.message || 'Erro ao listar solicitacoes' })
   }
 }

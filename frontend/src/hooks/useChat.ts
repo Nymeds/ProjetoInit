@@ -7,6 +7,7 @@ type PendingJoin = { type: 'todo' | 'group'; id: string | number };
 export function useChat() {
   const { user, token } = useAuth();
   const socketRef = useRef<Socket | null>(null);
+  const lastConnectErrorAtRef = useRef(0);
 
   // key -> PendingJoin, key example: "todo:123" or "group:abc"
   const pendingJoinsRef = useRef<Map<string, PendingJoin>>(new Map());
@@ -18,13 +19,16 @@ export function useChat() {
 
     // Build socket URL robustly with env override
     const SOCKET_PORT = 3333;
-    const envUrl = (import.meta as any)?.env?.VITE_SOCKET_URL;
-    const baseUrl = envUrl ?? `${location.protocol}//${location.hostname}:${SOCKET_PORT}`;
+    const envSocketUrl = (import.meta as any)?.env?.VITE_SOCKET_URL as string | undefined;
+    const envApiUrl = (import.meta as any)?.env?.VITE_API_URL as string | undefined;
+    const configuredBase = envSocketUrl ?? envApiUrl ?? `${location.protocol}//${location.hostname}:${SOCKET_PORT}`;
+    const baseUrl = configuredBase.replace(/\/+$/, '');
 
     const s = io(baseUrl, {
       auth: { token },
       autoConnect: true,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
     });
 
     socketRef.current = s;
@@ -42,7 +46,24 @@ export function useChat() {
       });
     });
 
+    s.on('connect_error', (err) => {
+      const now = Date.now();
+      if (now - lastConnectErrorAtRef.current < 4000) return;
+      lastConnectErrorAtRef.current = now;
+      console.warn('[socket] connect_error', {
+        message: err?.message || 'unknown',
+        url: baseUrl,
+      });
+    });
+
+    s.on('disconnect', (reason) => {
+      console.info('[socket] disconnected', { reason });
+    });
+
     return () => {
+      s.off('connect');
+      s.off('connect_error');
+      s.off('disconnect');
       s.disconnect();
       socketRef.current = null;
     };

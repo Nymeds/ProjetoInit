@@ -7,6 +7,7 @@ import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-rep
 import { PrismaGroupsRepository } from '../../repositories/prisma/prisma-groups-repository.js';
 import { PrismaUsersRepository } from '../../repositories/prisma/prisma-users-repository.js';
 import { PrismaMessagesRepository } from '../../repositories/prisma/prisma-messages-repository.js';
+import { PrismaFriendsRepository } from '../../repositories/prisma/prisma-friends-repository.js';
 import { CreateTodoUseCase } from '../../use-cases/todo/create-todo.js';
 import { SelectTodosUseCase } from '../../use-cases/todo/select-todo.js';
 import { CompleteTodoUseCase } from '../../use-cases/todo/complete-todo.js';
@@ -15,6 +16,7 @@ import { CreateGroupUseCase } from '../../use-cases/groups/create.js';
 import { ListGroupsUseCase } from '../../use-cases/groups/list-groups.js';
 import { ListGroupMessagesUseCase } from '../../use-cases/messages/list-by-group.js';
 import { CreateGroupMessageUseCase } from '../../use-cases/messages/create-for-group.js';
+import { ListAcceptedFriendsUseCase } from '../../use-cases/friends/list-accepted-friends.js';
 
 const SYSTEM_INSTRUCTION = `
 Voce e a ELISA.
@@ -22,6 +24,8 @@ Objetivo: ajudar em tarefas e grupos.
 Regras:
 - Responda em pt-BR.
 - Use ferramentas quando houver acao de sistema.
+- Pode criar grupos quando solicitado.
+- Para criar grupo, pode reaproveitar membros de um grupo existente e/ou amigos aceitos do usuario.
 - Se faltarem dados, pergunte curto e objetivo.
 - Se houver varias acoes, execute em ordem.
 - No grupo, aja de forma objetiva e curta.
@@ -55,6 +59,7 @@ const todosRepository = new PrismaTodosRepository();
 const groupsRepository = new PrismaGroupsRepository();
 const usersRepository = new PrismaUsersRepository();
 const messagesRepository = new PrismaMessagesRepository();
+const friendsRepository = new PrismaFriendsRepository();
 const createTodoUseCase = new CreateTodoUseCase(todosRepository);
 const selectTodosUseCase = new SelectTodosUseCase(todosRepository);
 const completeTodoUseCase = new CompleteTodoUseCase(todosRepository);
@@ -63,6 +68,7 @@ const createGroupUseCase = new CreateGroupUseCase(groupsRepository, usersReposit
 const listGroupsUseCase = new ListGroupsUseCase(groupsRepository);
 const listGroupMessagesUseCase = new ListGroupMessagesUseCase(messagesRepository);
 const createGroupMessageUseCase = new CreateGroupMessageUseCase(messagesRepository);
+const listAcceptedFriendsUseCase = new ListAcceptedFriendsUseCase(friendsRepository);
 
 const chatBodySchema = z.object({
   message: z.string().min(1, 'Mensagem obrigatoria'),
@@ -79,7 +85,25 @@ const createTaskArgsSchema = z.object({
 const createGroupArgsSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  userEmails: z.array(z.string().email()).min(2),
+  userEmails: z.array(z.string().email()).optional(),
+  copyMembersFromGroupName: z.string().min(1).optional(),
+  copyMembersFromGroupId: z.string().min(1).optional(),
+  fromGroupName: z.string().min(1).optional(),
+  fromGroupId: z.string().min(1).optional(),
+  includeAcceptedFriends: z.boolean().optional(),
+}).superRefine((args, ctx) => {
+  const hasProvidedEmails = Array.isArray(args.userEmails) && args.userEmails.length > 0;
+  const hasGroupSource = Boolean(
+    args.copyMembersFromGroupName || args.copyMembersFromGroupId || args.fromGroupName || args.fromGroupId,
+  );
+  const hasFriendsSource = Boolean(args.includeAcceptedFriends);
+
+  if (!hasProvidedEmails && !hasGroupSource && !hasFriendsSource) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe userEmails, copyMembersFromGroupName/copyMembersFromGroupId ou includeAcceptedFriends=true.',
+    });
+  }
 });
 
 const searchTasksArgsSchema = z.object({
@@ -102,6 +126,8 @@ const listGroupHistoryArgsSchema = z.object({
   groupId: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(30).optional(),
 });
+
+const listFriendsArgsSchema = z.object({});
 
 const postGroupNoticeArgsSchema = z.object({
   content: z.string().min(1),
@@ -229,6 +255,18 @@ function buildRetryQuestion(failure: ToolFailure): string {
 
   if (errorText.includes('Grupo nao encontrado')) {
     return `${errorText} Qual o nome exato do grupo?`;
+  }
+
+  if (errorText.includes('Grupo de origem nao encontrado')) {
+    return `${errorText} Me informe o nome exato do grupo que devo copiar os membros.`;
+  }
+
+  if (errorText.includes('Nao encontrei membros suficientes')) {
+    return `${errorText} Se preferir, me passe os emails ou diga para usar os membros de um grupo existente.`;
+  }
+
+  if (errorText.includes('Informe userEmails')) {
+    return 'Para criar o grupo, me passe os emails, ou diga "use os mesmos membros do grupo X", ou "use meus amigos aceitos".';
   }
 
   if (errorText.includes('Tarefa nao encontrada')) {
@@ -898,8 +936,13 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
           name: { type: 'string' },
           description: { type: 'string' },
           userEmails: { type: 'array', items: { type: 'string' } },
+          copyMembersFromGroupName: { type: 'string' },
+          copyMembersFromGroupId: { type: 'string' },
+          fromGroupName: { type: 'string' },
+          fromGroupId: { type: 'string' },
+          includeAcceptedFriends: { type: 'boolean' },
         },
-        required: ['name', 'userEmails'],
+        required: ['name'],
       },
     },
     buscar_tarefas: {
@@ -951,6 +994,14 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
         properties: { groupName: { type: 'string' }, groupId: { type: 'string' }, limit: { type: 'integer' } },
       },
     },
+    listar_amigos: {
+      name: 'listar_amigos',
+      description: 'Listar amigos aceitos do usuario',
+      parametersJsonSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
     avisar_no_grupo: {
       name: 'avisar_no_grupo',
       description: 'Enviar mensagem no grupo',
@@ -964,22 +1015,32 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
 
   const selected = new Set<string>();
 
+  if (isInternalOrchestrationContent(message)) {
+    return Object.values(all);
+  }
+
   if (/\b(criar|cria|crie)\b.*\btarefa\b|\bnova tarefa\b/.test(text)) selected.add('criar_tarefa');
   if (/\b(criar|cria|crie)\b.*\bgrupo\b|\bnovo grupo\b/.test(text)) selected.add('criar_grupo');
+  if (/\b(mesm[oa]s?|igual|copi(ar|e))\b.*\bgrupo\b/.test(text)) {
+    selected.add('criar_grupo');
+    selected.add('list_group_members');
+  }
   if (/buscar|procur|encontr|listar tarefa/.test(text)) selected.add('buscar_tarefas');
   if (/conclu|finaliz|completei|marcar.*conclu/.test(text)) selected.add('marcar_concluida');
   if (/mover|trocar.*grupo|sem grupo/.test(text)) selected.add('mover_para_grupo');
   if (/membros?|quantas pessoas|quem.*grupo/.test(text)) selected.add('list_group_members');
   if (/historico|ultimas mensagens|contexto do grupo/.test(text)) selected.add('list_group_history');
+  if (/amig|amizade/.test(text)) selected.add('listar_amigos');
   if (/avise no grupo|avisar no grupo|manda no grupo|envia no grupo/.test(text)) selected.add('avisar_no_grupo');
 
   if (sourceGroupId) {
     selected.add('list_group_history');
     selected.add('avisar_no_grupo');
+    selected.add('criar_grupo');
   }
 
   if (selected.size === 0) {
-    return [all.buscar_tarefas, all.criar_tarefa, all.avisar_no_grupo];
+    return [all.buscar_tarefas, all.criar_tarefa, all.criar_grupo, all.avisar_no_grupo];
   }
 
   return Array.from(selected).map((name) => all[name]);
@@ -1015,6 +1076,10 @@ function toToolTask(todo: any, group: { id: string; name: string } | null = null
     completed: Boolean(todo.completed),
     group,
   };
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
 async function runTool(
@@ -1058,10 +1123,63 @@ async function runTool(
 
     if (call.name === 'criar_grupo') {
       const args = createGroupArgsSchema.parse(call.args || {});
+      const normalizedEmails = new Set<string>();
+      let copiedFromGroup: { id: string; name: string } | null = null;
+
+      for (const email of args.userEmails ?? []) {
+        normalizedEmails.add(normalizeEmail(email));
+      }
+
+      const sourceGroupName = args.copyMembersFromGroupName ?? args.fromGroupName;
+      const sourceGroupId = args.copyMembersFromGroupId ?? args.fromGroupId;
+
+      if (sourceGroupName || sourceGroupId) {
+        const sourceGroup = await resolveUserGroup(
+          userId,
+          {
+            groupId: sourceGroupId,
+            groupName: sourceGroupName,
+          },
+          runtime.sourceGroupId,
+        );
+
+        if (!sourceGroup) {
+          return { ok: false, error: 'Grupo de origem nao encontrado para este usuario.' };
+        }
+
+        copiedFromGroup = { id: sourceGroup.id, name: sourceGroup.name };
+
+        for (const member of sourceGroup.members ?? []) {
+          const email = member?.user?.email;
+          if (typeof email === 'string' && email.includes('@')) {
+            normalizedEmails.add(normalizeEmail(email));
+          }
+        }
+      }
+
+      if (args.includeAcceptedFriends) {
+        const { friends } = await listAcceptedFriendsUseCase.execute(userId);
+        for (const friend of friends) {
+          normalizedEmails.add(normalizeEmail(friend.email));
+        }
+      }
+
+      const requester = await usersRepository.findById(userId);
+      if (requester?.email) {
+        normalizedEmails.add(normalizeEmail(requester.email));
+      }
+
+      if (normalizedEmails.size < 2) {
+        return {
+          ok: false,
+          error: 'Nao encontrei membros suficientes para criar o grupo. Informe emails, use um grupo de origem ou inclua amigos aceitos.',
+        };
+      }
+
       const group = await createGroupUseCase.execute({
         name: args.name,
         description: args.description,
-        userEmails: args.userEmails,
+        userEmails: Array.from(normalizedEmails),
       });
 
       actions.push({ type: 'group_created', id: group.id });
@@ -1073,6 +1191,8 @@ async function runTool(
           name: group.name,
           description: group.description,
         },
+        memberCount: normalizedEmails.size,
+        copiedFromGroup,
       };
     }
 
@@ -1254,6 +1374,24 @@ async function runTool(
           content: message.content,
           createdAt: message.createdAt.toISOString(),
         })),
+      };
+    }
+
+    if (call.name === 'listar_amigos') {
+      listFriendsArgsSchema.parse(call.args || {});
+      const { friends } = await listAcceptedFriendsUseCase.execute(userId);
+      const sorted = friends
+        .map((friend) => ({
+          id: friend.id,
+          name: friend.name,
+          email: friend.email,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        ok: true,
+        count: sorted.length,
+        friends: sorted,
       };
     }
 
