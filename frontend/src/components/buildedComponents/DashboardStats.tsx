@@ -1,5 +1,5 @@
-import { StatsCard } from './StatsCard';
-import { BarChart3, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { StatsCard } from "./StatsCard";
 
 interface DashboardStatsProps {
   total: number;
@@ -7,49 +7,52 @@ interface DashboardStatsProps {
   pending: number;
   completionRate: number;
   onHighlight: (filter: boolean | null) => void;
+  activeFilter: boolean | null;
+  isHighlightActive: boolean;
 }
 
-export function DashboardStats({ 
-  total, 
-  completed, 
-  pending, 
+export function DashboardStats({
+  total,
+  completed,
+  pending,
   completionRate,
-  onHighlight
+  onHighlight,
+  activeFilter,
+  isHighlightActive,
 }: DashboardStatsProps) {
-  
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatsCard 
-        title="Total de Tarefas" 
-        value={total} 
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <StatsCard
+        title="Total de Tarefas"
+        value={total}
         icon={BarChart3}
-        onClick={() => {
-          onHighlight(null); // null = mostrar todas
-        }}
+        isActive={isHighlightActive && activeFilter === null}
+        onClick={() => onHighlight(null)}
       />
-      <StatsCard 
-        title="Concluídas" 
-        value={completed} 
-        icon={CheckCircle} 
+
+      <StatsCard
+        title="Concluidas"
+        value={completed}
+        icon={CheckCircle}
         color="accent-brand"
-        onClick={() => {
-          onHighlight(true); // true = mostrar completas
-        }}
+        isActive={isHighlightActive && activeFilter === true}
+        onClick={() => onHighlight(true)}
       />
-      <StatsCard 
-        title="Pendentes" 
-        value={pending} 
-        icon={Clock} 
+
+      <StatsCard
+        title="Pendentes"
+        value={pending}
+        icon={Clock}
         color="accent-red"
-        onClick={() => {
-          onHighlight(false); // false = mostrar pendentes
-        }}
+        isActive={isHighlightActive && activeFilter === false}
+        onClick={() => onHighlight(false)}
       />
-      <StatsCard 
-        title="Taxa de Conclusão" 
-        value={`${completionRate}%`} 
-        icon={TrendingUp} 
-        color="accent-brand-light" 
+
+      <StatsCard
+        title="Taxa de Conclusao"
+        value={`${completionRate}%`}
+        icon={TrendingUp}
+        color="accent-brand-light"
       />
     </div>
   );

@@ -73,6 +73,7 @@ export function TaskList({
           statsFilter === null || 
           todo.completed === statsFilter
         );
+        const shouldDim = highlightCompleted && statsFilter !== null && todo.completed !== statsFilter;
 
         return (
           <TaskCard
@@ -83,6 +84,7 @@ export function TaskList({
             onDragStart={onDragStart}
             onClick={() => onSelect?.(todo)}
             isHighlighted={shouldHighlight}
+            isDimmed={shouldDim}
           />
         );
       })}

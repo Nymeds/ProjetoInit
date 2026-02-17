@@ -24,6 +24,9 @@ Objetivo: ajudar em tarefas e grupos.
 Regras:
 - Responda em pt-BR.
 - Use ferramentas quando houver acao de sistema.
+- Pode criar tarefas com ou sem grupo.
+- Se o usuario pedir varias tarefas, crie todas em sequencia.
+- Para mover tarefas em lote (ex.: numero par), use mover_para_grupo com numberParity.
 - Pode criar grupos quando solicitado.
 - Para criar grupo, pode reaproveitar membros de um grupo existente e/ou amigos aceitos do usuario.
 - Se faltarem dados, pergunte curto e objetivo.
@@ -137,15 +140,18 @@ const postGroupNoticeArgsSchema = z.object({
 
 const moveTaskArgsSchema = z.object({
   taskId: z.coerce.number().int().positive().optional(),
+  taskIds: z.array(z.coerce.number().int().positive()).min(1).optional(),
   title: z.string().min(1).optional(),
+  numberParity: z.enum(['even', 'odd', 'par', 'impar']).optional(),
+  moveAllMatches: z.boolean().optional(),
   fromGroupName: z.string().optional(),
   groupNameDestination: z.string().optional(),
   moveToNoGroup: z.boolean().optional(),
 }).superRefine((args, ctx) => {
-  if (!args.taskId && !args.title) {
+  if (!args.taskId && !(args.taskIds?.length) && !args.title && !args.numberParity) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Informe taskId ou title para identificar a tarefa.',
+      message: 'Informe taskId, taskIds, title ou numberParity para identificar a tarefa.',
     });
   }
 
@@ -271,6 +277,10 @@ function buildRetryQuestion(failure: ToolFailure): string {
 
   if (errorText.includes('Tarefa nao encontrada')) {
     return `${errorText} Pode me informar o taskId da tarefa ou o titulo exato?`;
+  }
+
+  if (errorText.includes('Informe taskId, taskIds, title ou numberParity')) {
+    return 'Para mover, informe taskId, taskIds, um titulo, ou use numberParity (par/impar).';
   }
 
   if (errorText.includes('Ja existe um grupo com esse nome')) {
@@ -917,6 +927,11 @@ export async function maybeHandleAssistantFollowUpInGroup(params: {
 
 function getToolDeclarations(message: string, sourceGroupId?: string) {
   const text = message.toLowerCase();
+  const wantsNoGroup = /\bsem grupo\b|\bfora de grupo\b/.test(text);
+  const wantsCreateTask = /\b(criar|cria|crie|adicionar|adicione|gerar)\b.*\btarefas?\b|\bnovas?\s+tarefas?\b/.test(text);
+  const wantsCreateGroup = /\b(criar|cria|crie|adicionar|adicione|gerar)\b.*\bgrupos?\b|\bnovos?\s+grupos?\b|\bnovo grupo\b/.test(text);
+  const wantsMoveTask = /\b(mover|mova|move|transferir|transfira|realocar|realoque)\b|\btrocar\b.*\bgrupo\b|\btirar\b.*\bgrupo\b/.test(text)
+    || (!wantsCreateTask && wantsNoGroup);
   const all: Record<string, any> = {
     criar_tarefa: {
       name: 'criar_tarefa',
@@ -965,17 +980,25 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
     },
     mover_para_grupo: {
       name: 'mover_para_grupo',
-      description: 'Mover tarefa de grupo',
+      description: 'Mover uma ou varias tarefas para um grupo ou para sem grupo',
       parametersJsonSchema: {
         type: 'object',
         properties: {
           taskId: { type: 'integer' },
+          taskIds: { type: 'array', items: { type: 'integer' } },
           title: { type: 'string' },
+          numberParity: { type: 'string', enum: ['even', 'odd', 'par', 'impar'] },
+          moveAllMatches: { type: 'boolean' },
           fromGroupName: { type: 'string' },
           groupNameDestination: { type: 'string' },
           moveToNoGroup: { type: 'boolean' },
         },
-        anyOf: [{ required: ['taskId'] }, { required: ['title'] }],
+        anyOf: [
+          { required: ['taskId'] },
+          { required: ['taskIds'] },
+          { required: ['title'] },
+          { required: ['numberParity'] },
+        ],
       },
     },
     list_group_members: {
@@ -1019,15 +1042,15 @@ function getToolDeclarations(message: string, sourceGroupId?: string) {
     return Object.values(all);
   }
 
-  if (/\b(criar|cria|crie)\b.*\btarefa\b|\bnova tarefa\b/.test(text)) selected.add('criar_tarefa');
-  if (/\b(criar|cria|crie)\b.*\bgrupo\b|\bnovo grupo\b/.test(text)) selected.add('criar_grupo');
+  if (wantsCreateTask) selected.add('criar_tarefa');
+  if (wantsCreateGroup && !wantsNoGroup) selected.add('criar_grupo');
   if (/\b(mesm[oa]s?|igual|copi(ar|e))\b.*\bgrupo\b/.test(text)) {
     selected.add('criar_grupo');
     selected.add('list_group_members');
   }
-  if (/buscar|procur|encontr|listar tarefa/.test(text)) selected.add('buscar_tarefas');
+  if (/buscar|procur|encontr|listar tarefas?/.test(text)) selected.add('buscar_tarefas');
   if (/conclu|finaliz|completei|marcar.*conclu/.test(text)) selected.add('marcar_concluida');
-  if (/mover|trocar.*grupo|sem grupo/.test(text)) selected.add('mover_para_grupo');
+  if (wantsMoveTask) selected.add('mover_para_grupo');
   if (/membros?|quantas pessoas|quem.*grupo/.test(text)) selected.add('list_group_members');
   if (/historico|ultimas mensagens|contexto do grupo/.test(text)) selected.add('list_group_history');
   if (/amig|amizade/.test(text)) selected.add('listar_amigos');
@@ -1080,6 +1103,14 @@ function toToolTask(todo: any, group: { id: string; name: string } | null = null
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function extractTaskNumberFromTitle(title: string): number | null {
+  const matches = title.match(/\d+/g);
+  if (!matches || matches.length === 0) return null;
+
+  const lastValue = Number(matches[matches.length - 1]);
+  return Number.isFinite(lastValue) ? lastValue : null;
 }
 
 async function runTool(
@@ -1253,6 +1284,24 @@ async function runTool(
 
     if (call.name === 'mover_para_grupo') {
       const args = moveTaskArgsSchema.parse(call.args || {});
+      const normalizedTitle = (args.title ?? '')
+        .toLowerCase()
+        .replace(/[áàãâ]/g, 'a')
+        .replace(/[éê]/g, 'e')
+        .replace(/[í]/g, 'i')
+        .replace(/[óôõ]/g, 'o')
+        .replace(/[úù]/g, 'u');
+      const inferredParity = /\b(numero\s+par|pares?)\b/.test(normalizedTitle)
+        ? 'even'
+        : /\b(numero\s+impar|impares?)\b/.test(normalizedTitle)
+          ? 'odd'
+          : undefined;
+      const parity = args.numberParity === 'par'
+        ? 'even'
+        : args.numberParity === 'impar'
+          ? 'odd'
+          : args.numberParity ?? inferredParity;
+      const taskIdsSet = new Set<number>(args.taskIds ?? []);
       let destinationGroupId: string | null = null;
       let destinationGroup: { id: string; name: string } | null = null;
 
@@ -1269,7 +1318,14 @@ async function runTool(
       const { todos } = await selectTodosUseCase.execute({ userId });
       const candidates = todos.filter((todo) => {
         if (args.taskId && todo.id !== args.taskId) return false;
-        if (!args.taskId && !(todo.title.toLowerCase().includes((args.title ?? '').toLowerCase()))) return false;
+        if (taskIdsSet.size > 0 && !taskIdsSet.has(todo.id)) return false;
+        if (args.title && !todo.title.toLowerCase().includes(args.title.toLowerCase())) return false;
+        if (parity) {
+          const titleNumber = extractTaskNumberFromTitle(todo.title);
+          if (titleNumber === null) return false;
+          if (parity === 'even' && titleNumber % 2 !== 0) return false;
+          if (parity === 'odd' && titleNumber % 2 === 0) return false;
+        }
         if (!args.fromGroupName) return true;
         return todo.group?.name?.toLowerCase() === args.fromGroupName.toLowerCase();
       });
@@ -1278,7 +1334,8 @@ async function runTool(
         return { ok: false, error: 'Tarefa nao encontrada para mover.' };
       }
 
-      if (!args.taskId && candidates.length > 1) {
+      const isBatchMove = Boolean(args.moveAllMatches || parity || taskIdsSet.size > 0);
+      if (!isBatchMove && !args.taskId && args.title && candidates.length > 1) {
         return {
           ok: false,
           error: 'Encontrei mais de uma tarefa com esse titulo. Informe taskId para mover a tarefa correta.',
@@ -1290,26 +1347,65 @@ async function runTool(
         };
       }
 
-      const selected = candidates[0];
-      const currentGroupId = selected.group?.id ?? null;
-      if (currentGroupId === destinationGroupId) {
-        return { ok: false, error: 'A tarefa ja esta no destino informado.' };
+      const selectedTodos = isBatchMove ? candidates : [candidates[0]];
+      const movedTasks: Array<ReturnType<typeof toToolTask>> = [];
+      const skippedTasks: number[] = [];
+      const failedTasks: Array<{ id: number; error: string }> = [];
+
+      for (const selected of selectedTodos) {
+        const currentGroupId = selected.group?.id ?? null;
+        if (currentGroupId === destinationGroupId) {
+          skippedTasks.push(selected.id);
+          continue;
+        }
+
+        try {
+          const { todo } = await updateTodoUseCase.execute({
+            todoId: selected.id,
+            userId,
+            title: selected.title,
+            groupId: destinationGroupId,
+          });
+
+          const task = toToolTask(todo, destinationGroup);
+          movedTasks.push(task);
+          actions.push({ type: 'task_moved', id: task.id, groupId: task.group?.id ?? null });
+        } catch (moveErr: any) {
+          failedTasks.push({
+            id: selected.id,
+            error: moveErr?.message || 'Falha ao mover tarefa.',
+          });
+        }
       }
 
-      const { todo } = await updateTodoUseCase.execute({
-        todoId: selected.id,
-        userId,
-        title: selected.title,
-        groupId: destinationGroupId,
-      });
+      if (movedTasks.length === 0) {
+        if (!isBatchMove && skippedTasks.length > 0) {
+          return { ok: false, error: 'A tarefa ja esta no destino informado.' };
+        }
+        if (failedTasks.length > 0) {
+          return {
+            ok: false,
+            error: `Nao consegui mover nenhuma tarefa. Falhas: ${failedTasks.map((item) => `${item.id}`).join(', ')}`,
+          };
+        }
+        return { ok: false, error: 'Nenhuma tarefa elegivel para mover.' };
+      }
 
-      const task = toToolTask(todo, destinationGroup);
-
-      actions.push({ type: 'task_moved', id: task.id, groupId: task.group?.id ?? null });
+      if (!isBatchMove) {
+        return {
+          ok: true,
+          task: movedTasks[0],
+          skippedTasks,
+          failedTasks,
+        };
+      }
 
       return {
         ok: true,
-        task,
+        tasks: movedTasks,
+        movedCount: movedTasks.length,
+        skippedTasks,
+        failedTasks,
       };
     }
 

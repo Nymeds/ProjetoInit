@@ -16,11 +16,21 @@ interface TaskCardProps {
   onUpdated?: () => void;
   onDragStart?: (event: DragEvent<HTMLDivElement>, todo: Todo) => void;
   isHighlighted?: boolean;
+  isDimmed?: boolean;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3333";
 
-export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick, onDragStart, isHighlighted = false }: TaskCardProps) {
+export function TaskCard({
+  todo,
+  onDeleted,
+  onUpdated,
+  className = '',
+  onClick,
+  onDragStart,
+  isHighlighted = false,
+  isDimmed = false,
+}: TaskCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +89,13 @@ export function TaskCard({ todo, onDeleted, onUpdated, className = '', onClick, 
       draggable
       onDragStart={(event) => onDragStart?.(event, todo)}
       bodyClassName="flex flex-col flex-1 overflow-hidden"
-      className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${isHighlighted ? "ring-2 ring-accent-brand/60" : ""} ${className} flex flex-col`}
+      className={`cursor-pointer bg-background-secondary p-6 border border-border-primary hover:border-accent-brand transition-all duration-300 hover:scale-105 hover:shadow-lg ${
+        isHighlighted
+          ? "ring-2 ring-accent-brand/80 ring-offset-2 ring-offset-background-primary shadow-[0_0_0_1px_rgba(87,157,255,0.35),0_16px_35px_rgba(87,157,255,0.18)]"
+          : ""
+      } ${
+        isDimmed ? "opacity-50 saturate-50 scale-[0.98]" : ""
+      } ${className} flex flex-col`}
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-auto" style={{ maxHeight: 320 }}>

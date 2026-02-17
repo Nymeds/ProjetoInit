@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { LogOut, Menu, Settings, User, UserCog } from "lucide-react";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
@@ -12,6 +12,8 @@ interface DashboardHeaderProps {
   onLogout: () => void;
   layoutMode: DashboardLayoutMode;
   onChangeLayout: (layout: DashboardLayoutMode) => void;
+  statsContent?: ReactNode;
+  onSummaryClick?: () => void;
   onToggleSidebar?: () => void;
   onOpenProfileSettings?: () => void;
 }
@@ -21,6 +23,8 @@ export function DashboardHeader({
   onLogout,
   layoutMode,
   onChangeLayout,
+  statsContent,
+  onSummaryClick,
   onToggleSidebar,
   onOpenProfileSettings,
 }: DashboardHeaderProps) {
@@ -62,8 +66,8 @@ export function DashboardHeader({
   }
 
   return (
-    <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-      <div className="space-y-4 text-center xl:text-left">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_auto] xl:items-start">
+      <div className="order-1 space-y-4 text-center xl:text-left">
         <div className="flex items-center justify-center gap-4 xl:justify-start">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-brand to-accent-brand-light shadow-lg">
             <User className="h-8 w-8 text-white" />
@@ -96,80 +100,110 @@ export function DashboardHeader({
         </Card>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-end">
-        {onToggleSidebar && (
-          <Button variant="ghost" onClick={onToggleSidebar} className="p-2" title="Mostrar ou ocultar grupos">
-            <Menu className="h-5 w-5" />
-          </Button>
+      <div className="order-3 space-y-5 xl:order-2">
+        {onSummaryClick ? (
+          <button
+            type="button"
+            onClick={onSummaryClick}
+            className="w-full rounded-lg p-1 text-center transition-colors hover:bg-background-tertiary/40 xl:text-left"
+          >
+            <Text variant="heading-medium" className="mb-2 text-heading">
+              Resumo das atividades
+            </Text>
+            <Text variant="paragraph-medium" className="text-accent-paragraph">
+              Acompanhe seu progresso e produtividade.
+            </Text>
+          </button>
+        ) : (
+          <div className="text-center xl:text-left">
+            <Text variant="heading-medium" className="mb-2 text-heading">
+              Resumo das atividades
+            </Text>
+            <Text variant="paragraph-medium" className="text-accent-paragraph">
+              Acompanhe seu progresso e produtividade.
+            </Text>
+          </div>
         )}
 
-        <ThemeToggle />
+        {statsContent}
+      </div>
 
-        <div className="relative" ref={settingsRef}>
-          <Button
-            variant="ghost"
-            className="p-2"
-            onClick={() => setIsSettingsOpen((open) => !open)}
-            title="Configuracoes do dashboard"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
+      <div className="order-2 flex flex-col items-center gap-3 xl:order-3 xl:items-end">
+        <div className="flex items-center gap-2">
+          {onToggleSidebar && (
+            <Button variant="ghost" onClick={onToggleSidebar} className="p-2" title="Mostrar ou ocultar grupos">
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
 
-          {isSettingsOpen && (
-            <div className="absolute right-0 top-12 z-40 w-72 rounded-xl border border-border-primary bg-background-secondary p-3 shadow-xl">
-              <Text variant="label-small" className="mb-2 block text-heading">
-                Configuracoes
-              </Text>
+          <ThemeToggle />
 
-              <div className="space-y-2">
+          <div className="relative" ref={settingsRef}>
+            <Button
+              variant="ghost"
+              className="p-2"
+              onClick={() => setIsSettingsOpen((open) => !open)}
+              title="Configuracoes do dashboard"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+
+            {isSettingsOpen && (
+              <div className="absolute right-0 top-12 z-40 w-72 rounded-xl border border-border-primary bg-background-secondary p-3 shadow-xl">
+                <Text variant="label-small" className="mb-2 block text-heading">
+                  Configuracoes
+                </Text>
+
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => handleLayoutSelection("comfortable")}
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                      layoutMode === "comfortable"
+                        ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
+                        : "border-border-primary text-label hover:border-accent-brand/40"
+                    }`}
+                  >
+                    <Text variant="paragraph-small" className="font-semibold">
+                      Layout confortavel (padrao)
+                    </Text>
+                    <Text variant="paragraph-small" className="text-accent-paragraph">
+                      Mais espaco de tela e cards mais amplos.
+                    </Text>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleLayoutSelection("classic")}
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                      layoutMode === "classic"
+                        ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
+                        : "border-border-primary text-label hover:border-accent-brand/40"
+                    }`}
+                  >
+                    <Text variant="paragraph-small" className="font-semibold">
+                      Layout classico
+                    </Text>
+                    <Text variant="paragraph-small" className="text-accent-paragraph">
+                      Visual anterior com estrutura compacta.
+                    </Text>
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => handleLayoutSelection("comfortable")}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                    layoutMode === "comfortable"
-                      ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
-                      : "border-border-primary text-label hover:border-accent-brand/40"
-                  }`}
+                  onClick={handleOpenProfileSettings}
+                  className="mt-3 flex w-full items-center gap-2 rounded-lg border border-border-primary px-3 py-2 text-left text-label transition-colors hover:border-accent-brand/40 hover:text-accent-brand"
                 >
-                  <Text variant="paragraph-small" className="font-semibold">
-                    Layout confortavel (padrao)
-                  </Text>
-                  <Text variant="paragraph-small" className="text-accent-paragraph">
-                    Mais espaco de tela e cards mais amplos.
-                  </Text>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleLayoutSelection("classic")}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                    layoutMode === "classic"
-                      ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
-                      : "border-border-primary text-label hover:border-accent-brand/40"
-                  }`}
-                >
-                  <Text variant="paragraph-small" className="font-semibold">
-                    Layout classico
-                  </Text>
-                  <Text variant="paragraph-small" className="text-accent-paragraph">
-                    Visual anterior com estrutura compacta.
-                  </Text>
+                  <UserCog className="h-4 w-4" />
+                  <Text variant="paragraph-small">Editar conta e amigos</Text>
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={handleOpenProfileSettings}
-                className="mt-3 flex w-full items-center gap-2 rounded-lg border border-border-primary px-3 py-2 text-left text-label transition-colors hover:border-accent-brand/40 hover:text-accent-brand"
-              >
-                <UserCog className="h-4 w-4" />
-                <Text variant="paragraph-small">Editar conta e amigos</Text>
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <Button variant="danger" className="flex items-center gap-2 px-4 py-2" onClick={onLogout}>
+        <Button variant="danger" className="flex items-center gap-2 px-4 py-2 xl:min-w-[120px]" onClick={onLogout}>
           <LogOut className="h-4 w-4" />
           <span>Sair</span>
         </Button>

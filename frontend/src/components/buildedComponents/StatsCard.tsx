@@ -9,9 +9,10 @@ type StatsCardProps = {
   icon?: React.ComponentType<any>;
   color?: 'accent-brand' | 'accent-red' | 'accent-brand-light';
   onClick?: () => void;
+  isActive?: boolean;
 };
 
-export function StatsCard({ title, value, icon: Icon, color , onClick  }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, color, onClick, isActive = false }: StatsCardProps) {
   const colorMap: Record<
     string,
     { bgClass: string; textClass: string; gradientClass: string }
@@ -34,9 +35,18 @@ export function StatsCard({ title, value, icon: Icon, color , onClick  }: StatsC
   };
 
   const chosen = color ? colorMap[color] : colorMap['accent-brand'];
+  const interactive = typeof onClick === 'function';
 
-  return (
-    <Card onClick={onClick} className="bg-background-secondary p-6 border border-border-primary text-center transition-all duration-300 hover:scale-105" >
+  const cardContent = (
+    <Card
+      className={`
+        bg-background-secondary p-6 border text-center transition-all duration-300
+        ${interactive ? 'hover:scale-105 hover:shadow-xl cursor-pointer' : ''}
+        ${isActive
+          ? 'border-accent-brand shadow-[0_0_0_1px_rgba(87,157,255,0.45),0_16px_35px_rgba(87,157,255,0.22)]'
+          : 'border-border-primary'}
+      `}
+    >
       <div className="flex items-center justify-center mb-4">
         <div className={`p-3 rounded-xl ${chosen.bgClass}`}>
           {Icon ? (
@@ -53,5 +63,18 @@ export function StatsCard({ title, value, icon: Icon, color , onClick  }: StatsC
         {title}
       </Text>
     </Card>
+  );
+
+  if (!interactive) return cardContent;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand"
+      aria-pressed={isActive}
+    >
+      {cardContent}
+    </button>
   );
 }

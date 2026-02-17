@@ -279,77 +279,30 @@ export function Dashboard() {
           <div className={`mx-auto px-4 py-6 sm:px-6 xl:px-8 ${isComfortableLayout ? "max-w-[1750px]" : "max-w-7xl"}`}>
             <div className={`grid grid-cols-1 gap-6 ${isComfortableLayout ? "xl:grid-cols-[minmax(0,1fr)_22rem]" : "xl:grid-cols-[minmax(0,1fr)_20rem]"}`}>
               <div className={isComfortableLayout ? "space-y-6" : "space-y-8"}>
-                {isComfortableLayout ? (
-                  <Card className={surfaceCardClass}>
-                    <div className="p-6 xl:p-8">
-                      <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[360px_minmax(0,1fr)]">
-                        <DashboardHeader
-                          user={user}
-                          onLogout={handleLogout}
-                          layoutMode={layoutMode}
-                          onChangeLayout={setLayoutMode}
-                          onToggleSidebar={() => setShowSidebar((current) => !current)}
-                          onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
-                        />
-
-                        <div className="space-y-5">
-                          <div className="text-center 2xl:text-left">
-                            <Text variant="heading-medium" className="mb-2 text-heading">
-                              Resumo das atividades
-                            </Text>
-                            <Text variant="paragraph-medium" className="text-accent-paragraph">
-                              Acompanhe seu progresso e produtividade.
-                            </Text>
-                          </div>
-
-                          <DashboardStats
-                            total={totalTasks}
-                            completed={completedTasks}
-                            pending={pendingTasks}
-                            completionRate={completionRate}
-                            onHighlight={triggerHighlight}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ) : (
-                  <>
-                    <Card className={surfaceCardClass}>
-                      <div className="p-6">
-                        <DashboardHeader
-                          user={user}
-                          onLogout={handleLogout}
-                          layoutMode={layoutMode}
-                          onChangeLayout={setLayoutMode}
-                          onToggleSidebar={() => setShowSidebar((current) => !current)}
-                          onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
-                        />
-                      </div>
-                    </Card>
-
-                    <Card className={surfaceCardClass}>
-                      <div className="p-8">
-                        <div className="mb-8 text-center">
-                          <Text variant="heading-medium" className="mb-2 text-heading">
-                            Resumo das atividades
-                          </Text>
-                          <Text variant="paragraph-medium" className="text-accent-paragraph">
-                            Acompanhe seu progresso e produtividade.
-                          </Text>
-                        </div>
-
+                <Card className={surfaceCardClass}>
+                  <div className={isComfortableLayout ? "p-6 xl:p-8" : "p-6"}>
+                    <DashboardHeader
+                      user={user}
+                      onLogout={handleLogout}
+                      layoutMode={layoutMode}
+                      onChangeLayout={setLayoutMode}
+                      onSummaryClick={() => triggerHighlight(null)}
+                      onToggleSidebar={() => setShowSidebar((current) => !current)}
+                      onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
+                      statsContent={(
                         <DashboardStats
                           total={totalTasks}
                           completed={completedTasks}
                           pending={pendingTasks}
                           completionRate={completionRate}
                           onHighlight={triggerHighlight}
+                          activeFilter={statsFilter}
+                          isHighlightActive={highlightCompleted}
                         />
-                      </div>
-                    </Card>
-                  </>
-                )}
+                      )}
+                    />
+                  </div>
+                </Card>
 
                 <Card className={surfaceCardClass}>
                   <div className={isComfortableLayout ? "p-6 xl:p-8" : "p-8"}>
