@@ -173,6 +173,8 @@ export function Dashboard() {
   }
 
   function handleLogout() {
+    // Evita exibir dados em cache do usuario anterior apos novo login.
+    queryClient.clear();
     logout();
     navigate('/login');
   }

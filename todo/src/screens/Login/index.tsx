@@ -1,26 +1,26 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
-import { useNavigation, useTheme } from "@react-navigation/native";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from "react-native";
+import { useTheme } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import type { Resolver } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AppInput } from "../../components/AppInput";
 import CardCircular from "../../components/CircularCard";
 import { useAuth } from "../../context/AuthContext";
-import { Ionicons } from "@expo/vector-icons";
-
-import { loginSchema, LoginFormData } from "./schema";
+import { getApiErrorMessage } from "../../services/api";
+import { loginSchema, type LoginFormData } from "./schema";
+import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 const icon = require("../../../assets/icon.png");
 
+type LoginNavigation = NativeStackNavigationProp<AuthStackParamList, "Login">;
+
 export default function Login() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<LoginNavigation>();
   const { colors } = useTheme();
   const { login } = useAuth();
 
@@ -33,8 +33,7 @@ export default function Login() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
-    // @ts-ignore
-    resolver: yupResolver(loginSchema),
+    resolver: yupResolver(loginSchema) as Resolver<LoginFormData>,
     defaultValues: { email: "", password: "" },
   });
 
@@ -43,25 +42,9 @@ export default function Login() {
     setGeneralError(null);
     try {
       await login(data.email, data.password);
-    } catch (err: any) {
-  if (err.response) {
-    switch (err.response.status) {
-      case 400:
-        setGeneralError("E-mail ou senha inválidos.");
-        break;
-      case 401:
-        setGeneralError("Não autorizado. Verifique suas credenciais.");
-        break;
-      case 500:
-        setGeneralError("Erro no servidor. Tente mais tarde.");
-        break;
-      default:
-        setGeneralError("Ocorreu um erro inesperado.");
-    }
-  } else {
-    setGeneralError("Erro de conexão. Verifique sua internet.");
-  }
-} finally {
+    } catch (error) {
+      setGeneralError(getApiErrorMessage(error, "Erro de conexao. Verifique sua internet."));
+    } finally {
       setLoading(false);
     }
   };
@@ -88,7 +71,7 @@ export default function Login() {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+      {errors.email ? <Text style={styles.errorText}>{errors.email.message}</Text> : null}
 
       <AppInput
         control={control}
@@ -96,33 +79,28 @@ export default function Login() {
         label="Senha"
         placeholder="Sua senha"
         rightIcon={
-          <TouchableOpacity onPress={() => setShowPassword((s) => !s)}>
+          <TouchableOpacity onPress={() => setShowPassword((previous) => !previous)}>
             <Ionicons name={showPassword ? "eye-off" : "eye"} size={22} color={colors.text} />
           </TouchableOpacity>
         }
         secureTextEntry={!showPassword}
       />
-      {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+      {errors.password ? <Text style={styles.errorText}>{errors.password.message}</Text> : null}
 
-      {generalError && <Text style={styles.errorText}>{generalError}</Text>}
+      {generalError ? <Text style={styles.errorText}>{generalError}</Text> : null}
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.primary }]}
-          // @ts-ignore
           onPress={handleSubmit(onSubmit)}
           disabled={isSubmitting}
         >
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Entrar</Text>
-          )}
+          {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.buttonOutline, { borderColor: colors.primary }]}
-          onPress={() => navigation.navigate("Register" as never)}
+          onPress={() => navigation.navigate("Register")}
         >
           <Text style={[styles.buttonText, { color: colors.primary }]}>Ir para Cadastro</Text>
         </TouchableOpacity>

@@ -27,6 +27,10 @@ export async function appRoutes(app: FastifyInstance) {
   app.patch('/token/refresh', refresh);
   app.get('/sessions/me', { preHandler: [verifyJwt] }, me);
 
+  //Forgot password, reset password, etc. 
+
+  app.post('/password/forgot', ()=> {console.log("O CARA ESQUECEU A SENHA KKK AIAI FODIDO ")});
+
   // ELISA (assistente virtual)
   app.get('/assistant/history', { preHandler: [verifyJwt] }, assistantHistory);
   app.post('/assistant/chat', { preHandler: [verifyJwt] }, assistantChat);

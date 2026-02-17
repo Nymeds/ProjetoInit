@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTheme } from "@react-navigation/native";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { getGroups } from "../services/groups";
@@ -41,6 +41,11 @@ const schema = yup.object({
 });
 
 export type TaskFormData = yup.InferType<typeof schema>;
+type TaskFormValues = {
+  title: string;
+  description?: string;
+  groupId?: string;
+};
 
 export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
   const { colors } = useTheme();
@@ -52,8 +57,8 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<TaskFormData>({
-    resolver: yupResolver(schema),
+  } = useForm<TaskFormValues>({
+    resolver: yupResolver(schema) as Resolver<TaskFormValues>,
     defaultValues: { title: "", description: "", groupId: undefined },
   });
 
@@ -87,8 +92,12 @@ export default function CreateTaskModal({ visible, onClose, onCreate }: Props) {
   }, [visible, reset]);
 
   // ✅ Submit
-  const handleAdd = async (data: TaskFormData) => {
-    await onCreate(data);
+  const handleAdd = async (data: TaskFormValues) => {
+    await onCreate({
+      title: data.title,
+      description: data.description,
+      groupId: data.groupId,
+    });
     onClose();
   };
 

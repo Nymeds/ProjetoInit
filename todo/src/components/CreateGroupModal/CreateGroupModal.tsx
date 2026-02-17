@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, View, ActivityIndicator, StyleSheet } from "react-native";
+import { ActivityIndicator, Modal, StyleSheet, View } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import CreateGroupForm from "./CreateGroupForm";
@@ -7,9 +7,7 @@ import CreateGroupForm from "./CreateGroupForm";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreateGroup: (
-    payload: { name: string; description?: string; userEmails: string[] }
-  ) => Promise<{ success: boolean; message?: string }>;
+  onCreateGroup: (payload: { name: string; description?: string; userEmails: string[] }) => Promise<void>;
 }
 
 export default function CreateGroupModal({ visible, onClose, onCreateGroup }: Props) {

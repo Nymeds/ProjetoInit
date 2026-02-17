@@ -1,44 +1,51 @@
 import React, { useState } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useNavigation, useTheme } from "@react-navigation/native";
-import { useForm, SubmitHandler } from "react-hook-form";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { SubmitHandler, useForm, type Resolver } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 
 import { AppInput } from "../../components/AppInput";
 import CardCircular from "../../components/CircularCard";
 import { useAuth } from "../../context/AuthContext";
+import { getApiErrorMessage } from "../../services/api";
+import type { AuthStackParamList } from "../../navigation/AuthStack";
 import { registerSchema, RegisterFormData } from "./schema";
 
 const icon = require("../../../assets/icon.png");
 
 export default function Register() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, "Register">>();
   const { colors } = useTheme();
   const { register: authRegister } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
-    // @ts-ignore
-    resolver: yupResolver(registerSchema),
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: yupResolver(registerSchema) as Resolver<RegisterFormData>,
     defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
   });
 
   const onSubmit: SubmitHandler<RegisterFormData> = async (data) => {
     try {
       setLoading(true);
+      setErrorMessage("");
       setSuccessMessage("");
 
-      const response = await authRegister(data.name, data.email, data.password);
-      // @ts-ignore
-      if (response?.message === "User registered successfully") {
-        setSuccessMessage("Cadastro realizado! Redirecionando para login...");
-        reset();
-        setTimeout(() => navigation.navigate("Login" as never), 4000);
-      }
-    } catch (err: any) {
-      console.log("Erro ao registrar:", err.message);
+      await authRegister(data.name, data.email, data.password);
+
+      setSuccessMessage("Cadastro realizado! Redirecionando para login...");
+      reset();
+      setTimeout(() => navigation.navigate("Login"), 2000);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Erro ao registrar usuario"));
     } finally {
       setLoading(false);
     }
@@ -58,30 +65,13 @@ export default function Register() {
       <CardCircular size={100} icon={icon} iconSize={90} />
       <Text style={[styles.title, { color: colors.text }]}>Cadastro</Text>
 
-      {/* Inputs */}
-      <AppInput
-        control={control}
-        name="name"
-        label="Nome"
-        placeholder="Digite seu nome"
-      />
+      <AppInput control={control} name="name" label="Nome" placeholder="Digite seu nome" />
       {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
 
-      <AppInput
-        control={control}
-        name="email"
-        label="E-mail"
-        placeholder="Digite seu e-mail"
-      />
+      <AppInput control={control} name="email" label="E-mail" placeholder="Digite seu e-mail" />
       {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
-      <AppInput
-        control={control}
-        name="password"
-        label="Senha"
-        placeholder="Digite sua senha"
-        secureTextEntry
-      />
+      <AppInput control={control} name="password" label="Senha" placeholder="Digite sua senha" secureTextEntry />
       {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
       <AppInput
@@ -93,22 +83,20 @@ export default function Register() {
       />
       {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
 
-      {successMessage && <Text style={styles.successText}>{successMessage}</Text>}
+      {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+      {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
 
-      {/* Botão Cadastrar */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.primary }]}
-        // @ts-ignore
         onPress={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
         {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
       </TouchableOpacity>
 
-      {/* Botão Voltar */}
       <TouchableOpacity
         style={[styles.buttonOutline, { borderColor: colors.primary }]}
-        onPress={() => navigation.navigate("Login" as never)}
+        onPress={() => navigation.navigate("Login")}
       >
         <Text style={[styles.buttonText, { color: colors.primary }]}>Voltar para Login</Text>
       </TouchableOpacity>

@@ -19,8 +19,8 @@ interface RegisterProviderProps {
   children: ReactNode;
 }
 
-export const RegisterContext = createContext<RegisterContextType>(
-  {} as RegisterContextType
+export const RegisterContext = createContext<RegisterContextType | undefined>(
+  undefined
 );
 
 export function RegisterProvider({ children }: RegisterProviderProps) {

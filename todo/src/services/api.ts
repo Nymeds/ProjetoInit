@@ -1,115 +1,145 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Alert } from "react-native";
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 
-const api = axios.create({
-  baseURL: "http://10.0.2.2:3333",
-  headers: { "Content-Type": "application/json" },
-  timeout: 8000,
-});
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:3333";
+const TOKEN_STORAGE_KEYS = ["token", "@token", "@app:token", "@ignite:token", "access_token"] as const;
+const REFRESH_STORAGE_KEYS = ["@refreshToken", "refreshToken", "@app:refreshToken"] as const;
+
+interface ApiErrorResponse {
+  message?: string;
+}
 
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+let signOutHandler: (() => void | Promise<void>) | null = null;
 
-let signOutHandler: (() => void) | null = null;
-export const setSignOutHandler = (fn: () => void) => {
-  signOutHandler = fn;
+export const setSignOutHandler = (handler: () => void | Promise<void>) => {
+  signOutHandler = handler;
 };
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((p) => {
-    if (error) p.reject(error);
-    else p.resolve(token!);
+async function readStoredToken(): Promise<string> {
+  for (const key of TOKEN_STORAGE_KEYS) {
+    const value = await AsyncStorage.getItem(key);
+    if (value) return value;
+  }
+  return "";
+}
+
+async function readStoredRefreshToken(): Promise<string> {
+  for (const key of REFRESH_STORAGE_KEYS) {
+    const value = await AsyncStorage.getItem(key);
+    if (value) return value;
+  }
+  return "";
+}
+
+async function clearStoredAuth(): Promise<void> {
+  const allKeys = [...TOKEN_STORAGE_KEYS, ...REFRESH_STORAGE_KEYS, "@user"] as const;
+  await AsyncStorage.multiRemove([...allKeys]);
+}
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach((pending) => {
+    if (error) pending.reject(error);
+    else pending.resolve(token ?? "");
   });
   failedQueue = [];
-};
+}
 
-// Request interceptor
-api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    try {
-      const token = await AsyncStorage.getItem("@token");
-      if (token) {
-        config.headers = config.headers ?? {};
-        config.headers["Authorization"] = `Bearer ${token}`;
-      }
-    } catch (e) {
-      console.warn("[api] request interceptor error:", e);
+export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    const responseMessage = error.response?.data?.message;
+    if (typeof responseMessage === "string" && responseMessage.trim() !== "") {
+      return responseMessage;
     }
-    return config;
-  },
-  (err) => Promise.reject(err)
-);
+    if (typeof error.message === "string" && error.message.trim() !== "") {
+      return error.message;
+    }
+  }
 
-// Response interceptor (refresh flow)
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+export function toApiError(error: unknown, fallbackMessage: string): Error {
+  return new Error(getApiErrorMessage(error, fallbackMessage));
+}
+
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+  timeout: 10000,
+});
+
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const token = await readStoredToken();
+  if (!token) return config;
+
+  const headers = AxiosHeaders.from(config.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  config.headers = headers;
+  return config;
+});
+
 api.interceptors.response.use(
-  (res) => res,
-  async (error: AxiosError) => {
+  (response) => response,
+  async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
     if (!originalRequest) return Promise.reject(error);
 
-    const status = error.response?.status;
-    const isRefreshEndpoint = originalRequest.url?.includes("/token/refresh");
-
-    if (status === 401 && !originalRequest._retry) {
-      if (isRefreshEndpoint) {
-        if (signOutHandler) signOutHandler();
-        Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
-        return Promise.reject(new Error("Sessão expirada"));
-      }
-
-      originalRequest._retry = true;
-
-      if (isRefreshing) {
-        return new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((newToken) => {
-            originalRequest.headers!["Authorization"] = `Bearer ${newToken}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      isRefreshing = true;
-
-      try {
-        const refreshToken = await AsyncStorage.getItem("@refreshToken");
-        if (!refreshToken) {
-          if (signOutHandler) signOutHandler();
-          Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
-          return Promise.reject(new Error("Sessão expirada"));
-        }
-
-        const r = await api.patch<{ token: string; refreshToken: string }>(
-          "/token/refresh",
-          { refreshToken },
-          { timeout: 8000 }
-        );
-
-        const { token: newToken, refreshToken: newRefreshToken } = r.data;
-
-        await AsyncStorage.setItem("@token", newToken);
-        await AsyncStorage.setItem("@refreshToken", newRefreshToken);
-
-        processQueue(null, newToken);
-
-        originalRequest.headers!["Authorization"] = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
-        if (signOutHandler) signOutHandler();
-        Alert.alert("Sessão expirada", "Sua sessão expirou. Faça login novamente.");
-        return Promise.reject(new Error("Sessão expirada"));
-      } finally {
-        isRefreshing = false;
-      }
+    if (error.response?.status !== 401 || originalRequest._retry || originalRequest.url?.includes("/token/refresh")) {
+      return Promise.reject(error);
     }
 
-    // Outros erros que não sejam 401
-    return Promise.reject(error);
-  }
+    originalRequest._retry = true;
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => failedQueue.push({ resolve, reject }))
+        .then((newToken) => {
+          const headers = AxiosHeaders.from(originalRequest.headers);
+          headers.set("Authorization", `Bearer ${newToken}`);
+          originalRequest.headers = headers;
+          return api(originalRequest);
+        });
+    }
+
+    isRefreshing = true;
+
+    try {
+      const refreshToken = await readStoredRefreshToken();
+      if (!refreshToken) throw new Error("Sessao expirada");
+
+      const refreshResponse = await api.patch<{ token: string; refreshToken?: string }>(
+        "/token/refresh",
+        { refreshToken },
+      );
+
+      const newToken = refreshResponse.data.token;
+      const newRefreshToken = refreshResponse.data.refreshToken ?? refreshToken;
+
+      await AsyncStorage.setItem("token", newToken);
+      await AsyncStorage.setItem("@token", newToken);
+      await AsyncStorage.setItem("@refreshToken", newRefreshToken);
+
+      processQueue(null, newToken);
+
+      const headers = AxiosHeaders.from(originalRequest.headers);
+      headers.set("Authorization", `Bearer ${newToken}`);
+      originalRequest.headers = headers;
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      await clearStoredAuth();
+      await signOutHandler?.();
+      return Promise.reject(toApiError(refreshError, "Sessao expirada"));
+    } finally {
+      isRefreshing = false;
+    }
+  },
 );
 
 export default api;

@@ -1,25 +1,23 @@
-// src/components/AppInput.tsx
-import React, { ReactNode, useState, useRef } from "react";
-import {
-  TextInput,
-  TextInputProps,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import React, { type ReactNode, useRef, useState } from "react";
+import { TextInput, type TextInputProps, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Control, Controller, FieldValues, Path } from "react-hook-form";
 import { useTheme } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-interface AppInputProps extends TextInputProps {
-  control: Control<any>;
-  name: Path<any>;
+interface AppInputProps<
+  TFieldValues extends FieldValues,
+  TTransformedValues extends FieldValues = TFieldValues,
+> extends TextInputProps {
+  control: Control<TFieldValues, unknown, TTransformedValues>;
+  name: Path<TFieldValues>;
   label?: string;
-  rightIcon?: ReactNode; // se quiser passar um botão custom por fora
+  rightIcon?: ReactNode;
 }
 
-export function AppInput({
+export function AppInput<
+  TFieldValues extends FieldValues,
+  TTransformedValues extends FieldValues = TFieldValues,
+>({
   control,
   name,
   label,
@@ -27,7 +25,7 @@ export function AppInput({
   secureTextEntry,
   style,
   ...rest
-}: AppInputProps) {
+}: AppInputProps<TFieldValues, TTransformedValues>) {
   const { colors } = useTheme();
   const [showText, setShowText] = useState<boolean>(!!secureTextEntry);
   const inputRef = useRef<TextInput | null>(null);
@@ -43,27 +41,19 @@ export function AppInput({
           <View style={{ position: "relative" }}>
             <TextInput
               ref={inputRef}
-              value={value}
+              value={typeof value === "string" ? value : String(value ?? "")}
               onChangeText={onChange}
               onBlur={onBlur}
               secureTextEntry={secureTextEntry ? showText : false}
               placeholderTextColor={colors.border}
-              style={[
-                styles.input,
-                { backgroundColor: colors.card, color: colors.text },
-                style,
-              ]}
+              style={[styles.input, { backgroundColor: colors.card, color: colors.text }, style]}
               {...rest}
             />
 
-            {/* se foi passado rightIcon externo, renderiza ele; se não e for secureTextEntry, mostra eye toggle */}
             {rightIcon ? (
               <View style={styles.iconContainer}>{rightIcon}</View>
             ) : secureTextEntry ? (
-              <TouchableOpacity
-                onPress={() => setShowText((v) => !v)}
-                style={styles.iconContainer}
-              >
+              <TouchableOpacity onPress={() => setShowText((previous) => !previous)} style={styles.iconContainer}>
                 <Ionicons name={showText ? "eye-off" : "eye"} size={22} color={colors.text} />
               </TouchableOpacity>
             ) : null}

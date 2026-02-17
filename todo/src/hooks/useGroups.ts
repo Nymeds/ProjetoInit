@@ -1,45 +1,52 @@
 import { useCallback, useEffect, useState } from "react";
 import { useError } from "../context/ErrorContext";
-import { Group, GroupPayload, getGroups, createGroup, deleteGroup } from "../services/groups";
+import { useAuth } from "../context/AuthContext";
+import { getApiErrorMessage } from "../services/api";
+import { createGroup, deleteGroup, getGroups, type Group, type GroupPayload } from "../services/groups";
 
-export const useGroups = () => {
+export const useGroups = (options?: { enabled?: boolean }) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const { showError } = useError(); 
+  const { showError } = useError();
+  const { user } = useAuth();
+
+  const isEnabled = !!user && (options?.enabled ?? true);
 
   const fetchGroups = useCallback(async () => {
+    if (!isEnabled) {
+      setGroups([]);
+      setLoading(false);
+      return [];
+    }
+
     setLoading(true);
     try {
       const data = await getGroups();
       setGroups(Array.isArray(data) ? data : []);
       return data;
-    } catch (err: any) {
-      showError(err?.response?.data?.message || "Erro ao carregar grupos");
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Erro ao carregar grupos");
+      showError(message);
       setGroups([]);
       return [];
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [isEnabled, showError]);
 
   const addGroup = useCallback(
     async (payload: GroupPayload) => {
       try {
         const newGroup = await createGroup(payload);
-        if (!newGroup?.id) throw new Error("O backend não retornou o ID do grupo");
         setGroups((prev) => [...prev, newGroup]);
         return newGroup;
-      } catch (err: any) {
-        const backendMsg =
-          err?.response?.data?.message ||
-          err?.response?.data ||
-          err?.message ||
-          "Erro desconhecido";
-        showError(backendMsg);
-        throw new Error(backendMsg);
+      } catch (error) {
+        const message = getApiErrorMessage(error, "Erro ao criar grupo");
+        showError(message);
+        throw new Error(message);
       }
     },
-    [showError]
+    [showError],
   );
 
   const removeGroup = useCallback(
@@ -47,17 +54,13 @@ export const useGroups = () => {
       try {
         await deleteGroup(id);
         setGroups((prev) => prev.filter((group) => group.id !== id));
-      } catch (err: any) {
-        const backendMsg =
-          err?.response?.data?.message ||
-          err?.response?.data ||
-          err?.message ||
-          "Erro desconhecido";
-        showError(backendMsg);
-        throw new Error(backendMsg);
+      } catch (error) {
+        const message = getApiErrorMessage(error, "Erro ao apagar grupo");
+        showError(message);
+        throw new Error(message);
       }
     },
-    [showError]
+    [showError],
   );
 
   useEffect(() => {

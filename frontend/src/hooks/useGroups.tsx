@@ -1,15 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/auth";
+import type { GroupResponse } from "../api/groups";
+import { useAuth } from "./useAuth";
 
-export type Group = { id: string; name: string };
+export type Group = GroupResponse;
 
-export function useGroups() {
+export function useGroups(options?: { enabled?: boolean }) {
+  const { user } = useAuth();
+
   return useQuery<Group[]>({
-    queryKey: ["groups"],
+    // Cache segmentado por usuario para evitar dado residual apos troca de sessao.
+    queryKey: ["groups", user?.id],
     queryFn: async () => {
       const { data } = await api.get("/groups");
-      
       return data.groups ?? [];
     },
+    enabled: !!user && (options?.enabled ?? true),
   });
 }

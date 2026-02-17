@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { Plus, Users, CheckSquare } from "lucide-react-native";
 import { useTheme } from "@react-navigation/native";
 import CreateTaskModal from "./CreateTaskModal";
@@ -16,26 +16,6 @@ export default function FabMenu({ onCreateTodo, onCreateGroup }: Props) {
   const [taskModalVisible, setTaskModalVisible] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
 
- 
-  const createGroupWrapper = async (payload: { name: string; description?: string; userEmails: string[] }) => {
-    try {
-      await onCreateGroup(payload);
-      
-      return { success: true };
-    } catch (err: any) {
-     
-      const message = err?.response?.data?.message ?? err?.message ?? "Erro ao criar grupo";
-      
-      console.log("Erro capturado no wrapper:", message); 
-      
-    
-      return { 
-        success: false, 
-        message: message 
-      };
-    }
-  };
-
   return (
     <>
       <View style={styles.container}>
@@ -43,14 +23,20 @@ export default function FabMenu({ onCreateTodo, onCreateGroup }: Props) {
           <>
             <TouchableOpacity
               style={[styles.optionButton, { backgroundColor: colors.primary }]}
-              onPress={() => { setOpen(false); setGroupModalVisible(true); }}
+              onPress={() => {
+                setOpen(false);
+                setGroupModalVisible(true);
+              }}
             >
               <Users size={22} color="white" />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.optionButton, { backgroundColor: colors.notification }]}
-              onPress={() => { setOpen(false); setTaskModalVisible(true); }}
+              onPress={() => {
+                setOpen(false);
+                setTaskModalVisible(true);
+              }}
             >
               <CheckSquare size={22} color="white" />
             </TouchableOpacity>
@@ -74,7 +60,7 @@ export default function FabMenu({ onCreateTodo, onCreateGroup }: Props) {
       <CreateGroupModal
         visible={groupModalVisible}
         onClose={() => setGroupModalVisible(false)}
-        onCreateGroup={createGroupWrapper}
+        onCreateGroup={onCreateGroup}
       />
     </>
   );

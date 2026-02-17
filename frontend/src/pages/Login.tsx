@@ -9,6 +9,7 @@ import { Text } from "../components/baseComponents/text";
 import { Button } from "../components/baseComponents/button";
 import Footer from "../components/buildedComponents/Footer";
 
+
 interface LoginFormData {
   email: string;
   password: string;
@@ -63,6 +64,10 @@ export function Login() {
 
             <Text variant="heading-medium" className="text-center">
               Login
+            </Text>
+
+            <Text variant="paragraph-small" className="text-center text-accent-paragraph">
+              Bem-vindo de volta! Por favor, insira suas credenciais para acessar o dashboard.
             </Text>
 
             {/* FORMULÁRIO */}
@@ -132,10 +137,14 @@ export function Login() {
                     onClick={() => setShowPassword(prev => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-accent cursor-pointer"
                   >
-                    {showPassword ? "🙈" : "👁️"}
+                    {showPassword ? "X" : "O"}
                   </button>
                 </div>
-
+                <div className="flex justify-center">
+                <Text variant="paragraph-small" className="text-right text-accent-paragraph">
+                  Ainda não tem uma conta? <a href="/register" className="text-accent-brand hover:underline">Registre-se</a>
+                </Text>
+                </div>
                 {errors.password && (
                   <Text id="password-error" variant="paragraph-small" className="text-danger" role="alert">
                     {errors.password.message}

@@ -1,41 +1,38 @@
 import { useCallback, useEffect, useState } from "react";
 import { useError } from "../context/ErrorContext";
-import * as todoService from "../services/todos";
+import { useAuth } from "../context/AuthContext";
+import { getApiErrorMessage } from "../services/api";
+import { completeTodo, createTodo, deleteTodo, getTodos, type Todo } from "../services/todos";
 
-export type Todo = {
-  id: string;
-  title: string;
-  description?: string;
-  completed: boolean;
-  createdAt?: string;
-  group?: { id: string; name: string } | null;
-  groupId?: string | null;
-};
+export type { Todo };
 
-export function useTodos() {
+export function useTodos(options?: { enabled?: boolean }) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const { showError } = useError();
+  const { user } = useAuth();
 
-  const normalizeList = (data: any) => {
-    const list = data?.todos ?? data;
-    return Array.isArray(list) ? list : [];
-  };
+  const isEnabled = !!user && (options?.enabled ?? true);
 
   const loadTodos = useCallback(async () => {
-    try {
+    if (!isEnabled) {
+      setTodos([]);
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      const data = await todoService.getTodos();
-      setTodos(normalizeList(data));
-    } catch (err: any) {
-      console.error("Erro ao carregar todos:", err);
-      showError(err.response?.data?.message || "Erro ao carregar todos");
+    setLoading(true);
+    try {
+      const data = await getTodos();
+      setTodos(data.todos ?? []);
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Erro ao carregar tarefas");
+      showError(message);
       setTodos([]);
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [isEnabled, showError]);
 
   useEffect(() => {
     loadTodos();
@@ -43,54 +40,53 @@ export function useTodos() {
 
   const addTodo = useCallback(
     async (payload: { title: string; description?: string; groupId?: string }) => {
-      try {
-        const res = await todoService.createTodo(payload);
-        const newTodo = res?.todo ?? res;
-        if (newTodo) setTodos((prev) => [...prev, newTodo]);
-        return newTodo;
-      } catch (err: any) {
-        console.error("Erro ao criar todo:", err);
-        showError(err.response?.data?.message || "Erro ao criar todo");
-        throw err;
-      }
+      const response = await createTodo(payload);
+      const newTodo = response.todo;
+      setTodos((prev) => [...prev, newTodo]);
+      return newTodo;
     },
-    [showError]
+    [],
   );
 
   const removeTodo = useCallback(
-    async (id: string) => {
+    async (id: number | string) => {
       try {
-        await todoService.deleteTodo(id);
-        setTodos((prev) => prev.filter((t) => t.id !== id));
-      } catch (err: any) {
-       
-        showError(err.response?.data?.message || "Erro ao deletar todo");
-        throw err;
+        await deleteTodo(id);
+        setTodos((prev) => prev.filter((todo) => String(todo.id) !== String(id)));
+      } catch (error) {
+        const message = getApiErrorMessage(error, "Erro ao deletar tarefa");
+        showError(message);
+        throw error;
       }
     },
-    [showError]
+    [showError],
   );
 
   const toggleComplete = useCallback(
-    async (id: string) => {
+    async (id: number | string) => {
       try {
-        const res = await todoService.completeTodo(id);
-        const updated = res?.todo ?? res;
+        const response = await completeTodo(id);
+        const updated = response.todo;
 
-        if (updated) {
-          setTodos((prev) =>
-            prev.map((t) => (t.id === id ? { ...t, completed: updated.completed } : t))
-          );
-        }
+        setTodos((prev) =>
+          prev.map((todo) =>
+            String(todo.id) === String(id)
+              ? {
+                  ...todo,
+                  completed: updated.completed,
+                }
+              : todo,
+          ),
+        );
 
         return updated;
-      } catch (err: any) {
-        console.error("Erro ao completar todo:", err);
-        showError(err.response?.data?.message || "Erro ao atualizar todo");
-        throw err;
+      } catch (error) {
+        const message = getApiErrorMessage(error, "Erro ao atualizar tarefa");
+        showError(message);
+        throw error;
       }
     },
-    [showError]
+    [showError],
   );
 
   return { todos, loading, loadTodos, addTodo, removeTodo, toggleComplete };

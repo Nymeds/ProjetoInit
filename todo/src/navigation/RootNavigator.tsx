@@ -5,18 +5,22 @@ import AuthStack from "./AuthStack";
 import AppDrawer from "./AppDrawer";
 import Loading from "../components/Loading";
 
-const Stack = createNativeStackNavigator();
+type RootStackParamList = {
+  App: undefined;
+  Auth: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
 
- 
   if (loading) {
     return <Loading visible={true} message="Carregando dados..." />;
   }
 
   return (
-    <Stack.Navigator  id={undefined} screenOptions={{ headerShown: false }}>
+    <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
       {user ? (
         <Stack.Screen name="App" component={AppDrawer} />
       ) : (

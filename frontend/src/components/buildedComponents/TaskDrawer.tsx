@@ -37,52 +37,53 @@ export function TaskDrawer({ open, onClose, todo, onCreated }: TaskDrawerProps) 
 
   useEffect(() => {
     if (!open || !todo) return;
-    const t = todo;
+
+    let mounted = true;
+    const currentTodoId = todo.id;
+
     setText('');
     setComments([]);
 
-    async function load() {
+    async function loadComments() {
       try {
-        const c = await getTodoComments(t.id);
-        setComments(c.messages ?? []);
-      } catch (err) {
-        // ignore for now
+        const response = await getTodoComments(currentTodoId);
+        if (!mounted) return;
+        setComments(response.messages ?? []);
+      } catch {
+        // Erro de carga nao bloqueia o realtime; o usuario ainda pode comentar.
       }
-
-      // join socket room for todo comments
-      joinTodo(t.id);
-
-      // subscribe socket events
-      const offTodoComment = on('todo:comment', (msg: any) => {
-        if (msg.todoId !== t.id) return;
-        setComments((s) => {
-          // ignore duplicates by id
-          if (s.some((x) => x.id === msg.id)) return s;
-          // remove optimistic placeholder that matches content and author 'you'
-          const filtered = s.filter((x) => !(x.id && typeof x.id === 'string' && x.id.startsWith('tmp-') && x.content === msg.content && x.authorId === 'you'));
-          return [...filtered, msg];
-        });
-      });
-
-      const offTodoCommentUpdated = on('todo:comment_updated', (msg: any) => {
-        if (msg.todoId !== t.id) return;
-        setComments((s) => s.map((x) => (x.id === msg.id ? msg : x)));
-      });
-
-      const offTodoCommentDeleted = on('todo:comment_deleted', (payload: any) => {
-        if (payload.todoId !== t.id) return;
-        setComments((s) => s.filter((x) => x.id !== payload.id));
-      });
-
-      return () => {
-        offTodoComment();
-        offTodoCommentUpdated();
-        offTodoCommentDeleted();
-        leaveTodo(t.id);
-      };
     }
 
-    load();
+    loadComments();
+    joinTodo(currentTodoId);
+
+    const offTodoComment = on('todo:comment', (msg: any) => {
+      if (msg.todoId !== currentTodoId) return;
+      setComments((s) => {
+        if (s.some((x) => x.id === msg.id)) return s;
+        const filtered = s.filter((x) => !(x.id && typeof x.id === 'string' && x.id.startsWith('tmp-') && x.content === msg.content && x.authorId === 'you'));
+        return [...filtered, msg];
+      });
+    });
+
+    const offTodoCommentUpdated = on('todo:comment_updated', (msg: any) => {
+      if (msg.todoId !== currentTodoId) return;
+      setComments((s) => s.map((x) => (x.id === msg.id ? msg : x)));
+    });
+
+    const offTodoCommentDeleted = on('todo:comment_deleted', (payload: any) => {
+      if (payload.todoId !== currentTodoId) return;
+      setComments((s) => s.filter((x) => x.id !== payload.id));
+    });
+
+    // Cleanup do efeito precisa sair diretamente do useEffect para evitar vazamento.
+    return () => {
+      mounted = false;
+      offTodoComment();
+      offTodoCommentUpdated();
+      offTodoCommentDeleted();
+      leaveTodo(currentTodoId);
+    };
   }, [open, todo, joinTodo, leaveTodo, on]);
 
   async function handleSend() {

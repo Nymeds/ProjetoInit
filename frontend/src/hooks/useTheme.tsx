@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useTheme as useThemeContext } from "../context/ThemeContext";
 
-type Theme = 'light' | 'dark';
+type Theme = "light" | "dark";
 
 interface UseThemeReturn {
   theme: Theme;
@@ -11,65 +11,21 @@ interface UseThemeReturn {
 }
 
 export function useTheme(): UseThemeReturn {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const { isDark, setDark, toggleTheme } = useThemeContext();
 
-  useEffect(() => {
-   
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-   
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const systemTheme = prefersDark ? 'dark' : 'light';
-      setThemeState(systemTheme);
-      applyTheme(systemTheme);
-    }
+  // Adaptador para manter compatibilidade sem duplicar estado de tema.
+  const theme: Theme = isDark ? "dark" : "light";
 
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem('theme')) {
-        const newTheme = e.matches ? 'dark' : 'light';
-        setThemeState(newTheme);
-        applyTheme(newTheme);
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement;
-    
-  
-    root.classList.remove('light-theme', 'light-mode', 'dark-theme');
-    
-    if (newTheme === 'light') {
-      root.classList.add('light-theme', 'light-mode');
-    } else {
-      root.classList.add('dark-theme');
-    }
-  };
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    applyTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-  };
+  function setTheme(nextTheme: Theme) {
+    setDark(nextTheme === "dark");
+  }
 
   return {
     theme,
     toggleTheme,
     setTheme,
-    isDark: theme === 'dark',
-    isLight: theme === 'light',
+    isDark,
+    isLight: !isDark,
   };
 }
 

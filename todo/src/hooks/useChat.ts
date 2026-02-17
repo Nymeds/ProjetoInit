@@ -1,19 +1,16 @@
 import { useCallback, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
-import { useAuth } from "./useAuth";
+import { useAuth } from "../context/AuthContext";
 
 type PendingJoin = { type: "todo" | "group"; id: string | number };
-type ChatListener = (...args: any[]) => void;
+type ChatListener = (...args: unknown[]) => void;
 
-const SOCKET_PORT = 3333;
-const envUrl = (import.meta as any)?.env?.VITE_SOCKET_URL;
-const SOCKET_URL = envUrl ?? `${location.protocol}//${location.hostname}:${SOCKET_PORT}`;
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:3333";
 
 let sharedSocket: Socket | null = null;
 let sharedToken: string | null = null;
 let activeSubscribers = 0;
 
-// Mantem salas e listeners fora do hook para evitar conexoes duplicadas por componente.
 const pendingJoins = new Map<string, PendingJoin>();
 const listeners = new Map<string, Set<ChatListener>>();
 
@@ -41,6 +38,7 @@ function connectSharedSocket(token: string): Socket {
   const socket = io(SOCKET_URL, {
     auth: { token },
     autoConnect: true,
+    transports: ["websocket"],
   });
 
   attachRegisteredListeners(socket);

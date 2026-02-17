@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
-  TextInput,
+  FlatList,
   RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useTheme, useNavigation } from "@react-navigation/native";
-import { useGroups } from "../../hooks/useGroups";
-import CreateGroupModal from "../../components/CreateGroupModal/CreateGroupModal";
+import { useNavigation, useTheme } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Trash2 } from "lucide-react-native";
+import CreateGroupModal from "../../components/CreateGroupModal/CreateGroupModal";
+import { useGroups } from "../../hooks/useGroups";
+import type { GroupsStackParamList } from "../../navigation/GroupStack";
 
 function initials(name = "") {
   const parts = name.split(" ").filter(Boolean);
@@ -29,7 +31,7 @@ function getAvatarColor(index: number) {
 
 export default function GroupsScreen() {
   const { colors } = useTheme();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<GroupsStackParamList, "Groups">>();
   const { groups, loading, fetchGroups, addGroup, removeGroup } = useGroups();
 
   const [query, setQuery] = useState("");
@@ -37,28 +39,27 @@ export default function GroupsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter((g) => g.name.toLowerCase().includes(q));
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return groups;
+    return groups.filter((group) => group.name.toLowerCase().includes(normalized));
   }, [groups, query]);
 
   async function handleCreateGroup(payload: { name: string; description?: string; userEmails: string[] }) {
-    await addGroup(payload); // state atualizado automaticamente
+    await addGroup(payload);
     setIsModalOpen(false);
   }
 
   function confirmDeleteGroup(group: { id: string; name: string }) {
-    Alert.alert("Deletar grupo", `Deseja deletar "${group.name}"?`, [
+    Alert.alert("Deletar grupo", `Deseja deletar \"${group.name}\"?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Deletar",
         style: "destructive",
         onPress: async () => {
           try {
-            await removeGroup(group.id); // state atualizado automaticamente
-          } catch (err) {
-            console.error("Erro ao deletar grupo:", err);
-            Alert.alert("Erro", "Não foi possível deletar o grupo");
+            await removeGroup(group.id);
+          } catch {
+            Alert.alert("Erro", "Nao foi possivel deletar o grupo");
           }
         },
       },
@@ -84,7 +85,6 @@ export default function GroupsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={{ color: colors.primary }}>Voltar</Text>
@@ -98,7 +98,6 @@ export default function GroupsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View style={styles.searchRow}>
         <TextInput
           value={query}
@@ -109,7 +108,6 @@ export default function GroupsScreen() {
         />
       </View>
 
-      {/* Lista */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -117,7 +115,7 @@ export default function GroupsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={[styles.empty, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.text }}>Você ainda não participa de nenhum grupo.</Text>
+            <Text style={{ color: colors.text }}>Voce ainda nao participa de nenhum grupo.</Text>
           </View>
         }
         renderItem={({ item, index }) => (
@@ -130,6 +128,7 @@ export default function GroupsScreen() {
               <View style={[styles.avatar, { backgroundColor: getAvatarColor(index) }]}>
                 <Text style={styles.avatarText}>{initials(item.name)}</Text>
               </View>
+
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.groupName, { color: colors.text }]} numberOfLines={1}>
                   {item.name}
@@ -154,10 +153,11 @@ export default function GroupsScreen() {
         )}
       />
 
-      {/* Create Group Modal */}
-      <CreateGroupModal visible={isModalOpen} onClose={() => setIsModalOpen(false)} 
-      // @ts-ignore
-      onCreateGroup={handleCreateGroup} />
+      <CreateGroupModal
+        visible={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
+      />
     </View>
   );
 }

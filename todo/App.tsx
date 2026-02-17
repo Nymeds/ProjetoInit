@@ -4,7 +4,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider, useThemeContext } from "./src/context/ThemeContext";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { ErrorProvider } from "./src/context/ErrorContext";
-import Loading from "./src/components/Loading";
+
 export default function App() {
   return (
    <ErrorProvider>
@@ -27,3 +27,4 @@ function NavigationWithTheme() {
     </NavigationContainer>
   );
 }
+

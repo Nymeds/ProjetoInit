@@ -1,22 +1,21 @@
-import { View, FlatList, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react-native";
+import { useTheme } from "@react-navigation/native";
 import TaskCard from "./TaskCard";
 import type { Todo } from "../hooks/useTodos";
-import { useTheme } from "@react-navigation/native";
-import { RefreshCw } from "lucide-react-native";
-import { useState } from "react";
 
 interface Props {
   todos?: Todo[];
   loading?: boolean;
   onRefresh?: () => Promise<void> | void;
-  onDelete?: (id: string) => Promise<void> | void;
-  onToggle?: (id: string) => Promise<void> | void;
+  onDelete?: (id: number | string) => Promise<unknown> | void;
+  onToggle?: (id: number | string) => Promise<unknown> | void;
   onSelect?: (todo: Todo) => void;
 }
 
 export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle, onSelect }: Props) {
   const { colors } = useTheme();
-  const c = colors as any;
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleRefresh() {
@@ -24,13 +23,10 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
 
     setRefreshing(true);
 
-    
-    const timeout = new Promise<void>((resolve) =>
-      setTimeout(() => resolve(), 5000)
-    );
+    const timeout = new Promise<void>((resolve) => setTimeout(() => resolve(), 5000));
 
     try {
-      await Promise.race([onRefresh(), timeout]);
+      await Promise.race([Promise.resolve(onRefresh()), timeout]);
     } catch (err) {
       console.error("Erro no refresh:", err);
     } finally {
@@ -40,9 +36,8 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Cabeçalho com título e refresh */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.text }]}>Suas tarefas</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Suas tarefas</Text>
         {onRefresh && (
           <TouchableOpacity
             onPress={handleRefresh}
@@ -50,30 +45,27 @@ export default function TaskList({ todos, loading, onRefresh, onDelete, onToggle
             disabled={refreshing || loading}
           >
             {refreshing ? (
-              <ActivityIndicator size="small" color={c.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <RefreshCw size={20} color={c.primary} />
+              <RefreshCw size={20} color={colors.primary} />
             )}
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Loading inicial */}
       {loading && !refreshing && (
-        <ActivityIndicator size="large" color={c.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
       )}
 
-      {/* Nenhuma tarefa */}
       {!loading && !todos?.length && (
         <View style={{ alignItems: "center", marginTop: 32 }}>
-          <Text style={{ color: c.text }}>Nenhuma tarefa encontrada</Text>
+          <Text style={{ color: colors.text }}>Nenhuma tarefa encontrada</Text>
         </View>
       )}
 
-      {/* Lista de tarefas */}
       <FlatList
         data={todos}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <TaskCard
             todo={item}

@@ -3,34 +3,28 @@ import {
   DrawerContentScrollView,
   DrawerItemList,
   DrawerItem,
+  type DrawerContentComponentProps,
   type DrawerNavigationProp,
 } from "@react-navigation/drawer";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useTheme } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { useThemeContext } from "../context/ThemeContext";
 import type { MainDrawerParamList } from "./AppDrawer";
 
-// Aceita qualquer props do drawer (workaround para mismatch de typings)
-export default function CustomDrawerContent(props: any) {
-  const { colors } = useTheme();
+type CustomDrawerProps = DrawerContentComponentProps;
+
+export default function CustomDrawerContent(props: CustomDrawerProps) {
   const { logout } = useAuth();
   const { toggleTheme, isDark } = useThemeContext();
-
-  // cast local para usar navegação tipada
-  const navigation = (props.navigation as unknown) as DrawerNavigationProp<MainDrawerParamList>;
+  const navigation = props.navigation as unknown as DrawerNavigationProp<MainDrawerParamList>;
 
   const onLogout = async () => {
     try {
       await logout();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       alert("Erro ao deslogar");
     }
-  };
-
-  const goToGroups = () => {
-    navigation.navigate("GroupsStack");
   };
 
   return (
@@ -39,7 +33,7 @@ export default function CustomDrawerContent(props: any) {
 
       <DrawerItem
         label="Grupos"
-        onPress={goToGroups}
+        onPress={() => navigation.navigate("GroupsStack")}
         icon={({ color, size }) => <MaterialCommunityIcons name="account-group" color={color} size={size} />}
       />
 

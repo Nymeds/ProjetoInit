@@ -1,10 +1,11 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@react-navigation/native";
+import type { LucideIcon } from "lucide-react-native";
 
 interface Props {
   title: string;
   value: number | string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
 }
 

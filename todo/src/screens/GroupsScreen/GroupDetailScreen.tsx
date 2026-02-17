@@ -1,60 +1,45 @@
 import React, { useMemo } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
+  FlatList,
   RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useTheme, useRoute, useNavigation } from "@react-navigation/native";
-import { useTodos } from "../../hooks/useTodos";
+import { useNavigation, useRoute, useTheme, type RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import TaskCard from "../../components/TaskCard";
-
-type RouteParams = {
-  group: {
-    id: string;
-    name: string;
-    description?: string;
-    members?: {
-      userId: string;
-      groupId: string;
-      roleInGroup?: string;
-      user: { id: string; name: string; email: string };
-    }[];
-  };
-};
+import { useTodos } from "../../hooks/useTodos";
+import type { GroupsStackParamList } from "../../navigation/GroupStack";
 
 export default function GroupDetailScreen() {
   const { colors } = useTheme();
-  const route = useRoute<any>();
-  const navigation = useNavigation<any>();
-  const { todos, loading, loadTodos, removeTodo, toggleComplete } = useTodos() as any;
+  const route = useRoute<RouteProp<GroupsStackParamList, "GroupDetail">>();
+  const navigation = useNavigation<NativeStackNavigationProp<GroupsStackParamList, "GroupDetail">>();
+  const { todos, loading, loadTodos, removeTodo, toggleComplete } = useTodos();
 
-  const group = route.params?.group as RouteParams["group"];
+  const group = route.params?.group;
   const groupId = group?.id;
 
   const groupTodos = useMemo(() => {
-    if (!todos) return [];
-    return todos.filter((t: any) => {
-      
-      const gid = t.groupId ?? t.group?.id;
-      return gid === groupId;
+    return todos.filter((todo) => {
+      const todoGroupId = todo.groupId ?? todo.group?.id;
+      return todoGroupId === groupId;
     });
   }, [todos, groupId]);
 
   if (!group) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text }}>Grupo não encontrado</Text>
+        <Text style={{ color: colors.text }}>Grupo nao encontrado</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={{ color: colors.primary }}>Voltar</Text>
@@ -62,19 +47,21 @@ export default function GroupDetailScreen() {
         <Text style={[styles.heading, { color: colors.text }]} numberOfLines={1}>
           {group.name}
         </Text>
-        <View style={{ width: 48 }} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("GroupChat", { groupId: group.id, groupName: group.name })}
+        >
+          <Text style={{ color: colors.primary }}>Chat</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Descrição */}
       {group.description && (
-        <View style={[styles.section, { borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Descrição</Text>
+        <View style={[styles.section, { borderColor: colors.border }]}> 
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Descricao</Text>
           <Text style={{ color: colors.text, marginTop: 6 }}>{group.description}</Text>
         </View>
       )}
 
-      {/* Membros */}
-      <View style={[styles.section, { borderColor: colors.border }]}>
+      <View style={[styles.section, { borderColor: colors.border }]}> 
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Membros</Text>
           <Text style={{ color: colors.text, opacity: 0.7 }}>
@@ -84,40 +71,32 @@ export default function GroupDetailScreen() {
 
         <FlatList
           data={group.members ?? []}
-          keyExtractor={(m) => m.user.id}
+          keyExtractor={(member) => member.user.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingVertical: 8 }}
           renderItem={({ item }) => (
-            <View
-              key={item.user.id}
-              style={[styles.member, { borderColor: colors.border }]}
-            >
-              <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}>
+            <View style={[styles.member, { borderColor: colors.border }]}> 
+              <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}> 
                 <Text style={{ color: "#fff", fontWeight: "700" }}>
                   {item.user.name
                     ? item.user.name
                         .split(" ")
-                        .map((p) => p[0])
+                        .map((part) => part[0])
                         .slice(0, 2)
                         .join("")
                         .toUpperCase()
                     : "?"}
                 </Text>
               </View>
-              <Text style={{ color: colors.text, marginTop: 6, fontWeight: "600" }}>
-                {item.user.name}
-              </Text>
-              <Text style={{ color: colors.text, opacity: 0.7, fontSize: 12 }}>
-                {item.user.email}
-              </Text>
+              <Text style={{ color: colors.text, marginTop: 6, fontWeight: "600" }}>{item.user.name}</Text>
+              <Text style={{ color: colors.text, opacity: 0.7, fontSize: 12 }}>{item.user.email}</Text>
             </View>
           )}
         />
       </View>
 
-      {/* Tarefas */}
-      <View style={[styles.section, { borderColor: colors.border, flex: 1 }]}>
+      <View style={[styles.section, { borderColor: colors.border, flex: 1 }]}> 
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Tarefas</Text>
           <Text style={{ color: colors.text, opacity: 0.7 }}>{groupTodos.length}</Text>
@@ -130,34 +109,19 @@ export default function GroupDetailScreen() {
         ) : (
           <FlatList
             data={groupTodos}
-            keyExtractor={(t: any) => t.id.toString()}
+            keyExtractor={(item) => String(item.id)}
             contentContainerStyle={{ paddingBottom: 120 }}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={loadTodos} />}
             renderItem={({ item }) => (
               <TaskCard
-                key={item.id}
                 todo={item}
-                onDelete={async (id) => {
-                  try {
-                    await removeTodo(id);
-                  } catch (err) {
-                    console.error(err);
-                  }
-                }}
-                onToggle={async (id) => {
-                  try {
-                    await toggleComplete(id);
-                  } catch (err) {
-                    console.error(err);
-                  }
-                }}
+                onDelete={removeTodo}
+                onToggle={toggleComplete}
               />
             )}
             ListEmptyComponent={
               <View style={{ padding: 20 }}>
-                <Text style={{ color: colors.text, opacity: 0.8 }}>
-                  Nenhuma tarefa neste grupo.
-                </Text>
+                <Text style={{ color: colors.text, opacity: 0.8 }}>Nenhuma tarefa neste grupo.</Text>
               </View>
             }
           />

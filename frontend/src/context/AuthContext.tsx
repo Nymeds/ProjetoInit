@@ -18,7 +18,13 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const TOKEN_STORAGE_KEYS = ["token", "@app:token", "@ignite:token", "access_token"] as const;
+
+function clearStoredTokens() {
+  TOKEN_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  sessionStorage.removeItem("token");
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -79,7 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("token");
+    // Limpa todas as chaves legadas para evitar sessao fantasma entre ambientes.
+    clearStoredTokens();
     delete api.defaults.headers.common["Authorization"];
   }
 

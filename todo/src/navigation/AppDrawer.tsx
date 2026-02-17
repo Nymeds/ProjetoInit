@@ -1,12 +1,13 @@
 import React from "react";
 import { createDrawerNavigator } from "@react-navigation/drawer";
+import type { NavigatorScreenParams } from "@react-navigation/native";
 import CustomDrawerContent from "./CustomDrawerContent";
-import HomeStack, { HomeStackParamList } from "./HomeStack";
-import GroupsStack, { GroupsStackParamList } from "./GroupStack";
+import HomeStack, { type HomeStackParamList } from "./HomeStack";
+import GroupsStack, { type GroupsStackParamList } from "./GroupStack";
 
 export type MainDrawerParamList = {
-  HomeStack: undefined;
-  GroupsStack: undefined;
+  HomeStack: NavigatorScreenParams<HomeStackParamList> | undefined;
+  GroupsStack: NavigatorScreenParams<GroupsStackParamList> | undefined;
 };
 
 const Drawer = createDrawerNavigator<MainDrawerParamList>();

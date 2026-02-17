@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "../services/api";
 import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api, { getApiErrorMessage } from "../services/api";
 import { useError } from "../context/ErrorContext";
 
 interface User {
@@ -8,73 +8,48 @@ interface User {
   name: string;
   email: string;
   role: string;
-  groups?: any[];
+  groups?: unknown[];
 }
 
 export function useAuthActions() {
   const [user, setUser] = useState<User | null>(null);
-  const { showError } = useError()
+  const { showError } = useError();
+
   const setTokens = async (token: string, refreshToken?: string) => {
     await AsyncStorage.setItem("@token", token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    if (refreshToken) await AsyncStorage.setItem("@refreshToken", refreshToken);
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+
+    if (refreshToken) {
+      await AsyncStorage.setItem("@refreshToken", refreshToken);
+    }
   };
 
   const removeTokens = async () => {
     await AsyncStorage.multiRemove(["@token", "@refreshToken", "@user"]);
-    delete api.defaults.headers.common["Authorization"];
+    delete api.defaults.headers.common.Authorization;
     setUser(null);
-  };
-
-  const extractErrorMessage = (err: any) => {
-    const fallback = err?.message || "Erro desconhecido";
-    const data = err?.response?.data;
-
-    if (!data) return fallback;
-
-    let msg = data.message;
-
-    if (typeof msg === "string") {
-      try {
-        const arr = JSON.parse(msg);
-        if (Array.isArray(arr)) {
-          const messages = arr.map((item: any) => item?.message).filter(Boolean);
-          if (messages.length) return messages.join("\n");
-        }
-        return msg;
-      } catch {
-        return msg;
-      }
-    }
-
-    if (Array.isArray(msg)) {
-      const messages = msg.map((item: any) => item?.message).filter(Boolean);
-      if (messages.length) return messages.join("\n");
-    }
-
-    return fallback;
   };
 
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post("/sessions", { email, password });
-      const { token, refreshToken } = response.data;
+      const { token, refreshToken } = response.data as { token?: string; refreshToken?: string };
 
-      if (!token) throw new Error("Login falhou");
+      if (!token) {
+        throw new Error("Login falhou");
+      }
 
       await setTokens(token, refreshToken);
 
       const userResponse = await api.get("/sessions/me");
-      const userData = userResponse.data.user || userResponse.data;
+      const userData = (userResponse.data.user ?? userResponse.data) as User;
 
       await AsyncStorage.setItem("@user", JSON.stringify(userData));
       setUser(userData);
-
       return userData;
-    } catch (err: any) {
-      const msg = extractErrorMessage(err);
-      showError(msg); 
-      throw err; 
+    } catch (error) {
+      showError(getApiErrorMessage(error, "Falha ao autenticar"));
+      throw error;
     }
   };
 
@@ -82,10 +57,9 @@ export function useAuthActions() {
     try {
       const response = await api.post("/users", { name, email, password });
       return response.data;
-    } catch (err: any) {
-      const msg = extractErrorMessage(err);
-      showError(msg);
-      throw err;
+    } catch (error) {
+      showError(getApiErrorMessage(error, "Falha ao cadastrar usuario"));
+      throw error;
     }
   };
 
@@ -96,15 +70,14 @@ export function useAuthActions() {
   const refreshUser = async () => {
     try {
       const response = await api.get("/sessions/me");
-      const userData = response.data.user || response.data;
+      const userData = (response.data.user ?? response.data) as User;
       await AsyncStorage.setItem("@user", JSON.stringify(userData));
       setUser(userData);
       return userData;
-    } catch (err: any) {
+    } catch (error) {
       await removeTokens();
-      const msg = extractErrorMessage(err);
-      ErrorMessage(msg);
-      throw err;
+      showError(getApiErrorMessage(error, "Falha ao atualizar sessao"));
+      throw error;
     }
   };
 
