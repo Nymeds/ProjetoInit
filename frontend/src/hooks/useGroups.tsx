@@ -15,12 +15,9 @@ export function useGroups(options?: { enabled?: boolean }) {
       const { data } = await api.get("/groups");
       return data.groups ?? [];
     },
-<<<<<<< HEAD
     enabled: !!user && (options?.enabled ?? true),
-=======
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 15000,
->>>>>>> 65cc4b3add0c19874d94063392ab1c72b36b9ab1
   });
 }

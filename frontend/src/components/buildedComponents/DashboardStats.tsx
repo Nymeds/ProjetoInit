@@ -1,4 +1,3 @@
-import type { Todo } from '../../types/types';
 import { StatsCard } from './StatsCard';
 import { BarChart3, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 
@@ -7,9 +6,6 @@ interface DashboardStatsProps {
   completed: number;
   pending: number;
   completionRate: number;
-  todosCompleted: Todo[];
-  todosPending: Todo[];
-  todostotalTasks: Todo[];
   onHighlight: (filter: boolean | null) => void;
 }
 

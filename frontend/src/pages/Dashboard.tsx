@@ -1,35 +1,41 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useMemo } from 'react';
-import type { DragEvent as ReactDragEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../hooks/useAuth';
-import { useTodos } from '../hooks/useTodos';
-import { useGroups } from '../hooks/useGroups';
-import { useChat } from '../hooks/useChat';
-import { DashboardHeader } from '../components/buildedComponents/DashboardHeader';
-import { TaskList } from '../components/buildedComponents/TaskList';
-import NewTaskModal from '../components/buildedComponents/NewTaskModal';
-import NewUserGroupForm from '../components/buildedComponents/NewUserGroup';
-import TaskDrawer from '../components/buildedComponents/TaskDrawer';
-import ElisaAssistant from '../components/buildedComponents/ElisaAssistant';
-import { GroupSidebar } from '../components/buildedComponents/GroupSidebar';
-import { UserSettingsModal } from '../components/buildedComponents/UserSettingsModal';
-import { BarChart3, Plus } from 'lucide-react';
-import { Text } from '../components/baseComponents/text';
-import Card from '../components/baseComponents/card';
-import { Button } from '../components/baseComponents/button';
-import type { Todo } from '../types/types';
-import { DashboardStats } from '../components/buildedComponents/DashboardStats';
-import { moveTodo } from '../api/todos';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent as ReactDragEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { BarChart3, Plus } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { useTodos } from "../hooks/useTodos";
+import { useGroups } from "../hooks/useGroups";
+import { useChat } from "../hooks/useChat";
+import { DashboardHeader } from "../components/buildedComponents/DashboardHeader";
+import { TaskList } from "../components/buildedComponents/TaskList";
+import NewTaskModal from "../components/buildedComponents/NewTaskModal";
+import NewUserGroupForm from "../components/buildedComponents/NewUserGroup";
+import TaskDrawer from "../components/buildedComponents/TaskDrawer";
+import ElisaAssistant from "../components/buildedComponents/ElisaAssistant";
+import { GroupSidebar } from "../components/buildedComponents/GroupSidebar";
+import { UserSettingsModal } from "../components/buildedComponents/UserSettingsModal";
+import { FriendsSidebar } from "../components/buildedComponents/FriendsSidebar";
+import { Text } from "../components/baseComponents/text";
+import Card from "../components/baseComponents/card";
+import { Button } from "../components/baseComponents/button";
+import type { Todo } from "../types/types";
+import { DashboardStats } from "../components/buildedComponents/DashboardStats";
+import { moveTodo } from "../api/todos";
+import {
+  DASHBOARD_LAYOUT_STORAGE_KEY,
+  parseDashboardLayoutMode,
+  type DashboardLayoutMode,
+} from "../types/dashboard-layout";
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const { data: todos, isLoading: todosLoading } = useTodos({ enabled: !!user });
+  const { data: todos = [], isLoading: todosLoading } = useTodos({ enabled: !!user });
   const { data: groups = [] } = useGroups();
   const { joinGroup, leaveGroup, on } = useChat();
-
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
@@ -39,27 +45,51 @@ export function Dashboard() {
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [gridPinnedGroupIds, setGridPinnedGroupIds] = useState<string[]>([]);
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<DashboardLayoutMode>(() => {
+    if (typeof window === "undefined") return "comfortable";
+    return parseDashboardLayoutMode(window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY));
+  });
 
-  const navigate = useNavigate();
+  const [highlightCompleted, setHighlightCompleted] = useState(false);
+  const [statsFilter, setStatsFilter] = useState<boolean | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
+
+  const isComfortableLayout = layoutMode === "comfortable";
+  const surfaceCardClass = isComfortableLayout
+    ? "border border-border-primary/70 bg-background-secondary/80 shadow-[0_20px_42px_rgba(15,23,42,0.25)] backdrop-blur-sm"
+    : "border border-border-primary bg-background-quaternary";
 
   useEffect(() => {
-    if (!authLoading && !user) navigate('/login');
+    if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
 
-  function invalidateTodosAndGroups() {
-    queryClient.invalidateQueries({ queryKey: ['todos'] });
-    queryClient.invalidateQueries({ queryKey: ['groups'] });
-  }
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, layoutMode);
+  }, [layoutMode]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        window.clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const invalidateTodosAndGroups = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["todos"] });
+    queryClient.invalidateQueries({ queryKey: ["groups"] });
+  }, [queryClient]);
 
   useEffect(() => {
     if (!user) return;
 
-    const groupIds = groups.map((g: any) => g.id).filter(Boolean);
+    const groupIds = groups.map((group: any) => group.id).filter(Boolean);
     if (groupIds.length === 0) return;
 
     groupIds.forEach((groupId: string) => joinGroup(groupId));
 
-    const offGroupMessage = on('group:message', () => {
+    const offGroupMessage = on("group:message", () => {
       invalidateTodosAndGroups();
     });
 
@@ -67,31 +97,37 @@ export function Dashboard() {
       offGroupMessage();
       groupIds.forEach((groupId: string) => leaveGroup(groupId));
     };
-  }, [user, groups, joinGroup, leaveGroup, on]);
+  }, [user, groups, joinGroup, leaveGroup, on, invalidateTodosAndGroups]);
 
   const todosWithGroup = useMemo(() => {
-    if (!todos) return [];
     return todos.map((todo: any) => {
-      const group = groups.find((g: any) => g.id === todo.groupId);
-      return { ...todo, group: group || null };
+      const group = groups.find((item: any) => item.id === todo.groupId);
+      return {
+        ...todo,
+        group: group ? { id: group.id, name: group.name } : undefined,
+      } as Todo;
     });
   }, [todos, groups]);
 
-  const todosGrouped = useMemo(() => {
-    const map: Record<string, any[]> = {};
-    todosWithGroup.forEach((todo: any) => {
-      const groupKey = todo.group?.id || 'sem-grupo';
+  const todosGrouped = useMemo<Record<string, Todo[]>>(() => {
+    const map: Record<string, Todo[]> = {};
+
+    todosWithGroup.forEach((todo) => {
+      const groupKey = todo.group?.id || "sem-grupo";
       if (!map[groupKey]) map[groupKey] = [];
-      map[groupKey].push(todo)
+      map[groupKey].push(todo);
     });
+
     return map;
   }, [todosWithGroup]);
 
-  const groupEntries = useMemo(() => {
+  const groupEntries = useMemo<Array<[string, Todo[]]>>(() => {
     const map = new Map<string, Todo[]>();
+
     Object.entries(todosGrouped).forEach(([id, list]) => {
-      map.set(id, list as Todo[]);
+      map.set(id, list);
     });
+
     gridPinnedGroupIds.forEach((id) => {
       if (!map.has(id)) map.set(id, []);
     });
@@ -99,16 +135,16 @@ export function Dashboard() {
     const ordered: Array<[string, Todo[]]> = [];
     const used = new Set<string>();
 
-    groups.forEach((g: any) => {
-      if (map.has(g.id)) {
-        ordered.push([g.id, map.get(g.id)!]);
-        used.add(g.id);
+    groups.forEach((group: any) => {
+      if (map.has(group.id)) {
+        ordered.push([group.id, map.get(group.id) ?? []]);
+        used.add(group.id);
       }
     });
 
-    if (map.has('sem-grupo')) {
-      ordered.push(['sem-grupo', map.get('sem-grupo')!]);
-      used.add('sem-grupo');
+    if (map.has("sem-grupo")) {
+      ordered.push(["sem-grupo", map.get("sem-grupo") ?? []]);
+      used.add("sem-grupo");
     }
 
     for (const [id, list] of map.entries()) {
@@ -118,52 +154,55 @@ export function Dashboard() {
     return ordered;
   }, [todosGrouped, gridPinnedGroupIds, groups]);
 
-  const getGroupName = (groupId: string) => {
-    if (groupId === 'sem-grupo') return 'Sem grupo';
-    const group = groups.find((g: any) => g.id === groupId);
-    return group?.name || 'Grupo não encontrado';
-  };
-
   const totalTasks = todosWithGroup.length;
-  const completedTasks = todosWithGroup.filter((todo: any) => todo.completed).length;
+  const completedTasks = todosWithGroup.filter((todo) => todo.completed).length;
   const pendingTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const todostotalTasks= todosWithGroup;
-  const todosCompleted = todosWithGroup.filter((todo: any) => todo.completed)
-  const todospendingTasks = todosWithGroup.filter((todo: any) => todo.completed === false)
-  const [highlightCompleted, setHighlightCompleted] = useState(false);
-  const [statsFilter, setStatsFilter] = useState<boolean | null>(null); // null = all, true = completed, false = pending
-  const triggerHighlight = (filter: boolean | null) => {
-  setStatsFilter(filter);
-  setHighlightCompleted(true);
-  
-  setTimeout(() => {
-    setHighlightCompleted(false);
-    setStatsFilter(null);
-  }, 3000);
-};
   useEffect(() => {
     if (!selectedTodo) return;
-    const found = todosWithGroup.find((t: any) => t.id === selectedTodo.id);
+    const found = todosWithGroup.find((todo) => todo.id === selectedTodo.id);
     if (!found) setSelectedTodo(null);
   }, [todosWithGroup, selectedTodo]);
 
-  function toggleGroupPinned(id: string) {
+  function triggerHighlight(filter: boolean | null) {
+    setStatsFilter(filter);
+    setHighlightCompleted(true);
+
+    if (highlightTimerRef.current) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightCompleted(false);
+      setStatsFilter(null);
+      highlightTimerRef.current = null;
+    }, 3000);
+  }
+
+  function getGroupName(groupId: string) {
+    if (groupId === "sem-grupo") return "Sem grupo";
+    const group = groups.find((item: any) => item.id === groupId);
+    return group?.name || "Grupo nao encontrado";
+  }
+
+  function toggleGroupPinned(groupId: string) {
     setGridPinnedGroupIds((prev) => (
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
     ));
   }
 
   function handleDragStart(event: ReactDragEvent<HTMLDivElement>, todo: Todo) {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', String(todo.id));
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(todo.id));
     setDraggingTodo(todo);
   }
 
   function handleDragOver(event: ReactDragEvent<HTMLDivElement>, groupId: string) {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
     if (dragOverGroupId !== groupId) setDragOverGroupId(groupId);
   }
 
@@ -176,159 +215,248 @@ export function Dashboard() {
     event.preventDefault();
     setDragOverGroupId(null);
 
-    const idFromData = event.dataTransfer.getData('text/plain');
-    const todo = draggingTodo || todosWithGroup.find((t: any) => String(t.id) === idFromData);
+    const idFromData = event.dataTransfer.getData("text/plain");
+    const todo = draggingTodo || todosWithGroup.find((item) => String(item.id) === idFromData);
     if (!todo) return;
 
-    const targetGroupId = groupId === 'sem-grupo' ? null : groupId;
+    const targetGroupId = groupId === "sem-grupo" ? null : groupId;
     const currentGroupId = todo.group?.id ?? null;
     if (currentGroupId === targetGroupId) return;
 
     try {
       await moveTodo(String(todo.id), targetGroupId, todo.title);
       invalidateTodosAndGroups();
-    } catch (err) {
-      console.error('Erro ao mover tarefa:', err);
+    } catch (error) {
+      console.error("Erro ao mover tarefa:", error);
     } finally {
       setDraggingTodo(null);
     }
   }
 
   function handleLogout() {
-    // Evita exibir dados em cache do usuario anterior apos novo login.
     queryClient.clear();
     logout();
-    navigate('/login');
+    navigate("/login");
   }
 
   if (authLoading || !user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background-primary">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <Text variant="heading-medium" className="text-heading">Carregando usuário...</Text>
+      <div className="flex h-screen items-center justify-center bg-background-primary">
+        <div className="space-y-4 text-center">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-accent-brand border-t-transparent" />
+          <Text variant="heading-medium" className="text-heading">
+            Carregando usuario...
+          </Text>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-background-primary text-label font-sans">
-      {showSidebar ? (
-        <div className="hidden lg:flex flex-col w-64 flex-shrink-0 fixed top-0 left-0 h-full bg-background-secondary/30 border-r border-border-primary">
-          <div className="p-1">
-            <GroupSidebar
-              onHide={() => setShowSidebar(false)}
-              gridPinnedGroupIds={gridPinnedGroupIds}
-              onToggleGroupPinned={toggleGroupPinned}
-            />
-          </div>
-        </div>
-      ) : (
-        <button className="fixed top-4 left-4 z-50 bg-background-quaternary p-2 rounded-md shadow-md lg:hidden" onClick={() => setShowSidebar(true)}>
-          Mostrar grupos
-        </button>
-      )}
-
-      <div className={`flex-1 transition-all duration-300 ${showSidebar ? 'lg:ml-64' : ''}`}>
-        <div className="max-w-7xl mx-auto p-6 space-y-8">
-          <Card className="bg-background-quaternary border border-border-primary">
-            <div className="p-6">
-              <DashboardHeader
-                user={user}
-                onLogout={handleLogout}
-                onToggleSidebar={() => setShowSidebar((s) => !s)}
-                onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
+    <div className="min-h-screen bg-background-primary text-label">
+      <div className="flex min-h-screen">
+        {showSidebar ? (
+          <div className="fixed left-0 top-0 hidden h-full w-64 flex-shrink-0 border-r border-border-primary bg-background-secondary/30 lg:flex">
+            <div className="w-full p-1">
+              <GroupSidebar
+                onHide={() => setShowSidebar(false)}
+                gridPinnedGroupIds={gridPinnedGroupIds}
+                onToggleGroupPinned={toggleGroupPinned}
               />
             </div>
-          </Card>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="fixed left-4 top-4 z-50 rounded-md bg-background-quaternary px-3 py-2 shadow-md lg:hidden"
+            onClick={() => setShowSidebar(true)}
+          >
+            Mostrar grupos
+          </button>
+        )}
 
-          <Card className="bg-background-quaternary border border-border-primary">
-            <div className="p-8">
-              <div className="text-center mb-8">
-                <Text variant="heading-medium" className="text-heading mb-2">Resumo das Atividades</Text>
-                <Text variant="paragraph-medium" className="text-accent-paragraph">Acompanhe seu progresso e produtividade</Text>
-              </div>
-              <div>  
-                  <DashboardStats 
-                  total={totalTasks} 
-                  completed={completedTasks} 
-                  pending={pendingTasks} 
-                  completionRate={completionRate} 
-                  todosCompleted={todosCompleted} 
-                  todosPending={todospendingTasks}
-                  todostotalTasks={todostotalTasks}
-                  onHighlight={triggerHighlight}/>
-              </div>
-            </div>
-          </Card>
+        <div className={`flex-1 transition-all duration-300 ${showSidebar ? "lg:ml-64" : ""}`}>
+          <div className={`mx-auto px-4 py-6 sm:px-6 xl:px-8 ${isComfortableLayout ? "max-w-[1750px]" : "max-w-7xl"}`}>
+            <div className={`grid grid-cols-1 gap-6 ${isComfortableLayout ? "xl:grid-cols-[minmax(0,1fr)_22rem]" : "xl:grid-cols-[minmax(0,1fr)_20rem]"}`}>
+              <div className={isComfortableLayout ? "space-y-6" : "space-y-8"}>
+                {isComfortableLayout ? (
+                  <Card className={surfaceCardClass}>
+                    <div className="p-6 xl:p-8">
+                      <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[360px_minmax(0,1fr)]">
+                        <DashboardHeader
+                          user={user}
+                          onLogout={handleLogout}
+                          layoutMode={layoutMode}
+                          onChangeLayout={setLayoutMode}
+                          onToggleSidebar={() => setShowSidebar((current) => !current)}
+                          onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
+                        />
 
-          <Card className="bg-background-quaternary border border-border-primary">
-            <div className="p-8">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-                <div>
-                  <Text variant="heading-medium" className="text-heading">Suas Tarefas</Text>
-                  <Text variant="paragraph-small" className="text-accent-paragraph mt-1">Gerencie suas atividades por grupo</Text>
-                </div>
+                        <div className="space-y-5">
+                          <div className="text-center 2xl:text-left">
+                            <Text variant="heading-medium" className="mb-2 text-heading">
+                              Resumo das atividades
+                            </Text>
+                            <Text variant="paragraph-medium" className="text-accent-paragraph">
+                              Acompanhe seu progresso e produtividade.
+                            </Text>
+                          </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button onClick={() => setIsCreateOpen(true)} variant="primary" className="flex items-center justify-center gap-2 px-4 py-2">
-                    <Plus size={16} /> Nova Tarefa
-                  </Button>
-                  <Button onClick={() => setIsCreateGroupOpen(true)} variant="primary" className="flex items-center justify-center gap-2 px-4 py-2">
-                    <Plus size={16} /> Novo Grupo
-                  </Button>
-                </div>
-              </div>
-
-              {totalTasks === 0 && (
-                <div className="text-center py-12">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-16 h-16 bg-accent-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <BarChart3 className="w-8 h-8 text-accent-brand" />
+                          <DashboardStats
+                            total={totalTasks}
+                            completed={completedTasks}
+                            pending={pendingTasks}
+                            completionRate={completionRate}
+                            onHighlight={triggerHighlight}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <Text variant="heading-small" className="text-heading mb-2">Você ainda não tem tarefas</Text>
-                    <Text variant="paragraph-medium" className="text-accent-paragraph mb-6">Crie sua primeira tarefa para começar.</Text>
-                    <Button onClick={() => setIsCreateOpen(true)} variant="primary" className="px-6 py-3">Criar primeira tarefa</Button>
-                  </div>
-                </div>
-              )}
+                  </Card>
+                ) : (
+                  <>
+                    <Card className={surfaceCardClass}>
+                      <div className="p-6">
+                        <DashboardHeader
+                          user={user}
+                          onLogout={handleLogout}
+                          layoutMode={layoutMode}
+                          onChangeLayout={setLayoutMode}
+                          onToggleSidebar={() => setShowSidebar((current) => !current)}
+                          onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
+                        />
+                      </div>
+                    </Card>
 
-              {totalTasks > 0 && (
-                <div className="space-y-8">
-                  {groupEntries.map(([groupId, groupTodos]) => (
-                    <div
-                      key={groupId}
-                      className={`space-y-4 rounded-2xl p-3 transition-colors ${
-                        dragOverGroupId === groupId ? 'bg-accent-brand/10 ring-2 ring-accent-brand/40' : ''
-                      }`}
-                      onDragOver={(event) => handleDragOver(event, groupId)}
-                      onDragLeave={(event) => handleDragLeave(event, groupId)}
-                      onDrop={(event) => handleDrop(event, groupId)}
-                    >
-                      <div className="flex items-center gap-3 pb-2 border-b border-border-primary/50">
-                        <Text variant="heading-small" className="text-heading font-semibold">{getGroupName(groupId)}</Text>
-                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-accent-brand/10 text-accent-brand text-sm font-medium">
-                          {groupTodos.length} {groupTodos.length === 1 ? 'tarefa' : 'tarefas'}
-                        </span>
+                    <Card className={surfaceCardClass}>
+                      <div className="p-8">
+                        <div className="mb-8 text-center">
+                          <Text variant="heading-medium" className="mb-2 text-heading">
+                            Resumo das atividades
+                          </Text>
+                          <Text variant="paragraph-medium" className="text-accent-paragraph">
+                            Acompanhe seu progresso e produtividade.
+                          </Text>
+                        </div>
+
+                        <DashboardStats
+                          total={totalTasks}
+                          completed={completedTasks}
+                          pending={pendingTasks}
+                          completionRate={completionRate}
+                          onHighlight={triggerHighlight}
+                        />
+                      </div>
+                    </Card>
+                  </>
+                )}
+
+                <Card className={surfaceCardClass}>
+                  <div className={isComfortableLayout ? "p-6 xl:p-8" : "p-8"}>
+                    <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <Text variant="heading-medium" className="text-heading">
+                          Suas tarefas
+                        </Text>
+                        <Text variant="paragraph-small" className="mt-1 text-accent-paragraph">
+                          Gerencie suas atividades por grupo.
+                        </Text>
                       </div>
 
-                     <TaskList
-                      todos={groupTodos}
-                      isLoading={todosLoading}
-                      onDeleted={invalidateTodosAndGroups}
-                      onUpdated={invalidateTodosAndGroups}
-                      onDragStart={handleDragStart}
-                      onSelect={(todo) => setSelectedTodo(todo)}
-                      highlightCompleted={highlightCompleted}
-                      statsFilter={statsFilter}
-                    />
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <Button
+                          type="button"
+                          onClick={() => setIsCreateOpen(true)}
+                          variant="primary"
+                          className="flex items-center justify-center gap-2 px-4 py-2"
+                        >
+                          <Plus size={16} />
+                          Nova tarefa
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => setIsCreateGroupOpen(true)}
+                          variant="primary"
+                          className="flex items-center justify-center gap-2 px-4 py-2"
+                        >
+                          <Plus size={16} />
+                          Novo grupo
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {totalTasks === 0 && (
+                      <div className="py-12 text-center">
+                        <div className="mx-auto max-w-md">
+                          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent-brand/10">
+                            <BarChart3 className="h-8 w-8 text-accent-brand" />
+                          </div>
+                          <Text variant="heading-small" className="mb-2 text-heading">
+                            Voce ainda nao tem tarefas
+                          </Text>
+                          <Text variant="paragraph-medium" className="mb-6 text-accent-paragraph">
+                            Crie sua primeira tarefa para comecar.
+                          </Text>
+                          <Button
+                            type="button"
+                            onClick={() => setIsCreateOpen(true)}
+                            variant="primary"
+                            className="px-6 py-3"
+                          >
+                            Criar primeira tarefa
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {totalTasks > 0 && (
+                      <div className="space-y-8">
+                        {groupEntries.map(([groupId, groupTodos]) => (
+                          <div
+                            key={groupId}
+                            className={`space-y-4 rounded-2xl p-3 transition-colors ${
+                              dragOverGroupId === groupId ? "bg-accent-brand/10 ring-2 ring-accent-brand/40" : ""
+                            }`}
+                            onDragOver={(event) => handleDragOver(event, groupId)}
+                            onDragLeave={(event) => handleDragLeave(event, groupId)}
+                            onDrop={(event) => handleDrop(event, groupId)}
+                          >
+                            <div className="flex items-center gap-3 border-b border-border-primary/50 pb-2">
+                              <Text variant="heading-small" className="font-semibold text-heading">
+                                {getGroupName(groupId)}
+                              </Text>
+                              <span className="inline-flex items-center justify-center rounded-full bg-accent-brand/10 px-3 py-1 text-sm font-medium text-accent-brand">
+                                {groupTodos.length} {groupTodos.length === 1 ? "tarefa" : "tarefas"}
+                              </span>
+                            </div>
+
+                            <TaskList
+                              todos={groupTodos}
+                              isLoading={todosLoading}
+                              onDeleted={invalidateTodosAndGroups}
+                              onUpdated={invalidateTodosAndGroups}
+                              onDragStart={handleDragStart}
+                              onSelect={(todo) => setSelectedTodo(todo)}
+                              highlightCompleted={highlightCompleted}
+                              statsFilter={statsFilter}
+                              layoutMode={layoutMode}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              <aside className="h-fit xl:sticky xl:top-6">
+                <FriendsSidebar
+                  layoutMode={layoutMode}
+                  onOpenSettings={() => setIsUserSettingsOpen(true)}
+                />
+              </aside>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
 
@@ -349,18 +477,16 @@ export function Dashboard() {
       />
 
       <TaskDrawer
-        key={selectedTodo?.id ?? 'task-drawer-closed'}
+        key={selectedTodo?.id ?? "task-drawer-closed"}
         open={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
         onCreated={invalidateTodosAndGroups}
         todo={selectedTodo}
       />
 
-      {/* ELISA: botao flutuante no dashboard */}
       <ElisaAssistant onAction={invalidateTodosAndGroups} />
 
       <UserSettingsModal open={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
     </div>
   );
 }
-

@@ -3,6 +3,7 @@ import type { DragEvent as ReactDragEvent } from 'react';
 import { Text } from '../baseComponents/text';
 import { CheckCircle } from 'lucide-react';
 import type { Todo } from '../../types/types';
+import type { DashboardLayoutMode } from '../../types/dashboard-layout';
 
 interface TaskListProps {
   todos?: Todo[];
@@ -13,6 +14,7 @@ interface TaskListProps {
   onSelect?: (todo: Todo) => void;
   highlightCompleted?: boolean;
   statsFilter?: boolean | null; // null = todos, true = completos, false = pendentes
+  layoutMode?: DashboardLayoutMode;
 }
 
 export function TaskList({ 
@@ -23,7 +25,8 @@ export function TaskList({
   onDragStart, 
   onSelect, 
   highlightCompleted = false,
-  statsFilter = null
+  statsFilter = null,
+  layoutMode = 'comfortable',
 }: TaskListProps) {
   if (isLoading) {
     return (
@@ -54,8 +57,12 @@ export function TaskList({
     );
   }
 
+  const gridClassName = layoutMode === 'comfortable'
+    ? 'grid items-start grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4'
+    : 'grid items-start grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+
   return (
-    <div className="grid items-start grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className={gridClassName}>
       {todos.map((todo) => {
         // Lógica de highlight:
         // - Se highlightCompleted está false, não destaca nada

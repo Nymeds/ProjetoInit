@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Modal } from "../baseComponents/Modal";
-import Card from "../baseComponents/card";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import { createTodo } from "../../api/todos";
@@ -46,7 +45,7 @@ export default function NewTaskModal({ open, onClose, onCreated }: NewTaskModalP
 
   if (!open) return null;
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!title.trim()) {

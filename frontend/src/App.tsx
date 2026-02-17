@@ -5,6 +5,7 @@ import Welcome from "./pages/Welcome";
 import { Register } from "./pages/Register";
 import GroupChat from "./pages/GroupChat";
 import { PrivateRoute } from "./routes/privateRoute";
+import { ForgotPassword } from "./pages/ForgotPassword";
 
 export function App() {
   return (
@@ -12,6 +13,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+         <Route path="/register" element={<Register/>} />
         <Route
           path="/dashboard"
           element={(
@@ -20,7 +23,6 @@ export function App() {
             </PrivateRoute>
           )}
         />
-        <Route path="/register" element={<Register/>} />
         <Route
           path="/groups/:id/chat"
           element={(

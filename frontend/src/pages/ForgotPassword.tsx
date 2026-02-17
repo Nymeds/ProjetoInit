@@ -10,28 +10,26 @@ import { Button } from "../components/baseComponents/button";
 import Footer from "../components/buildedComponents/Footer";
 
 
-interface LoginFormData {
+interface ForgotPasswordFormData {
   email: string;
-  password: string;
 }
 
-export function Login() {
-  const { login } = useAuth();
+export function ForgotPassword() {
+  const { recoverPassword } = useAuth();
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormData>();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
-  async function onSubmit(data: LoginFormData) {
+  async function onSubmit(data: ForgotPasswordFormData) {
     setLoading(true);
     setErrorMessage("");
     try {
-      await login(data.email, data.password);
+      await recoverPassword(data.email);
       navigate("/dashboard");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setErrorMessage(err.message || "Erro ao logar");
+      setErrorMessage(err.message || "Erro ao enviar email de redefinição de senha");
     } finally {
       setLoading(false);
     }
@@ -60,14 +58,14 @@ export function Login() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Card floating className="flex flex-col with-shadow  gap-8 w-full max-w-md md:max-w-lg p-8 items-center">
+          <Card floating className="flex flex-col gap-8 w-full max-w-md md:max-w-lg p-8 items-center">
 
             <Text variant="heading-medium" className="text-center">
-              Login
+              Esqueci minha senha
             </Text>
 
-            <Text variant="paragraph-small" className="text-center text-accent-paragraph">
-              Bem-vindo de volta!
+            <Text variant="paragraph-small" className="text-center gap-2 mb-8 text-accent-paragraph">
+              Insira seu email para redefinir sua senha.
             </Text>
 
             {/* FORMULÁRIO */}
@@ -107,56 +105,7 @@ export function Login() {
                 )}
               </motion.div>
 
-              {/* SENHA */}
-              <motion.div className="flex flex-col gap-2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <label htmlFor="password">
-                  <Text variant="label-small">Senha</Text>
-                </label>
-
-                <div className="relative w-full">
-                  <input
-                    id="password"
-                    {...register("password", { 
-                      required: "Senha obrigatória",
-                      minLength: { value: 6, message: "Senha precisa ter no mínimo 6 caracteres" }
-                    })}
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    aria-invalid={errors.password ? "true" : "false"}
-                    aria-describedby={errors.password ? "password-error" : undefined}
-                    className="p-4 rounded bg-background-secondary border border-border-primary focus:outline-none focus:ring-2 focus:ring-accent-brand transition text-lg w-full pr-10"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-accent cursor-pointer"
-                  >
-                    {showPassword ? "X" : "O"}
-                  </button>
-                </div>
-                <div className="flex justify-center">
-                <Text variant="paragraph-small" className="text-right text-accent-paragraph">
-                  Ainda não tem uma conta? <a href="/register" className="text-accent-brand hover:underline">Registre-se</a>
-                </Text>
-                </div>
-                 <div className="flex justify-center">
-                <Text variant="paragraph-small" className="text-right text-accent-paragraph">
-                  Esqueci minha <a href="/forgot-password" className="text-accent-brand hover:underline">senha</a>
-                </Text>
-                </div>
-                {errors.password && (
-                  <Text id="password-error" variant="paragraph-small" className="text-danger" role="alert">
-                    {errors.password.message}
-                  </Text>
-                )}
-              </motion.div>
-
+     
               {/* MENSAGEM DE ERRO */}
               {errorMessage && (
                 <Text variant="paragraph-small" className="text-danger text-center" role="alert">
@@ -171,7 +120,7 @@ export function Login() {
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
                 <Button type="submit" variant="primary" disabled={loading} className="w-full py-4 text-lg">
-                  {loading ? "Entrando..." : "Entrar"}
+                  {loading ? "Enviando..." : "Enviar email de redefinição"}
                 </Button>
               </motion.div>
 

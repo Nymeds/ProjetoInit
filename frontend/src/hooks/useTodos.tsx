@@ -14,11 +14,8 @@ export function useTodos(options?: { enabled?: boolean }) {
       return data.todos ?? [];
     },
     enabled: !!user && (options?.enabled ?? true),
-<<<<<<< HEAD
-=======
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 15000,
->>>>>>> 65cc4b3add0c19874d94063392ab1c72b36b9ab1
   });
 }

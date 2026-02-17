@@ -17,6 +17,7 @@ interface AuthContextType {
   logout: () => void;
   setUser: (user: User | null) => void;
   isLoading: boolean;
+  recoverPassword: (email: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function recoverPassword(email: string) {
+    setIsLoading(true);
+    try {
+      await api.post("/password/forgot", { email });
+    } catch (err) {
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   function logout() {
     setUser(null);
     setToken(null);
@@ -92,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, setUser, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setUser, isLoading , recoverPassword }}>
       {children}
     </AuthContext.Provider>
   );
