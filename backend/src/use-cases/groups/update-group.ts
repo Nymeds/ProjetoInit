@@ -6,6 +6,8 @@ interface UpdateGroupUseCaseRequest {
   userId: string
   name?: string
   description?: string
+  addUserEmails?: string[]
+  removeUserIds?: string[]
 }
 
 interface UpdateGroupUseCaseResponse {
@@ -20,6 +22,8 @@ export class UpdateGroupUseCase {
     userId,
     name,
     description,
+    addUserEmails,
+    removeUserIds,
   }: UpdateGroupUseCaseRequest): Promise<UpdateGroupUseCaseResponse> {
     const group = await this.groupsRepository.findById(groupId)
 
@@ -46,11 +50,38 @@ export class UpdateGroupUseCase {
       }
     }
 
-    const updatedGroup = await this.groupsRepository.update(groupId, {
+    await this.groupsRepository.update(groupId, {
       name: nextName,
       description: description !== undefined ? (nextDescription || null) : undefined,
     })
 
-    return { group: updatedGroup }
+    const emailsToAdd = (addUserEmails ?? [])
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => email.length > 0)
+    const uniqueEmailsToAdd = Array.from(new Set(emailsToAdd))
+
+    if (uniqueEmailsToAdd.length > 0) {
+      if (!this.groupsRepository.addMember) {
+        throw new Error('Repositorio nao suporta adicao de membros')
+      }
+
+      for (const email of uniqueEmailsToAdd) {
+        await this.groupsRepository.addMember(groupId, email)
+      }
+    }
+
+    const usersToRemove = Array.from(new Set((removeUserIds ?? []).map((id) => id.trim()).filter(Boolean)))
+    if (usersToRemove.length > 0) {
+      for (const memberId of usersToRemove) {
+        await this.groupsRepository.removeMember(groupId, memberId)
+      }
+    }
+
+    const finalGroup = await this.groupsRepository.findById(groupId)
+    if (!finalGroup) {
+      throw new Error('Grupo nao encontrado')
+    }
+
+    return { group: finalGroup }
   }
 }

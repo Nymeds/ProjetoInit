@@ -10,8 +10,15 @@ interface UpdateGroupRequestParams {
 const updateGroupBodySchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
-}).refine((data) => data.name !== undefined || data.description !== undefined, {
-  message: 'Informe name ou description para atualizar',
+  addUserEmails: z.array(z.string().email()).optional(),
+  removeUserIds: z.array(z.string().min(1)).optional(),
+}).refine((data) => (
+  data.name !== undefined
+  || data.description !== undefined
+  || (data.addUserEmails?.length ?? 0) > 0
+  || (data.removeUserIds?.length ?? 0) > 0
+), {
+  message: 'Informe campos para atualizar o grupo',
 })
 
 export async function updateGroup(
@@ -21,12 +28,19 @@ export async function updateGroup(
   try {
     const userId = (request.user as any).sub
     const groupId = request.params.id
-    const { name, description } = updateGroupBodySchema.parse(request.body)
+    const { name, description, addUserEmails, removeUserIds } = updateGroupBodySchema.parse(request.body)
 
     const groupsRepository = new PrismaGroupsRepository()
     const updateUseCase = new UpdateGroupUseCase(groupsRepository)
 
-    const { group } = await updateUseCase.execute({ groupId, userId, name, description })
+    const { group } = await updateUseCase.execute({
+      groupId,
+      userId,
+      name,
+      description,
+      addUserEmails,
+      removeUserIds,
+    })
 
     return reply.status(200).send({ group })
   } catch (err: any) {

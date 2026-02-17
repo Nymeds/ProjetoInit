@@ -9,6 +9,7 @@ import { updateTodo } from "../controllers/todo/update-todo.js";
 import { completeTodo } from "../controllers/todo/complete.js";
 import { refresh } from "../controllers/auth/refresh.js";
 import { deleteUser } from "../controllers/auth/delete.js";
+import { updateUser } from "../controllers/auth/update.js";
 import { verifyUserRole } from "../middlewares/verify-user-role.js";
 import { createGroup } from "../controllers/group/create.js";
 import { leaveGroup } from "../controllers/group/leave.js";
@@ -19,6 +20,8 @@ import { updateGroup } from "../controllers/group/update.js";
 import { uploadImage } from "../middlewares/upload-images.js";
 import { assistantChat } from "../controllers/assistant/chat.js";
 import { assistantHistory } from "../controllers/assistant/history.js";
+import { listFriends, listFriendRequests } from "../controllers/friends/list.js";
+import { acceptFriendRequest, createFriendRequest } from "../controllers/friends/request.js";
 
 export async function appRoutes(app: FastifyInstance) {
   // Auth
@@ -26,6 +29,11 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/sessions', authenticate);
   app.patch('/token/refresh', refresh);
   app.get('/sessions/me', { preHandler: [verifyJwt] }, me);
+  app.patch('/users/me', { preHandler: [verifyJwt] }, updateUser);
+  app.get('/friends', { preHandler: [verifyJwt] }, listFriends);
+  app.get('/friends/requests', { preHandler: [verifyJwt] }, listFriendRequests);
+  app.post('/friends/requests', { preHandler: [verifyJwt] }, createFriendRequest);
+  app.patch<{ Params: { id: string } }>('/friends/requests/:id/accept', { preHandler: [verifyJwt] }, acceptFriendRequest);
 
   //Forgot password, reset password, etc. 
 

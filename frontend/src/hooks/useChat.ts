@@ -60,6 +60,15 @@ function disconnectSharedSocket() {
 
 export function useChat() {
   const { user, token } = useAuth();
+<<<<<<< HEAD
+=======
+  const socketRef = useRef<Socket | null>(null);
+  const lastConnectErrorAtRef = useRef(0);
+
+  // key -> PendingJoin, key example: "todo:123" or "group:abc"
+  const pendingJoinsRef = useRef<Map<string, PendingJoin>>(new Map());
+  const listenersRef = useRef<Map<string, Set<(...args: any[]) => void>>>(new Map());
+>>>>>>> 65cc4b3add0c19874d94063392ab1c72b36b9ab1
 
   useEffect(() => {
     if (!user || !token) {
@@ -67,12 +76,65 @@ export function useChat() {
       return;
     }
 
+<<<<<<< HEAD
     activeSubscribers += 1;
     connectSharedSocket(token);
+=======
+    // Build socket URL robustly with env override
+    const SOCKET_PORT = 3333;
+    const envSocketUrl = (import.meta as any)?.env?.VITE_SOCKET_URL as string | undefined;
+    const envApiUrl = (import.meta as any)?.env?.VITE_API_URL as string | undefined;
+    const configuredBase = envSocketUrl ?? envApiUrl ?? `${location.protocol}//${location.hostname}:${SOCKET_PORT}`;
+    const baseUrl = configuredBase.replace(/\/+$/, '');
+
+    const s = io(baseUrl, {
+      auth: { token },
+      autoConnect: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+
+    socketRef.current = s;
+
+    // Attach previously registered listeners (if any)
+    listenersRef.current.forEach((set, event) => {
+      set.forEach((cb) => s.on(event, cb));
+    });
+
+    s.on('connect', () => {
+      // Re-emit pending joins reliably
+      pendingJoinsRef.current.forEach((pj) => {
+        if (pj.type === 'todo') s.emit('join_todo', pj.id);
+        else s.emit('join_group', pj.id);
+      });
+    });
+>>>>>>> 65cc4b3add0c19874d94063392ab1c72b36b9ab1
+
+    s.on('connect_error', (err) => {
+      const now = Date.now();
+      if (now - lastConnectErrorAtRef.current < 4000) return;
+      lastConnectErrorAtRef.current = now;
+      console.warn('[socket] connect_error', {
+        message: err?.message || 'unknown',
+        url: baseUrl,
+      });
+    });
+
+    s.on('disconnect', (reason) => {
+      console.info('[socket] disconnected', { reason });
+    });
 
     return () => {
+<<<<<<< HEAD
       activeSubscribers = Math.max(0, activeSubscribers - 1);
       if (activeSubscribers === 0) disconnectSharedSocket();
+=======
+      s.off('connect');
+      s.off('connect_error');
+      s.off('disconnect');
+      s.disconnect();
+      socketRef.current = null;
+>>>>>>> 65cc4b3add0c19874d94063392ab1c72b36b9ab1
     };
   }, [user, token]);
 

@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from "@tanstack/react-query";
 import { useGroups } from "../../hooks/useGroups";
 import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import { Trash2, Search, Users, Folder } from "lucide-react";
 import { Modal } from "../baseComponents/Modal";
+import NewUserGroupForm from "./NewUserGroup";
 import { deleteGroup } from "../../api/groups";
 import { GroupChatModal } from "./GroupChatModal";
 
@@ -40,15 +41,16 @@ export function GroupSidebar({
   gridPinnedGroupIds?: string[];
   onToggleGroupPinned?: (groupId: string) => void;
 }) {
-  const { data: groups = [], refetch, isLoading } = useGroups();
+  const { data: groups = [], isLoading } = useGroups();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [query, setQuery] = useState("");
   const [groupToDelete, setGroupToDelete] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [chatModalGroup, setChatModalGroup] = useState<any | null>(null);
+  const [groupToEdit, setGroupToEdit] = useState<any | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -68,7 +70,8 @@ export function GroupSidebar({
       setIsModalOpen(false);
       setGroupToDelete(null);
       setErrorMsg(null);
-      refetch?.();
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       if (expandedGroupId === id) setExpandedGroupId(null);
     } catch (err: any) {
       console.error("Erro ao deletar grupo:", err?.message ?? err);
@@ -256,11 +259,12 @@ export function GroupSidebar({
                         ))}
                       </div>
 
-                      <div className="mt-3 flex flex gap-1 justify-end">
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1 min-w-0">
                         {/* Leave group (current user) - mostra só se for membro */}
                         {group.members?.some((m: any) => m.user.id === user?.id) && (
                           <Button
                             variant="secondary"
+                            className="w-full px-2 py-1 text-xs leading-tight"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -268,7 +272,8 @@ export function GroupSidebar({
                               // call API
                               import('../../api/groups').then(({ leaveGroup }) => {
                                 leaveGroup(group.id).then(() => {
-                                  refetch?.();
+                                  queryClient.invalidateQueries({ queryKey: ['groups'] });
+                                  queryClient.invalidateQueries({ queryKey: ['todos'] });
                                   setExpandedGroupId(null);
                                 }).catch((err) => setErrorMsg(err.message || 'Erro ao sair do grupo'));
                               });
@@ -280,6 +285,7 @@ export function GroupSidebar({
 
                         <Button
                           variant="secondary"
+                          className="w-full px-2 py-1 text-xs leading-tight"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); setChatModalGroup(group); }}
                         >
@@ -287,14 +293,19 @@ export function GroupSidebar({
                         </Button>
                          <Button
                           variant="secondary"
+                          className="w-full px-2 py-1 text-xs leading-tight"
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToEdit(group);
+                          }}
                         >
                           Editar Grupo
                         </Button>
 
                         <Button
                           variant="danger"
+                          className="w-full px-1 py-1 text-xs leading-tight"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); openDeleteModal(group); }}
                         >
@@ -377,6 +388,18 @@ export function GroupSidebar({
       {chatModalGroup && (
         <GroupChatModal open={!!chatModalGroup} onClose={() => setChatModalGroup(null)} groupId={chatModalGroup?.id} />
       )}
+
+      <NewUserGroupForm
+        open={!!groupToEdit}
+        onClose={() => setGroupToEdit(null)}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["groups"] });
+          queryClient.invalidateQueries({ queryKey: ["todos"] });
+          setGroupToEdit(null);
+        }}
+        mode="edit"
+        groupToEdit={groupToEdit}
+      />
 
     </>
   );

@@ -9,7 +9,7 @@ export class PrismaGroupsRepository implements GroupsRepository {
     });
 
     if (users.length === 0) {
-      throw new Error("Nenhum usuário encontrado com os emails fornecidos");
+      throw new Error("Nenhum usuario encontrado com os emails fornecidos");
     }
 
     return prisma.group.create({
@@ -32,10 +32,20 @@ export class PrismaGroupsRepository implements GroupsRepository {
   }
 
   async addMember(groupId: string, userEmail: string) {
-    // normalize email before lookup
     const normalized = userEmail.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email: normalized } });
-    if (!user) throw new Error("Usuário não encontrado");
+    if (!user) throw new Error("Usuario nao encontrado");
+
+    const existing = await prisma.userGroup.findUnique({
+      where: {
+        userId_groupId: {
+          userId: user.id,
+          groupId,
+        },
+      },
+    });
+
+    if (existing) return existing;
 
     return prisma.userGroup.create({
       data: { groupId, userId: user.id },
@@ -78,6 +88,7 @@ export class PrismaGroupsRepository implements GroupsRepository {
       include: { members: { include: { user: true } } },
     });
   }
+
   async update(id: string, data: { name?: string; description?: string | null }): Promise<Group> {
     return prisma.group.update({
       where: { id },
@@ -89,3 +100,4 @@ export class PrismaGroupsRepository implements GroupsRepository {
     });
   }
 }
+

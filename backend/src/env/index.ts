@@ -6,4 +6,5 @@ export const env = {
   // Chave da API do Gemini (ELISA)
   IAAPIKEY: process.env.IAAPIKEY!,
   PORT: Number(process.env.PORT) || 3333,
+  CORS_ORIGINS: process.env.CORS_ORIGINS ?? '',
 };
