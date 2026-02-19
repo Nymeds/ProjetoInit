@@ -25,13 +25,16 @@ model User {
   password String
   role     Role   @default(MEMBER)
 
-  images          Image[] // 👈 mudou
+  images          Image[] 
   todos           Todo[]
   groups          UserGroup[]
   messages        Message[]
   assistantThread AssistantThread?
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
+
+  resetPasswordToken     String?
+  resetPasswordExpires   DateTime?
 }
 
 model Friendship {
@@ -67,6 +70,8 @@ model Todo {
   group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   messages Message[]
+
+  
 }
 
 model Group {
@@ -75,10 +80,11 @@ model Group {
   description String?
   createdAt   DateTime @default(now())
 
-  images   Image[] // 👈 mudou
+  images   Image[] 
   members  UserGroup[]
   todos    Todo[]
   messages Message[]
+
 }
 
 model UserGroup {

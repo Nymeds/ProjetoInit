@@ -26,4 +26,18 @@ export class PrismaUsersRepository implements UsersRepository {
   async apagar(id: string) {
     await prisma.user.delete({ where: { id } });
   }
+  async updateResetToken(
+  userId: string,
+  token: string,
+  expires: Date
+) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      resetPasswordToken: token,
+      resetPasswordExpires: expires,
+    },
+  });
+}
+
 }

@@ -22,7 +22,7 @@ export async function authenticate(
     // Access token curto (10min)
     const accessToken = await reply.jwtSign(
       { role: user.role },
-      { sign: { sub: user.id, expiresIn: '10m' } }
+      { sign: { sub: user.id, expiresIn: '120m' } }
     );
 
     // Refresh token longo (7 dias)

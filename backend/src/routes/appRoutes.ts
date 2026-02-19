@@ -22,7 +22,7 @@ import { assistantChat } from "../controllers/assistant/chat.js";
 import { assistantHistory } from "../controllers/assistant/history.js";
 import { listFriends, listFriendRequests } from "../controllers/friends/list.js";
 import { acceptFriendRequest, createFriendRequest } from "../controllers/friends/request.js";
-
+import { forgotPassword } from "../controllers/auth/forgot.js";
 export async function appRoutes(app: FastifyInstance) {
   // Auth
   app.post('/users', register);
@@ -37,7 +37,7 @@ export async function appRoutes(app: FastifyInstance) {
 
   //Forgot password, reset password, etc. 
 
-  app.post('/password/forgot', ()=> {console.log("O CARA ESQUECEU A SENHA KKK AIAI FODIDO ")});
+  app.post('/password/forgot',forgotPassword);
 
   // ELISA (assistente virtual)
   app.get('/assistant/history', { preHandler: [verifyJwt] }, assistantHistory);
@@ -95,4 +95,3 @@ app.put<{ Params: { id: number; commentId: string } }>('/todo/:id/comments/:comm
   (await import('../controllers/todo/chat.js')).createTodoChat
 );
 }
-

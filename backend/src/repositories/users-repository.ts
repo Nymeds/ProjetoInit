@@ -9,4 +9,9 @@ export interface UsersRepository {
   findByEmail(email: string): Promise<PrismaUser | null>
   create(data: Prisma.UserCreateInput): Promise<PrismaUser>
   apagar(id: string): Promise<void>
+   updateResetToken(
+    userId: string,
+    token: string,
+    expires: Date
+  ): Promise<void>;
 }
