@@ -12,6 +12,16 @@ enum Role {
   MEMBER
 }
 
+enum GroupPermission {
+  MANAGE_MEMBERS
+  MANAGE_ROLES
+  MANAGE_WORKFLOW
+  MOVE_TASK
+  MOVE_TASK_TO_NO_GROUP
+  REMOVE_TASK
+  VIEW_HISTORY
+}
+
 enum FriendshipStatus {
   PENDING
   ACCEPTED
@@ -29,6 +39,7 @@ model User {
   todos           Todo[]
   groups          UserGroup[]
   messages        Message[]
+  groupTaskHistoryEvents GroupTaskHistory[] @relation("GroupTaskHistoryActor")
   assistantThread AssistantThread?
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
@@ -70,6 +81,7 @@ model Todo {
   group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   messages Message[]
+  groupTaskHistoryEvents GroupTaskHistory[]
 
   
 }
@@ -79,24 +91,103 @@ model Group {
   name        String   @unique
   description String?
   createdAt   DateTime @default(now())
+  parentGroupId String?
 
   images   Image[] 
   members  UserGroup[]
   todos    Todo[]
   messages Message[]
+  roles    GroupRole[]
+  parentGroup Group? @relation("GroupParentChild", fields: [parentGroupId], references: [id], onDelete: SetNull)
+  childGroups Group[] @relation("GroupParentChild")
+  taskHistoryOrigin GroupTaskHistory[] @relation("GroupTaskHistoryOrigin")
+  taskHistoryFrom GroupTaskHistory[] @relation("GroupTaskHistoryFrom")
+  taskHistoryTo GroupTaskHistory[] @relation("GroupTaskHistoryTo")
+  taskHistoryScope GroupTaskHistory[] @relation("GroupTaskHistoryScope")
+
+  @@index([parentGroupId])
 
 }
 
 model UserGroup {
   userId  String
   groupId String
+  groupRoleId String?
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupRole GroupRole? @relation(fields: [groupRoleId], references: [id], onDelete: SetNull)
 
   roleInGroup Role?
 
   @@id([userId, groupId])
+  @@index([groupRoleId])
+}
+
+model GroupRole {
+  id        String   @id @default(cuid())
+  groupId   String
+  name      String
+  isSystem  Boolean  @default(false)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permissions GroupRolePermission[]
+  members UserGroup[]
+
+  @@unique([groupId, name])
+  @@index([groupId])
+}
+
+model GroupRolePermission {
+  id         String          @id @default(cuid())
+  roleId     String
+  permission GroupPermission
+
+  role GroupRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+  @@index([roleId])
+}
+
+enum GroupTaskHistoryAction {
+  TASK_CREATED
+  TASK_MOVED
+}
+
+model GroupTaskHistory {
+  id        String                 @id @default(cuid())
+  action    GroupTaskHistoryAction
+  createdAt DateTime               @default(now())
+  taskTitleSnapshot String?
+  movedOutsideParentName String?
+
+  actorId String
+  actor User @relation("GroupTaskHistoryActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  todoId Int?
+  todo Todo? @relation(fields: [todoId], references: [id], onDelete: SetNull)
+
+  groupId String
+  group Group @relation("GroupTaskHistoryOrigin", fields: [groupId], references: [id], onDelete: Cascade)
+
+  fromGroupId String?
+  fromGroup Group? @relation("GroupTaskHistoryFrom", fields: [fromGroupId], references: [id], onDelete: SetNull)
+
+  toGroupId String?
+  toGroup Group? @relation("GroupTaskHistoryTo", fields: [toGroupId], references: [id], onDelete: SetNull)
+
+  scopeParentGroupId String?
+  scopeParentGroup Group? @relation("GroupTaskHistoryScope", fields: [scopeParentGroupId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, createdAt])
+  @@index([scopeParentGroupId, createdAt])
+  @@index([fromGroupId])
+  @@index([toGroupId])
+  @@index([actorId])
+  @@index([todoId])
 }
 
 enum MessageKind {

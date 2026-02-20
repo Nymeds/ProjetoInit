@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Plus } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTodos } from "../hooks/useTodos";
 import { useGroups } from "../hooks/useGroups";
@@ -20,14 +20,29 @@ import { FriendsSidebar } from "../components/buildedComponents/FriendsSidebar";
 import { Text } from "../components/baseComponents/text";
 import Card from "../components/baseComponents/card";
 import { Button } from "../components/baseComponents/button";
+import { Modal } from "../components/baseComponents/Modal";
 import type { Todo } from "../types/types";
 import { DashboardStats } from "../components/buildedComponents/DashboardStats";
 import { moveTodo } from "../api/todos";
-import {
-  DASHBOARD_LAYOUT_STORAGE_KEY,
-  parseDashboardLayoutMode,
-  type DashboardLayoutMode,
-} from "../types/dashboard-layout";
+
+const MOVE_CONFIRMATION_STORAGE_KEY = "dashboard:skip-move-confirmation";
+const PINNED_GROUPS_STORAGE_KEY = "dashboard:grid-pinned-group-ids";
+const MINIMIZED_GROUPS_STORAGE_KEY = "dashboard:minimized-group-ids";
+
+function readStoredStringArray(storageKey: string): string[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const rawValue = window.localStorage.getItem(storageKey);
+    if (!rawValue) return [];
+
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return [];
+  }
+}
 
 export function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -43,30 +58,27 @@ export function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
-  const [gridPinnedGroupIds, setGridPinnedGroupIds] = useState<string[]>([]);
+  const [gridPinnedGroupIds, setGridPinnedGroupIds] = useState<string[]>(() => readStoredStringArray(PINNED_GROUPS_STORAGE_KEY));
+  const [minimizedGroupIds, setMinimizedGroupIds] = useState<string[]>(() => readStoredStringArray(MINIMIZED_GROUPS_STORAGE_KEY));
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<DashboardLayoutMode>(() => {
-    if (typeof window === "undefined") return "comfortable";
-    return parseDashboardLayoutMode(window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY));
+  const [pendingMove, setPendingMove] = useState<{ todo: Todo; targetGroupId: string | null } | null>(null);
+  const [isConfirmingMove, setIsConfirmingMove] = useState(false);
+  const [skipMoveConfirmation, setSkipMoveConfirmation] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(MOVE_CONFIRMATION_STORAGE_KEY) === "1";
   });
+  const [dontAskMoveAgain, setDontAskMoveAgain] = useState(false);
 
   const [highlightCompleted, setHighlightCompleted] = useState(false);
   const [statsFilter, setStatsFilter] = useState<boolean | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
 
-  const isComfortableLayout = layoutMode === "comfortable";
-  const surfaceCardClass = isComfortableLayout
-    ? "border border-border-primary/70 bg-background-secondary/80 shadow-[0_20px_42px_rgba(15,23,42,0.25)] backdrop-blur-sm"
-    : "border border-border-primary bg-background-quaternary";
+  const layoutMode = "comfortable";
+  const surfaceCardClass = "border border-border-primary/70 bg-background-secondary/80 shadow-[0_20px_42px_rgba(15,23,42,0.25)] backdrop-blur-sm";
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, layoutMode);
-  }, [layoutMode]);
 
   useEffect(() => {
     return () => {
@@ -75,6 +87,30 @@ export function Dashboard() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PINNED_GROUPS_STORAGE_KEY, JSON.stringify(gridPinnedGroupIds));
+  }, [gridPinnedGroupIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(MINIMIZED_GROUPS_STORAGE_KEY, JSON.stringify(minimizedGroupIds));
+  }, [minimizedGroupIds]);
+
+  useEffect(() => {
+    const validGroupIds = new Set(groups.map((group: any) => String(group.id)));
+
+    setGridPinnedGroupIds((previous) => {
+      const filtered = previous.filter((groupId) => validGroupIds.has(groupId));
+      return filtered.length === previous.length ? previous : filtered;
+    });
+
+    setMinimizedGroupIds((previous) => {
+      const filtered = previous.filter((groupId) => groupId === "sem-grupo" || validGroupIds.has(groupId));
+      return filtered.length === previous.length ? previous : filtered;
+    });
+  }, [groups]);
 
   const invalidateTodosAndGroups = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["todos"] });
@@ -132,6 +168,11 @@ export function Dashboard() {
       if (!map.has(id)) map.set(id, []);
     });
 
+    const shouldRenderNoGroupArea = todosWithGroup.length > 0 || groups.length > 0 || gridPinnedGroupIds.length > 0;
+    if (shouldRenderNoGroupArea && !map.has("sem-grupo")) {
+      map.set("sem-grupo", []);
+    }
+
     const ordered: Array<[string, Todo[]]> = [];
     const used = new Set<string>();
 
@@ -152,7 +193,13 @@ export function Dashboard() {
     }
 
     return ordered;
-  }, [todosGrouped, gridPinnedGroupIds, groups]);
+  }, [todosGrouped, gridPinnedGroupIds, groups, todosWithGroup.length]);
+
+  const groupsById = useMemo(() => {
+    const map = new Map<string, any>();
+    groups.forEach((group: any) => map.set(group.id, group));
+    return map;
+  }, [groups]);
 
   const totalTasks = todosWithGroup.length;
   const completedTasks = todosWithGroup.filter((todo) => todo.completed).length;
@@ -181,13 +228,21 @@ export function Dashboard() {
   }
 
   function getGroupName(groupId: string) {
-    if (groupId === "sem-grupo") return "Sem grupo";
+    if (groupId === "sem-grupo") return "Sem tarefas";
     const group = groups.find((item: any) => item.id === groupId);
     return group?.name || "Grupo nao encontrado";
   }
 
   function toggleGroupPinned(groupId: string) {
     setGridPinnedGroupIds((prev) => (
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    ));
+  }
+
+  function toggleGroupMinimized(groupId: string) {
+    setMinimizedGroupIds((prev) => (
       prev.includes(groupId)
         ? prev.filter((id) => id !== groupId)
         : [...prev, groupId]
@@ -223,6 +278,22 @@ export function Dashboard() {
     const currentGroupId = todo.group?.id ?? null;
     if (currentGroupId === targetGroupId) return;
 
+    const sourceGroup = currentGroupId ? groupsById.get(currentGroupId) : null;
+    const sourceIsPrivateTask = currentGroupId === null;
+    const sourceIsOutsideEcosystem = Boolean(
+      sourceGroup
+      && !sourceGroup.parentGroupId
+      && (sourceGroup.childGroups?.length ?? 0) === 0,
+    );
+
+    const shouldConfirmMove = targetGroupId !== null && (sourceIsPrivateTask || sourceIsOutsideEcosystem);
+
+    if (shouldConfirmMove && !skipMoveConfirmation) {
+      setPendingMove({ todo, targetGroupId });
+      setDraggingTodo(null);
+      return;
+    }
+
     try {
       await moveTodo(String(todo.id), targetGroupId, todo.title);
       invalidateTodosAndGroups();
@@ -230,6 +301,28 @@ export function Dashboard() {
       console.error("Erro ao mover tarefa:", error);
     } finally {
       setDraggingTodo(null);
+    }
+  }
+
+  async function confirmPendingMove() {
+    if (!pendingMove) return;
+
+    try {
+      setIsConfirmingMove(true);
+      await moveTodo(String(pendingMove.todo.id), pendingMove.targetGroupId, pendingMove.todo.title);
+      invalidateTodosAndGroups();
+
+      if (dontAskMoveAgain && typeof window !== "undefined") {
+        window.localStorage.setItem(MOVE_CONFIRMATION_STORAGE_KEY, "1");
+        setSkipMoveConfirmation(true);
+      }
+
+      setPendingMove(null);
+      setDontAskMoveAgain(false);
+    } catch (error) {
+      console.error("Erro ao mover tarefa:", error);
+    } finally {
+      setIsConfirmingMove(false);
     }
   }
 
@@ -276,16 +369,14 @@ export function Dashboard() {
         )}
 
         <div className={`flex-1 transition-all duration-300 ${showSidebar ? "lg:ml-64" : ""}`}>
-          <div className={`mx-auto px-4 py-6 sm:px-6 xl:px-8 ${isComfortableLayout ? "max-w-[1750px]" : "max-w-7xl"}`}>
-            <div className={`grid grid-cols-1 gap-6 ${isComfortableLayout ? "xl:grid-cols-[minmax(0,1fr)_22rem]" : "xl:grid-cols-[minmax(0,1fr)_20rem]"}`}>
-              <div className={isComfortableLayout ? "space-y-6" : "space-y-8"}>
+          <div className="mx-auto max-w-[1750px] px-4 py-6 sm:px-6 xl:px-8">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <div className="space-y-6">
                 <Card className={surfaceCardClass}>
-                  <div className={isComfortableLayout ? "p-6 xl:p-8" : "p-6"}>
+                  <div className="p-6 xl:p-8">
                     <DashboardHeader
                       user={user}
                       onLogout={handleLogout}
-                      layoutMode={layoutMode}
-                      onChangeLayout={setLayoutMode}
                       onSummaryClick={() => triggerHighlight(null)}
                       onToggleSidebar={() => setShowSidebar((current) => !current)}
                       onOpenProfileSettings={() => setIsUserSettingsOpen(true)}
@@ -305,7 +396,7 @@ export function Dashboard() {
                 </Card>
 
                 <Card className={surfaceCardClass}>
-                  <div className={isComfortableLayout ? "p-6 xl:p-8" : "p-8"}>
+                  <div className="p-6 xl:p-8">
                     <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <Text variant="heading-medium" className="text-heading">
@@ -338,7 +429,7 @@ export function Dashboard() {
                       </div>
                     </div>
 
-                    {totalTasks === 0 && (
+                    {totalTasks === 0 && groupEntries.length === 0 && (
                       <div className="py-12 text-center">
                         <div className="mx-auto max-w-md">
                           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent-brand/10">
@@ -362,40 +453,63 @@ export function Dashboard() {
                       </div>
                     )}
 
-                    {totalTasks > 0 && (
+                    {groupEntries.length > 0 && (
                       <div className="space-y-8">
-                        {groupEntries.map(([groupId, groupTodos]) => (
-                          <div
-                            key={groupId}
-                            className={`space-y-4 rounded-2xl p-3 transition-colors ${
-                              dragOverGroupId === groupId ? "bg-accent-brand/10 ring-2 ring-accent-brand/40" : ""
-                            }`}
-                            onDragOver={(event) => handleDragOver(event, groupId)}
-                            onDragLeave={(event) => handleDragLeave(event, groupId)}
-                            onDrop={(event) => handleDrop(event, groupId)}
-                          >
-                            <div className="flex items-center gap-3 border-b border-border-primary/50 pb-2">
-                              <Text variant="heading-small" className="font-semibold text-heading">
-                                {getGroupName(groupId)}
-                              </Text>
-                              <span className="inline-flex items-center justify-center rounded-full bg-accent-brand/10 px-3 py-1 text-sm font-medium text-accent-brand">
-                                {groupTodos.length} {groupTodos.length === 1 ? "tarefa" : "tarefas"}
-                              </span>
-                            </div>
+                        {groupEntries.map(([groupId, groupTodos]) => {
+                          const isGroupMinimized = minimizedGroupIds.includes(groupId);
 
-                            <TaskList
-                              todos={groupTodos}
-                              isLoading={todosLoading}
-                              onDeleted={invalidateTodosAndGroups}
-                              onUpdated={invalidateTodosAndGroups}
-                              onDragStart={handleDragStart}
-                              onSelect={(todo) => setSelectedTodo(todo)}
-                              highlightCompleted={highlightCompleted}
-                              statsFilter={statsFilter}
-                              layoutMode={layoutMode}
-                            />
-                          </div>
-                        ))}
+                          return (
+                            <div
+                              key={groupId}
+                              className={`rounded-2xl p-3 transition-colors ${
+                                dragOverGroupId === groupId ? "bg-accent-brand/10 ring-2 ring-accent-brand/40" : ""
+                              } ${isGroupMinimized ? "" : "space-y-4"}`}
+                              onDragOver={(event) => handleDragOver(event, groupId)}
+                              onDragLeave={(event) => handleDragLeave(event, groupId)}
+                              onDrop={(event) => handleDrop(event, groupId)}
+                            >
+                              <div className="flex items-center justify-between gap-3 border-b border-border-primary/50 pb-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleGroupMinimized(groupId)}
+                                  className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-background-secondary/40"
+                                  aria-expanded={!isGroupMinimized}
+                                  aria-label={`${isGroupMinimized ? "Expandir" : "Minimizar"} ${getGroupName(groupId)}`}
+                                >
+                                  {isGroupMinimized ? (
+                                    <ChevronRight className="h-4 w-4 text-accent-paragraph" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-accent-paragraph" />
+                                  )}
+                                  <Text variant="heading-small" className="font-semibold text-heading">
+                                    {getGroupName(groupId)}
+                                  </Text>
+                                </button>
+                                <span className="inline-flex items-center justify-center rounded-full bg-accent-brand/10 px-3 py-1 text-sm font-medium text-accent-brand">
+                                  {groupTodos.length} {groupTodos.length === 1 ? "tarefa" : "tarefas"}
+                                </span>
+                              </div>
+
+                              {isGroupMinimized ? (
+                                <Text variant="paragraph-small" className="pt-2 text-accent-paragraph">
+                                  Grupo minimizado. Clique para expandir.
+                                </Text>
+                              ) : (
+                                <TaskList
+                                  todos={groupTodos}
+                                  isLoading={todosLoading}
+                                  onDeleted={invalidateTodosAndGroups}
+                                  onUpdated={invalidateTodosAndGroups}
+                                  onDragStart={handleDragStart}
+                                  onSelect={(todo) => setSelectedTodo(todo)}
+                                  highlightCompleted={highlightCompleted}
+                                  statsFilter={statsFilter}
+                                  layoutMode={layoutMode}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -440,6 +554,61 @@ export function Dashboard() {
       <ElisaAssistant onAction={invalidateTodosAndGroups} />
 
       <UserSettingsModal open={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
+
+      <Modal
+        open={!!pendingMove}
+        onClose={() => {
+          if (isConfirmingMove) return;
+          setPendingMove(null);
+          setDontAskMoveAgain(false);
+        }}
+        title="Confirmar movimentacao"
+        className="max-w-xl"
+      >
+        <div className="space-y-4">
+          <Text variant="paragraph-medium" className="text-accent-paragraph">
+            Esta tarefa esta fora do ecossistema de grupos pai/filhos (ou esta sem grupo). Confirma mover mesmo assim?
+          </Text>
+
+          {pendingMove && (
+            <div className="rounded-lg border border-border-primary/60 bg-background-secondary/60 p-3">
+              <Text variant="label-small" className="text-heading">
+                Tarefa: {pendingMove.todo.title}
+              </Text>
+              <Text variant="paragraph-small" className="text-accent-paragraph">
+                Destino: {pendingMove.targetGroupId ? getGroupName(pendingMove.targetGroupId) : "Sem tarefas"}
+              </Text>
+            </div>
+          )}
+
+          <label className="inline-flex items-center gap-2 text-sm text-accent-paragraph">
+            <input
+              type="checkbox"
+              checked={dontAskMoveAgain}
+              onChange={(event) => setDontAskMoveAgain(event.target.checked)}
+              disabled={isConfirmingMove}
+            />
+            Nao perguntar novamente
+          </label>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setPendingMove(null);
+                setDontAskMoveAgain(false);
+              }}
+              disabled={isConfirmingMove}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="primary" onClick={confirmPendingMove} disabled={isConfirmingMove}>
+              {isConfirmingMove ? "Movendo..." : "Confirmar"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

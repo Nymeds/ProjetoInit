@@ -63,10 +63,10 @@ const groupsRepository = new PrismaGroupsRepository();
 const usersRepository = new PrismaUsersRepository();
 const messagesRepository = new PrismaMessagesRepository();
 const friendsRepository = new PrismaFriendsRepository();
-const createTodoUseCase = new CreateTodoUseCase(todosRepository);
+const createTodoUseCase = new CreateTodoUseCase(todosRepository, groupsRepository);
 const selectTodosUseCase = new SelectTodosUseCase(todosRepository);
 const completeTodoUseCase = new CompleteTodoUseCase(todosRepository);
-const updateTodoUseCase = new UpdateTodoUseCase(todosRepository);
+const updateTodoUseCase = new UpdateTodoUseCase(todosRepository, groupsRepository);
 const createGroupUseCase = new CreateGroupUseCase(groupsRepository, usersRepository);
 const listGroupsUseCase = new ListGroupsUseCase(groupsRepository);
 const listGroupMessagesUseCase = new ListGroupMessagesUseCase(messagesRepository);
@@ -1211,6 +1211,7 @@ async function runTool(
         name: args.name,
         description: args.description,
         userEmails: Array.from(normalizedEmails),
+        creatorUserId: userId,
       });
 
       actions.push({ type: 'group_created', id: group.id });

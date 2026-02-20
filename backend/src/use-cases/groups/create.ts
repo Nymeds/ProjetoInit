@@ -4,49 +4,59 @@ import type { UsersRepository } from "../../repositories/users-repository.js";
 export interface CreateGroupRequest {
   name: string;
   description?: string;
-  userEmails: string[]; 
+  userEmails: string[];
+  creatorUserId?: string;
 }
+
 export class CreateGroupUseCase {
   constructor(
     private groupsRepository: GroupsRepository,
-    private usersRepository: UsersRepository
+    private usersRepository: UsersRepository,
   ) {}
 
-  async execute({ name, description, userEmails }: CreateGroupRequest) {
+  async execute({ name, description, userEmails, creatorUserId }: CreateGroupRequest) {
     if (!name.trim()) {
-      throw new Error("Nome do grupo é obrigatório");
+      throw new Error("Nome do grupo e obrigatorio");
     }
 
-    // server-side validations
-    const cleaned = userEmails.map(e => e.trim().toLowerCase()).filter(e => e !== '');
-    if (cleaned.length < 2) throw new Error('O grupo precisa ter pelo menos 2 membros');
-    const set = new Set(cleaned);
-    if (set.size !== cleaned.length) throw new Error('Emails duplicados não são permitidos');
+    const cleaned = userEmails.map((email) => email.trim().toLowerCase()).filter((email) => email !== "");
+    const normalized = new Set(cleaned);
 
-    const users = await Promise.all(
-      Array.from(set).map(async (email) => {
-        const user = await this.usersRepository.findByEmail(email);
-        if (!user) throw new Error(`Usuário com email ${email} não encontrado`);
-        return user;
-      })
-    );
+    if (normalized.size !== cleaned.length) {
+      throw new Error("Emails duplicados nao sao permitidos");
+    }
+
+    if (creatorUserId) {
+      const creator = await this.usersRepository.findById(creatorUserId);
+      if (!creator) {
+        throw new Error("Criador do grupo nao encontrado");
+      }
+      normalized.add(creator.email.trim().toLowerCase());
+    }
+
+    if (normalized.size < 2) {
+      throw new Error("O grupo precisa ter pelo menos 2 membros");
+    }
+
+    for (const email of normalized) {
+      const user = await this.usersRepository.findByEmail(email);
+      if (!user) {
+        throw new Error(`Usuario com email ${email} nao encontrado`);
+      }
+    }
 
     try {
-      const group = await this.groupsRepository.create({
-        name,
-        description: description ?? "",
-        // pass normalized emails to repository to avoid casing issues
-        userEmails: Array.from(set),
+      return await this.groupsRepository.create({
+        name: name.trim(),
+        description: description?.trim() || "",
+        userEmails: Array.from(normalized),
+        creatorUserId,
       });
-
-      return group;
     } catch (err: any) {
-      
       if (err.code === "P2002" && err.meta?.target?.includes("name")) {
-        throw new Error("Já existe um grupo com esse nome");
+        throw new Error("Ja existe um grupo com esse nome");
       }
       throw err;
     }
   }
 }
-

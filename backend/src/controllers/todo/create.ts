@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { CreateTodoUseCase } from '../../use-cases/todo/create-todo.js'
 import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
+import { PrismaGroupsRepository } from '../../repositories/prisma/prisma-groups-repository.js'
 import { prisma } from '../../utils/prismaClient.js'
 
 export async function create(request: FastifyRequest, reply: FastifyReply) {
@@ -31,7 +32,8 @@ export async function create(request: FastifyRequest, reply: FastifyReply) {
 
   try {
     const repository = new PrismaTodosRepository()
-    const useCase = new CreateTodoUseCase(repository)
+    const groupsRepository = new PrismaGroupsRepository()
+    const useCase = new CreateTodoUseCase(repository, groupsRepository)
 
     const { todo } = await useCase.execute({ title, userId, description, groupId , })
 

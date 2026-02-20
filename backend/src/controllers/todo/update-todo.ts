@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { PrismaTodosRepository } from '../../repositories/prisma/prisma-todo-repository.js'
+import { PrismaGroupsRepository } from '../../repositories/prisma/prisma-groups-repository.js'
 import { UpdateTodoUseCase } from '../../use-cases/todo/update-todo.js'
 import { z } from 'zod'
 
@@ -22,7 +23,8 @@ export async function updateTodo(
     const { title , groupId} = updateTodoBodySchema.parse(request.body)
 
     const todosRepository = new PrismaTodosRepository()
-    const updateUseCase = new UpdateTodoUseCase(todosRepository)
+    const groupsRepository = new PrismaGroupsRepository()
+    const updateUseCase = new UpdateTodoUseCase(todosRepository, groupsRepository)
 
     const { todo } = await updateUseCase.execute({ todoId, userId, title , groupId })
 

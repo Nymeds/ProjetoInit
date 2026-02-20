@@ -33,6 +33,7 @@ describe('Todo use-cases', () => {
     const repository = makeRepository();
     const todo = makeTodo({ title: 'Nova tarefa' });
     vi.mocked(repository.create).mockResolvedValue(todo);
+    vi.mocked(repository.isUserInGroup).mockResolvedValue(true);
 
     const sut = new CreateTodoUseCase(repository);
     const result = await sut.execute({

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   open: boolean;
@@ -7,9 +8,9 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   className?: string;
-  draggable?: boolean; // permite arrastar quando true
-  closeOnBackdrop?: boolean; // fecha ao clicar no backdrop
-  fullScreenOnMobile?: boolean; // ocupa a tela em dispositivos pequenos
+  draggable?: boolean;
+  closeOnBackdrop?: boolean;
+  fullScreenOnMobile?: boolean;
 }
 
 export function Modal({
@@ -23,34 +24,40 @@ export function Modal({
   closeOnBackdrop = true,
   fullScreenOnMobile = true,
 }: ModalProps) {
-  // Fecha o modal ao apertar ESC
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    if (!open) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
     }
+
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [open, onClose]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
-  // manage focus: save previously focused element, focus modal when opened, restore on close
   useEffect(() => {
     if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
+
+    const previous = document.activeElement as HTMLElement | null;
     const el = containerRef.current;
-    setTimeout(() => { el?.focus(); }, 0);
-    return () => { prev?.focus?.(); };
+    window.setTimeout(() => el?.focus(), 0);
+    return () => previous?.focus?.();
   }, [open]);
 
-  // Eventos de movimento quando arrastando
   useEffect(() => {
-    function onMove(e: PointerEvent) {
+    if (!open) return;
+
+    function onMove(event: PointerEvent) {
       if (!dragging) return;
-      setPosition({ left: e.clientX - offsetRef.current.x, top: e.clientY - offsetRef.current.y });
+      setPosition({
+        left: event.clientX - offsetRef.current.x,
+        top: event.clientY - offsetRef.current.y,
+      });
     }
 
     function onUp() {
@@ -63,18 +70,19 @@ export function Modal({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [dragging]);
+  }, [dragging, open]);
 
-  function startDrag(e: React.PointerEvent) {
+  function startDrag(event: React.PointerEvent) {
     if (!draggable || !containerRef.current) return;
-    const target = e.target as HTMLElement;
-    // don't start drag if clicking interactive elements
+    const target = event.target as HTMLElement;
     if (target.closest('button, [role="button"], input, textarea, a, select, label')) return;
 
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
     const rect = containerRef.current.getBoundingClientRect();
-    offsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    offsetRef.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
     setPosition({ left: rect.left, top: rect.top });
     setDragging(true);
   }
@@ -83,18 +91,20 @@ export function Modal({
     setPosition(null);
   }
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const positionStyle = position
-    ? ({ position: "fixed", left: position.left, top: position.top, transform: "none", zIndex: 70 } as const)
+    ? ({ position: "fixed", left: position.left, top: position.top, transform: "none", zIndex: 130 } as const)
     : {};
 
-  // Layout responsivo: full-width em telas pequenas, limites maiores em telas grandes
-  const responsiveBase = `w-full max-w-screen-sm sm:max-w-md md:max-w-lg lg:max-w-2xl mx-4 sm:mx-0 ${fullScreenOnMobile ? 'h-full sm:h-auto' : ''}`;
+  const responsiveBase = [
+    "w-full max-w-screen-sm sm:max-w-md md:max-w-lg lg:max-w-2xl mx-4 sm:mx-0",
+    fullScreenOnMobile ? "h-[calc(100vh-1rem)] sm:h-auto" : "",
+  ].join(" ");
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/60 py-2 sm:items-center sm:py-6"
       role="presentation"
       onClick={closeOnBackdrop ? onClose : undefined}
     >
@@ -102,58 +112,49 @@ export function Modal({
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={title ? 'modal-title' : undefined}
-        aria-describedby={description ? 'modal-desc' : undefined}
+        aria-labelledby={title ? "modal-title" : undefined}
+        aria-describedby={description ? "modal-desc" : undefined}
         tabIndex={-1}
         style={positionStyle}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         className={`
-          bg-background-primary
-          rounded-xl
-          shadow-lg
-          p-6
-          relative
-          transition-all duration-150 ease-out transform
+          relative flex max-h-[calc(100vh-1rem)] flex-col rounded-xl bg-background-primary p-6 shadow-lg transition-all duration-150 ease-out transform sm:max-h-[calc(100vh-3rem)]
           ${responsiveBase}
           ${className}
         `}
       >
         <div
-          className={`flex items-start justify-between gap-4 ${draggable ? 'cursor-grab select-none' : ''}`}
+          className={`flex items-start justify-between gap-4 ${draggable ? "cursor-grab select-none" : ""}`}
           onPointerDown={draggable ? startDrag : undefined}
           onDoubleClick={draggable ? resetPosition : undefined}
-          style={{ cursor: draggable ? (dragging ? 'grabbing' : 'grab') : undefined }}
+          style={{ cursor: draggable ? (dragging ? "grabbing" : "grab") : undefined }}
         >
           {title ? (
-            <h2
-              id="modal-title"
-              className="text-heading text-lg font-bold"
-            >
+            <h2 id="modal-title" className="text-heading text-lg font-bold">
               {title}
             </h2>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              aria-label="Fechar"
-              className="text-label hover:text-accent-red bg-transparent p-2 rounded focus:outline-none focus:ring-2 focus:ring-offset-2"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="rounded p-2 text-label hover:text-accent-red focus:outline-none focus:ring-2 focus:ring-offset-2"
+          >
+            x
+          </button>
         </div>
 
         {description && (
-          <p id="modal-desc" className="text-label text-sm mt-2 mb-4">
+          <p id="modal-desc" className="mt-2 mb-4 text-sm text-label">
             {description}
           </p>
         )}
 
-        <div className={`overflow-auto ${fullScreenOnMobile ? 'h-full sm:h-auto' : ''}`}>
-          {children}
-        </div>
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

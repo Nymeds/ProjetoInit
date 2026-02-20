@@ -71,6 +71,7 @@ describe("CreateTodoUseCase", () => {
     });
 
     repo.create.mockResolvedValue(todo);
+    repo.isUserInGroup.mockResolvedValue(true);
 
     // Act: executamos o caso de uso com o payload que o controller enviaria.
     const useCase = new CreateTodoUseCase(repo.repository);

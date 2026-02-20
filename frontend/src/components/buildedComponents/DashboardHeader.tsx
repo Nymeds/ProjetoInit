@@ -3,15 +3,12 @@ import { LogOut, Menu, Settings, User, UserCog } from "lucide-react";
 import { Button } from "../baseComponents/button";
 import { Text } from "../baseComponents/text";
 import type { User as UserType } from "../../context/AuthContext";
-import type { DashboardLayoutMode } from "../../types/dashboard-layout";
 import Card from "../baseComponents/card";
 import ThemeToggle from "../buildedComponents/AnimatedThemeToggle";
 
 interface DashboardHeaderProps {
   user: UserType;
   onLogout: () => void;
-  layoutMode: DashboardLayoutMode;
-  onChangeLayout: (layout: DashboardLayoutMode) => void;
   statsContent?: ReactNode;
   onSummaryClick?: () => void;
   onToggleSidebar?: () => void;
@@ -21,8 +18,6 @@ interface DashboardHeaderProps {
 export function DashboardHeader({
   user,
   onLogout,
-  layoutMode,
-  onChangeLayout,
   statsContent,
   onSummaryClick,
   onToggleSidebar,
@@ -54,11 +49,6 @@ export function DashboardHeader({
       document.removeEventListener("keydown", handleEsc);
     };
   }, [isSettingsOpen]);
-
-  function handleLayoutSelection(nextLayout: DashboardLayoutMode) {
-    onChangeLayout(nextLayout);
-    setIsSettingsOpen(false);
-  }
 
   function handleOpenProfileSettings() {
     setIsSettingsOpen(false);
@@ -154,46 +144,10 @@ export function DashboardHeader({
                   Configuracoes
                 </Text>
 
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => handleLayoutSelection("comfortable")}
-                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                      layoutMode === "comfortable"
-                        ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
-                        : "border-border-primary text-label hover:border-accent-brand/40"
-                    }`}
-                  >
-                    <Text variant="paragraph-small" className="font-semibold">
-                      Layout confortavel (padrao)
-                    </Text>
-                    <Text variant="paragraph-small" className="text-accent-paragraph">
-                      Mais espaco de tela e cards mais amplos.
-                    </Text>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleLayoutSelection("classic")}
-                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                      layoutMode === "classic"
-                        ? "border-accent-brand bg-accent-brand/10 text-accent-brand"
-                        : "border-border-primary text-label hover:border-accent-brand/40"
-                    }`}
-                  >
-                    <Text variant="paragraph-small" className="font-semibold">
-                      Layout classico
-                    </Text>
-                    <Text variant="paragraph-small" className="text-accent-paragraph">
-                      Visual anterior com estrutura compacta.
-                    </Text>
-                  </button>
-                </div>
-
                 <button
                   type="button"
                   onClick={handleOpenProfileSettings}
-                  className="mt-3 flex w-full items-center gap-2 rounded-lg border border-border-primary px-3 py-2 text-left text-label transition-colors hover:border-accent-brand/40 hover:text-accent-brand"
+                  className="flex w-full items-center gap-2 rounded-lg border border-border-primary px-3 py-2 text-left text-label transition-colors hover:border-accent-brand/40 hover:text-accent-brand"
                 >
                   <UserCog className="h-4 w-4" />
                   <Text variant="paragraph-small">Editar conta e amigos</Text>
@@ -211,3 +165,4 @@ export function DashboardHeader({
     </div>
   );
 }
+

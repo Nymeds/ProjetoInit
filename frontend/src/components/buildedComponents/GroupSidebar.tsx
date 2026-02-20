@@ -254,6 +254,9 @@ export function GroupSidebar({
                             <div>
                               <Text variant="label-small" className="font-medium bg-background-tertiary px-2 py-1 rounded-full">{m.user.name ?? 'Usuário'}</Text>
                               <Text variant="paragraph-small" className="text-accent-paragraph mt-1">{m.user.email}</Text>
+                              <Text variant="paragraph-small" className="text-accent-paragraph mt-1">
+                                Cargo: {m.groupRole?.name ?? 'member'}
+                              </Text>
                             </div>
                           </div>
                         ))}

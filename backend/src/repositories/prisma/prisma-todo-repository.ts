@@ -33,7 +33,7 @@ export class PrismaTodosRepository implements TodosRepository {
 
   async update(
     id: number,
-    data: { title?: string; completed?: boolean; description?: string; groupId?: string | null | null },
+    data: { title?: string; completed?: boolean; description?: string; groupId?: string | null },
   ): Promise<Todo> {
     const existingTodo = await prisma.todo.findUnique({ where: { id } });
     if (!existingTodo) throw new Error('Tarefa nao encontrada');
@@ -47,10 +47,7 @@ export class PrismaTodosRepository implements TodosRepository {
 
     return prisma.todo.update({
       where: { id },
-      data: {
-        ...data,
-        groupId: data.groupId ?? existingTodo.groupId ?? undefined,
-      },
+      data: updateData,
     });
   }
 
