@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { GroupPermission } from "@prisma/client";
 import { z } from "zod";
+import { GROUP_PERMISSION_VALUES } from "../../repositories/groups-repository.js";
 import { PrismaGroupsRepository } from "../../repositories/prisma/prisma-groups-repository.js";
 import { UpdateGroupUseCase } from "../../use-cases/groups/update-group.js";
 
@@ -12,7 +12,7 @@ const rolePayloadSchema = z.object({
   id: z.string().min(1).optional(),
   clientKey: z.string().min(1).optional(),
   name: z.string().trim().min(1).max(10),
-  permissions: z.array(z.nativeEnum(GroupPermission)).min(1),
+  permissions: z.array(z.enum(GROUP_PERMISSION_VALUES)).min(1),
   isDefault: z.boolean().optional(),
 });
 

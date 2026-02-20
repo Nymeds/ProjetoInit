@@ -1,6 +1,4 @@
 import type {
-  GroupPermission,
-  GroupRole,
   Prisma,
   PrismaClient,
   User,
@@ -8,6 +6,7 @@ import type {
 import { prisma } from "../../utils/prismaClient.js";
 import type {
   CreateGroupParams,
+  GroupPermission,
   GroupMemberWithRole,
   GroupsRepository,
   GroupTaskHistoryWithRelations,

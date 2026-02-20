@@ -1,5 +1,4 @@
-import type { GroupPermission } from "@prisma/client";
-import type { GroupWithDetails, GroupsRepository } from "../../repositories/groups-repository.js";
+import type { GroupPermission, GroupWithDetails, GroupsRepository } from "../../repositories/groups-repository.js";
 
 interface UpdateRolePayload {
   id?: string;

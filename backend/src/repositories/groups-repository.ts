@@ -1,11 +1,32 @@
-import type {
-  Group,
-  GroupPermission,
-  GroupRole,
-  GroupRolePermission,
-  GroupTaskHistory,
-  UserGroup,
-} from "@prisma/client";
+import type { Group, UserGroup } from "@prisma/client";
+
+export const GROUP_PERMISSION_VALUES = [
+  "MANAGE_MEMBERS",
+  "MANAGE_ROLES",
+  "MANAGE_WORKFLOW",
+  "MOVE_TASK",
+  "MOVE_TASK_TO_NO_GROUP",
+  "REMOVE_TASK",
+  "VIEW_HISTORY",
+] as const;
+
+export type GroupPermission = (typeof GROUP_PERMISSION_VALUES)[number];
+
+export interface GroupRoleRecord {
+  id: string;
+  groupId: string;
+  name: string;
+  isSystem: boolean;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface GroupRolePermissionRecord {
+  id: string;
+  roleId: string;
+  permission: GroupPermission;
+}
 
 export interface CreateGroupParams {
   name: string;
@@ -14,8 +35,8 @@ export interface CreateGroupParams {
   creatorUserId?: string;
 }
 
-export type GroupRoleWithPermissions = GroupRole & {
-  permissions: GroupRolePermission[];
+export type GroupRoleWithPermissions = GroupRoleRecord & {
+  permissions: GroupRolePermissionRecord[];
 };
 
 export type GroupMemberWithRole = UserGroup & {
@@ -27,7 +48,21 @@ export type GroupMemberWithRole = UserGroup & {
   groupRole: GroupRoleWithPermissions | null;
 };
 
-export type GroupTaskHistoryWithRelations = GroupTaskHistory & {
+export interface GroupTaskHistoryRecord {
+  id: string;
+  action: "TASK_CREATED" | "TASK_MOVED";
+  createdAt: Date;
+  taskTitleSnapshot: string | null;
+  movedOutsideParentName: string | null;
+  actorId: string;
+  todoId: number | null;
+  groupId: string;
+  fromGroupId: string | null;
+  toGroupId: string | null;
+  scopeParentGroupId: string | null;
+}
+
+export type GroupTaskHistoryWithRelations = GroupTaskHistoryRecord & {
   actor: {
     id: string;
     name: string;

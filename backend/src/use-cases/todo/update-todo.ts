@@ -1,5 +1,5 @@
-import type { GroupPermission, Todo } from "@prisma/client";
-import type { GroupsRepository } from "../../repositories/groups-repository.js";
+import type { Todo } from "@prisma/client";
+import type { GroupPermission, GroupsRepository } from "../../repositories/groups-repository.js";
 import type { TodosRepository } from "../../repositories/todo-repository.js";
 
 interface UpdateTodoUseCaseRequest {
