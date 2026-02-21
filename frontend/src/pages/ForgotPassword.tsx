@@ -92,7 +92,7 @@ export function ForgotPassword() {
     setTokenLoading(true);
     try {
       //  ajuste o endpoint conforme seu backend (alguns usam GET /password/verify-token?token=xxx)
-     await verifyResetToken(token);
+     await verifyResetToken(emailForReset,token);
       setModalStep("password"); // token válido → mostra campos de senha
     } catch (err: any) {
       setTokenError(
