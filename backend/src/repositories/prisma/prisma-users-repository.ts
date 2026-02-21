@@ -1,3 +1,4 @@
+import { email } from 'zod';
 import { prisma } from '../../utils/prismaClient.js';
 import type { UsersRepository } from '../users-repository.js';
 
@@ -36,6 +37,17 @@ export class PrismaUsersRepository implements UsersRepository {
     data: {
       resetPasswordToken: token,
       resetPasswordExpires: expires,
+    },
+  });
+}
+
+  async findByResetToken(token: string) {
+  return prisma.user.findFirst({
+    where: {
+      resetPasswordToken: token,
+      resetPasswordExpires: {
+        gt: new Date(), // ainda não expirou
+      },
     },
   });
 }

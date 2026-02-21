@@ -76,3 +76,27 @@ export async function forgotPassword(req: any, reply: any) {
     });
   }
 }
+
+export async function verifyResetToken(req: any, reply: any) {
+  const { token } = req.body;
+
+  const usersRepository = new PrismaUsersRepository();
+  const forgotPasswordUseCase = new ForgotPasswordUseCase(usersRepository);
+
+  try {
+    const { user } = await forgotPasswordUseCase.verify(token);
+
+    if (!user) {
+      return reply.status(404).send({ message: "User not found" });
+    }
+
+    return reply.status(200).send({
+      message: "Token válido",
+    });
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({
+      message: "Erro ao verificar token",
+    });
+  }
+}

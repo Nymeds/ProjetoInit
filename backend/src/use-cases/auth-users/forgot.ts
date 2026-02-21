@@ -21,7 +21,11 @@ export class ForgotPasswordUseCase {
       token,
       expires
     );
-    console.log(`Token de recuperação para ${email}: ${token} (expira em ${expires})`);
+   
     return { user, token };
+  }
+  async verify(token: string) {
+    const user = await this.usersRepository.findByResetToken(token);
+    return { user };
   }
 }

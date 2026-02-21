@@ -133,3 +133,19 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<{ 
     throw toApiError(error, "Erro ao atualizar perfil");
   }
 }
+
+export async function sendTokenVerificationEmail(email: string): Promise<void> {
+  try {
+    await api.post("/password/forgot", { email });
+  } catch (error) {
+    throw toApiError(error, "Erro ao enviar email");
+  }
+}
+
+export async function verifyResetToken(token: string): Promise<void> {
+  try {
+    await api.post("/password/verify-token", { token });
+  } catch (error) {
+    throw toApiError(error, "Token invalido ou expirado");
+  }
+}

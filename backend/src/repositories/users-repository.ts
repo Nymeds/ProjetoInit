@@ -14,4 +14,5 @@ export interface UsersRepository {
     token: string,
     expires: Date
   ): Promise<void>;
+  findByResetToken(token: string): Promise<PrismaUser | null>;
 }
