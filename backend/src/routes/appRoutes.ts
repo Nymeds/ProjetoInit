@@ -23,7 +23,7 @@ import { assistantChat } from "../controllers/assistant/chat.js";
 import { assistantHistory } from "../controllers/assistant/history.js";
 import { listFriends, listFriendRequests } from "../controllers/friends/list.js";
 import { acceptFriendRequest, createFriendRequest } from "../controllers/friends/request.js";
-import { forgotPassword, verifyResetToken } from "../controllers/auth/forgot.js";
+import { forgotPassword, verifyResetToken , resetPassword } from "../controllers/auth/forgot.js";
 export async function appRoutes(app: FastifyInstance) {
   // Auth
   app.post('/users', register);
@@ -35,11 +35,11 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/friends/requests', { preHandler: [verifyJwt] }, listFriendRequests);
   app.post('/friends/requests', { preHandler: [verifyJwt] }, createFriendRequest);
   app.patch<{ Params: { id: string } }>('/friends/requests/:id/accept', { preHandler: [verifyJwt] }, acceptFriendRequest);
-
+  
   //Forgot password, reset password, etc. 
   app.post('/password/verify-token', verifyResetToken);
   app.post('/password/forgot',forgotPassword);
-
+  app.patch('/password/reset',resetPassword);
   // ELISA (assistente virtual)
   app.get('/assistant/history', { preHandler: [verifyJwt] }, assistantHistory);
   app.post('/assistant/chat', { preHandler: [verifyJwt] }, assistantChat);

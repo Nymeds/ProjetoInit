@@ -100,3 +100,28 @@ export async function verifyResetToken(req: any, reply: any) {
     });
   }
 }
+export async function resetPassword(req: any, reply: any) {
+  const { token, password } = req.body;
+
+  const usersRepository = new PrismaUsersRepository();
+  const forgotPasswordUseCase = new ForgotPasswordUseCase(usersRepository);
+
+  try {
+    const { user } = await forgotPasswordUseCase.verify(token);
+
+    if (!user) {
+      return reply.status(404).send({ message: "User not found" });
+    }
+
+    await usersRepository.updatePassword(user.id, password);
+
+    return reply.status(200).send({
+      message: "Senha atualizada com sucesso",
+    });
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({
+      message: "Erro ao atualizar senha",
+    });
+  }
+}
