@@ -78,13 +78,13 @@ export async function forgotPassword(req: any, reply: any) {
 }
 
 export async function verifyResetToken(req: any, reply: any) {
-  const { token } = req.body;
+  const { email , token } = req.body;
 
   const usersRepository = new PrismaUsersRepository();
   const forgotPasswordUseCase = new ForgotPasswordUseCase(usersRepository);
 
   try {
-    const { user } = await forgotPasswordUseCase.verify(token);
+    const { user } = await forgotPasswordUseCase.verify(email,token);
 
     if (!user) {
       return reply.status(404).send({ message: "User not found" });
@@ -101,13 +101,13 @@ export async function verifyResetToken(req: any, reply: any) {
   }
 }
 export async function resetPassword(req: any, reply: any) {
-  const { token, password } = req.body;
+  const { email , token, password } = req.body;
 
   const usersRepository = new PrismaUsersRepository();
   const forgotPasswordUseCase = new ForgotPasswordUseCase(usersRepository);
 
   try {
-    const { user } = await forgotPasswordUseCase.verify(token);
+    const { user } = await forgotPasswordUseCase.verify(email,token);
 
     if (!user) {
       return reply.status(404).send({ message: "User not found" });

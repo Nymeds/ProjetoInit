@@ -41,13 +41,15 @@ export class PrismaUsersRepository implements UsersRepository {
   });
 }
 
-  async findByResetToken(token: string) {
+  async findByResetToken( email : string,token: string) {
   return prisma.user.findFirst({
     where: {
+       email,
       resetPasswordToken: token,
       resetPasswordExpires: {
         gt: new Date(), // ainda não expirou
       },
+      
     },
   });
 }

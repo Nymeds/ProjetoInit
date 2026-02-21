@@ -24,8 +24,8 @@ export class ForgotPasswordUseCase {
    
     return { user, token };
   }
-  async verify(token: string) {
-    const user = await this.usersRepository.findByResetToken(token);
+  async verify(email: string, token: string) {
+    const user = await this.usersRepository.findByResetToken(email,token);
     return { user };
   }
   async updatePassword(userId: string, newPassword: string) {

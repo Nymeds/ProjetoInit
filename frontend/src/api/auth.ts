@@ -142,9 +142,9 @@ export async function sendTokenVerificationEmail(email: string): Promise<void> {
   }
 }
 
-export async function verifyResetToken(token: string): Promise<void> {
+export async function verifyResetToken(email: string, token: string): Promise<void> {
   try {
-    await api.post("/password/verify-token", { token });
+    await api.post("/password/verify-token", { email, token });
   } catch (error) {
     throw toApiError(error, "Token invalido ou expirado");
   }

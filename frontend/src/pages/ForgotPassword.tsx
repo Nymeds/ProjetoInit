@@ -35,6 +35,7 @@ export function ForgotPassword() {
   } = useForm<EmailFormData>();
 
   // step 1 – envio de email
+  const [emailForReset, setEmailForReset] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError]   = useState("");
   const [modalOpen, setModalOpen]     = useState(false);
@@ -66,6 +67,7 @@ export function ForgotPassword() {
     setEmailError("");
     try {
       await sendTokenVerificationEmail(data.email);
+      setEmailForReset(data.email);
       setModalStep("token");
       setModalOpen(true);
     } catch (err: any) {
@@ -112,7 +114,8 @@ export function ForgotPassword() {
     setResetLoading(true);
     try {
       //  ajuste o endpoint/body conforme seu backend
-      await api.post("/password/reset", { token: token.trim(), password: newPassword });
+      console.log(emailForReset)
+      await api.post("/password/reset", { email: emailForReset, token: token.trim(), password: newPassword });
       setModalStep("success");
     } catch (err: any) {
       setResetError(
