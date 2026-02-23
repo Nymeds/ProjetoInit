@@ -113,7 +113,7 @@ export async function resetPassword(req: any, reply: any) {
       return reply.status(404).send({ message: "User not found" });
     }
 
-    await usersRepository.updatePassword(user.id, password);
+    await forgotPasswordUseCase.updatePassword(user.id, password);
 
     return reply.status(200).send({
       message: "Senha atualizada com sucesso",

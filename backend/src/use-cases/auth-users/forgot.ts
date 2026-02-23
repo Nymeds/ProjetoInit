@@ -1,6 +1,6 @@
 import { UsersRepository } from "@/repositories/users-repository.js";
 import crypto from "crypto";
-
+import { hash } from 'bcryptjs'
 export class ForgotPasswordUseCase {
   constructor(private usersRepository: UsersRepository) {}
 
@@ -29,6 +29,8 @@ export class ForgotPasswordUseCase {
     return { user };
   }
   async updatePassword(userId: string, newPassword: string) {
-    await this.usersRepository.updatePassword(userId, newPassword);
+    //hash de senha deve ser feito no controller, aqui só atualiza a senha
+       const password_hash = await hash(newPassword, 6)
+    await this.usersRepository.updatePassword(userId, password_hash);
   }
 }

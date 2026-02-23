@@ -40,18 +40,18 @@ export function StatsCard({ title, value, icon: Icon, color, onClick, isActive =
   const cardContent = (
     <Card
       className={`
-        bg-background-secondary p-6 border text-center transition-all duration-300
+        h-full min-w-0 border bg-background-secondary p-4 text-center transition-all duration-300 sm:p-5
         ${interactive ? 'hover:scale-105 hover:shadow-xl cursor-pointer' : ''}
         ${isActive
           ? 'border-accent-brand shadow-[0_0_0_1px_rgba(87,157,255,0.45),0_16px_35px_rgba(87,157,255,0.22)]'
           : 'border-border-primary'}
       `}
     >
-      <div className="flex items-center justify-center mb-4">
-        <div className={`p-3 rounded-xl ${chosen.bgClass}`}>
+      <div className="mb-3 flex items-center justify-center">
+        <div className={`rounded-xl p-2.5 sm:p-3 ${chosen.bgClass}`}>
           {Icon ? (
-            <div className="w-10 h-10 flex items-center justify-center rounded-md">
-              <Icon className="text-[var(--text)]" size={20} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md sm:h-9 sm:w-9">
+              <Icon className="text-[var(--text)]" size={18} />
             </div>
           ) : null}
         </div>
@@ -59,7 +59,7 @@ export function StatsCard({ title, value, icon: Icon, color, onClick, isActive =
       <Text variant="heading-large" className={`mb-2 ${chosen.textClass}`}>
         {value}
       </Text>
-      <Text variant="label-small" className="text-accent-paragraph">
+      <Text variant="label-small" className="leading-tight text-accent-paragraph">
         {title}
       </Text>
     </Card>
@@ -71,7 +71,7 @@ export function StatsCard({ title, value, icon: Icon, color, onClick, isActive =
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand"
+      className="h-full w-full rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand"
       aria-pressed={isActive}
     >
       {cardContent}

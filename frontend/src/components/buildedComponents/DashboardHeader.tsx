@@ -56,19 +56,19 @@ export function DashboardHeader({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_auto] xl:items-start">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] xl:items-start 2xl:grid-cols-[minmax(240px,300px)_minmax(0,1fr)_auto]">
       <div className="order-1 space-y-4 text-center xl:text-left">
-        <div className="flex items-center justify-center gap-4 xl:justify-start">
+        <div className="flex flex-wrap items-center justify-center gap-4 xl:flex-nowrap xl:justify-start">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-brand to-accent-brand-light shadow-lg">
             <User className="h-8 w-8 text-white" />
           </div>
-          <div>
-            <Text variant="heading-large" className="mb-2 text-heading">
+          <div className="min-w-0">
+            <Text variant="heading-large" className="mb-2 break-words text-heading">
               Ola, {user.name}!
             </Text>
             <Text
               variant="label-small"
-              className="rounded-full border border-border-primary bg-background-tertiary px-4 py-2 text-accent-brand"
+              className="inline-block rounded-full border border-border-primary bg-background-tertiary px-4 py-2 text-accent-brand"
             >
               {user.role}
             </Text>
@@ -90,7 +90,7 @@ export function DashboardHeader({
         </Card>
       </div>
 
-      <div className="order-3 space-y-5 xl:order-2">
+      <div className="order-3 min-w-0 space-y-5 xl:col-span-2 xl:order-3 2xl:col-span-1 2xl:order-2">
         {onSummaryClick ? (
           <button
             type="button"
@@ -118,8 +118,8 @@ export function DashboardHeader({
         {statsContent}
       </div>
 
-      <div className="order-2 flex flex-col items-center gap-3 xl:order-3 xl:items-end">
-        <div className="flex items-center gap-2">
+      <div className="order-2 flex flex-col items-center gap-3 xl:justify-self-end 2xl:order-3 2xl:items-end">
+        <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-end">
           {onToggleSidebar && (
             <Button variant="ghost" onClick={onToggleSidebar} className="p-2" title="Mostrar ou ocultar grupos">
               <Menu className="h-5 w-5" />
@@ -157,7 +157,11 @@ export function DashboardHeader({
           </div>
         </div>
 
-        <Button variant="danger" className="flex items-center gap-2 px-4 py-2 xl:min-w-[120px]" onClick={onLogout}>
+        <Button
+          variant="danger"
+          className="flex w-full items-center justify-center gap-2 px-4 py-2 sm:w-auto 2xl:min-w-[120px]"
+          onClick={onLogout}
+        >
           <LogOut className="h-4 w-4" />
           <span>Sair</span>
         </Button>

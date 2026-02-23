@@ -91,9 +91,9 @@ export function ForgotPassword() {
 
     setTokenLoading(true);
     try {
-      //  ajuste o endpoint conforme seu backend (alguns usam GET /password/verify-token?token=xxx)
+      
      await verifyResetToken(emailForReset,token);
-      setModalStep("password"); // token válido → mostra campos de senha
+      setModalStep("password"); 
     } catch (err: any) {
       setTokenError(
         err?.response?.data?.message || err.message || "Token inválido ou expirado."
@@ -115,7 +115,7 @@ export function ForgotPassword() {
     try {
       //  ajuste o endpoint/body conforme seu backend
       console.log(emailForReset)
-      await api.post("/password/reset", { email: emailForReset, token: token.trim(), password: newPassword });
+      await api.patch("/password/reset", { email: emailForReset, token: token.trim(), password: newPassword });
       setModalStep("success");
     } catch (err: any) {
       setResetError(
