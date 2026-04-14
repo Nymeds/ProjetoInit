@@ -5,6 +5,18 @@ export interface ToolCandidate {
   group?: string | null;
 }
 
+export interface AssistantConversationState {
+  status: "idle" | "pending";
+  kind?: "confirmation" | "clarification";
+  toolNames?: string[];
+  assistantPrompt?: string;
+  previousUserMessage?: string;
+  args?: Record<string, unknown>;
+  candidates?: ToolCandidate[];
+  sourceGroupId?: string;
+  createdAt: string;
+}
+
 export type AssistantAction =
   | { type: "task_created"; id: number }
   | { type: "task_completed"; id: number }
@@ -40,6 +52,11 @@ export interface AssistantRuntimeContext {
   preferredGroupName?: string;
   rawUserMessage: string;
   recentUserMessages: string[];
+  interactionSignals: string[];
+  followUpHint?: string;
+  contextSummary?: string;
+  suggestedToolNames: string[];
+  pendingState?: AssistantConversationState | null;
 }
 
 export interface AssistantProcessParams {

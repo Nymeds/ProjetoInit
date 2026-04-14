@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { NO_PATTERN, YES_PATTERN } from "./config.js";
 import { compactText, normalizeText } from "./helpers.js";
 import type {
   AssistantAction,
+  AssistantConversationState,
   AssistantRuntimeContext,
   ToolCandidate,
   ToolFailure,
@@ -463,6 +465,286 @@ const allToolDeclarations: Record<string, any> = {
   },
 };
 
+const TASK_ENTITY_PATTERN = /\b(tarefa|tarefas|todo|todos|atividade|atividades|item|itens)\b/;
+const GROUP_ENTITY_PATTERN = /\b(grupo|grupos|equipe|time|squad|projeto|projetos)\b/;
+
+function countWords(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .length;
+}
+
+function hasAnyPattern(text: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function addToolNames(target: Set<string>, ...toolNames: Array<string | undefined>) {
+  for (const name of toolNames) {
+    if (name && allToolDeclarations[name]) {
+      target.add(name);
+    }
+  }
+}
+
+function summarizeCandidates(candidates?: ToolCandidate[]) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return "";
+
+  return candidates
+    .slice(0, 5)
+    .map((candidate) => {
+      if (candidate.title) return `${candidate.id} (${candidate.title})`;
+      if (candidate.name) return `${candidate.id} (${candidate.name})`;
+      return String(candidate.id);
+    })
+    .join(", ");
+}
+
+function buildInteractionSignals(
+  currentMessage: string,
+  recentUserMessages: string[],
+  sourceGroupId?: string,
+) {
+  const sample = recentUserMessages.slice(-5);
+  if (sample[sample.length - 1] !== currentMessage) {
+    sample.push(currentMessage);
+  }
+
+  const filteredSample = sample.filter(Boolean);
+  const signals = new Set<string>();
+
+  const shortCommands = filteredSample.filter((message) => countWords(message) <= 6).length;
+  if (filteredSample.length > 0 && shortCommands >= Math.ceil(filteredSample.length / 2)) {
+    signals.add("usuario_costuma_usar_comandos_curtos");
+  }
+
+  if (sourceGroupId || filteredSample.some((message) => GROUP_ENTITY_PATTERN.test(normalizeText(message)))) {
+    signals.add("foco_em_equipe_e_grupos");
+  }
+
+  if (filteredSample.some((message) => /\b(prioridade|planej|roadmap|sprint|resumo|proximo passo|proximos passos)\b/.test(normalizeText(message)))) {
+    signals.add("tambem_pede_orientacao_de_planejamento");
+  }
+
+  if (filteredSample.some((message) => /\b(coment|mensag|chat|avis|membro|membros)\b/.test(normalizeText(message)))) {
+    signals.add("colaboracao_entre_membros");
+  }
+
+  return Array.from(signals).slice(0, 4);
+}
+
+function inferFollowUpFromState(
+  message: string,
+  assistantState?: AssistantConversationState | null,
+) {
+  if (!assistantState || assistantState.status !== "pending") {
+    return {
+      followUpHint: undefined,
+      suggestedToolNames: [] as string[],
+    };
+  }
+
+  const normalizedMessage = normalizeText(message);
+  const isAffirmation = YES_PATTERN.test(normalizedMessage);
+  const isNegation = NO_PATTERN.test(normalizedMessage);
+  const isShortContinuation = countWords(message) <= 5;
+
+  if (!isAffirmation && !isNegation && !isShortContinuation) {
+    return {
+      followUpHint: undefined,
+      suggestedToolNames: [],
+    };
+  }
+
+  const previousRequest = assistantState.previousUserMessage
+    ? compactText(assistantState.previousUserMessage, 140)
+    : undefined;
+  const argsPreview = assistantState.args && Object.keys(assistantState.args).length > 0
+    ? compactText(JSON.stringify(assistantState.args), 180)
+    : undefined;
+  const candidatesPreview = summarizeCandidates(assistantState.candidates);
+
+  if (isNegation && assistantState.kind === "confirmation") {
+    return {
+      followUpHint: `O usuario recusou a pendencia "${assistantState.assistantPrompt ?? "acao sensivel"}". Nao execute a acao e apenas confirme o cancelamento.`,
+      suggestedToolNames: [],
+    };
+  }
+
+  if (isAffirmation && assistantState.kind === "confirmation") {
+    const fragments = [
+      `O usuario confirmou a pendencia "${assistantState.assistantPrompt ?? "acao sensivel"}".`,
+      previousRequest ? `Pedido anterior: "${previousRequest}".` : undefined,
+      argsPreview ? `Argumentos ja inferidos: ${argsPreview}.` : undefined,
+    ].filter(Boolean);
+
+    return {
+      followUpHint: fragments.join(" "),
+      suggestedToolNames: assistantState.toolNames ?? [],
+    };
+  }
+
+  const clarificationFragments = [
+    `A mensagem atual parece uma continuacao da pendencia "${assistantState.assistantPrompt ?? "pedido anterior"}".`,
+    previousRequest ? `Pedido anterior: "${previousRequest}".` : undefined,
+    candidatesPreview ? `Opcoes anteriores: ${candidatesPreview}.` : undefined,
+  ].filter(Boolean);
+
+  return {
+    followUpHint: clarificationFragments.join(" "),
+    suggestedToolNames: assistantState.toolNames ?? [],
+  };
+}
+
+function buildContextSummary(runtime: {
+  preferredGroupName?: string;
+  sourceGroupId?: string;
+  interactionSignals: string[];
+  followUpHint?: string;
+}) {
+  const fragments: string[] = [];
+
+  if (runtime.preferredGroupName && runtime.sourceGroupId) {
+    fragments.push(`grupo atual: ${runtime.preferredGroupName}`);
+  } else if (runtime.preferredGroupName) {
+    fragments.push(`grupo preferido inferido: ${runtime.preferredGroupName}`);
+  }
+
+  if (runtime.interactionSignals.length > 0) {
+    fragments.push(`sinais do usuario: ${runtime.interactionSignals.join(", ")}`);
+  }
+
+  if (runtime.followUpHint) {
+    fragments.push(`continuidade: ${runtime.followUpHint}`);
+  }
+
+  return fragments.length > 0 ? fragments.join(" | ") : undefined;
+}
+
+function inferToolNamesFromMessage(message: string, sourceGroupId?: string) {
+  const normalized = normalizeText(message);
+  const selected = new Set<string>();
+  const hasExplicitActionVerb = hasAnyPattern(normalized, [
+    /\b(cria|criar|adiciona|adicionar|abre|abrir|busca|buscar|lista|listar|mostra|mostrar|move|mover|mova|marca|marcar|conclui|concluir|finaliza|finalizar|deleta|deletar|remove|remover|apaga|apagar|exclui|excluir|renomeia|renomear|edita|editar|atualiza|atualizar|avisa|avisar|comenta|comentar)\b/,
+  ]);
+
+  if (!hasExplicitActionVerb && (YES_PATTERN.test(normalized) || NO_PATTERN.test(normalized) || countWords(message) <= 2)) {
+    return [];
+  }
+
+  const looksLikePlanningHelp = hasAnyPattern(normalized, [
+    /\b(prioridade|prioridades|planej|roadmap|organiza|organizacao|resumo|alinha|alinhamento|proximo passo|proximos passos)\b/,
+  ]) && !hasAnyPattern(normalized, [
+    /\b(cria|criar|adiciona|adicionar|move|mover|marca|marcar|conclui|concluir|deleta|deletar|remove|remover|apaga|apagar|renomeia|renomear|edita|editar|atualiza|atualizar|avisa|avisar|comenta|comentar)\b/,
+  ]);
+
+  if (looksLikePlanningHelp) {
+    return [];
+  }
+
+  const mentionsTask = TASK_ENTITY_PATTERN.test(normalized);
+  const mentionsExplicitGroup = GROUP_ENTITY_PATTERN.test(normalized);
+  const mentionsGroupContext = mentionsExplicitGroup || Boolean(sourceGroupId);
+  const mentionsComment = /\b(coment|comentario|comentarios|chat|mensagem|mensagens|resposta|responder)\b/.test(normalized);
+
+  if (hasAnyPattern(normalized, [/\b(cria|criar|adiciona|adicionar|abre|abrir|nova|novo)\b/]) && mentionsTask) {
+    addToolNames(selected, "criar_tarefa", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(busca|buscar|lista|listar|mostra|mostrar|quais|qual|ver)\b/]) && mentionsTask) {
+    addToolNames(selected, "buscar_tarefas");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(conclu|finaliz|termin|feito|done)\b/])) {
+    addToolNames(selected, "marcar_concluida", "buscar_tarefas");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(move|mover|mova|joga|jogar|coloca|colocar|manda|tirar|tira)\b/, /\bsem grupo\b/, /\bpar\b/, /\bimpar\b/]) && (mentionsTask || mentionsGroupContext)) {
+    addToolNames(selected, "mover_para_grupo", "buscar_tarefas", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(renome|editar|edita|atualiza|atualizar|muda|mudar)\b/]) && mentionsTask) {
+    addToolNames(selected, "atualizar_tarefa", "buscar_tarefas", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(deleta|deletar|apaga|apagar|remove|remover|exclui|excluir)\b/]) && mentionsTask) {
+    addToolNames(selected, "deletar_tarefa", "buscar_tarefas");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(cria|criar|novo|nova|monta|montar)\b/]) && mentionsExplicitGroup) {
+    addToolNames(selected, "criar_grupo", "listar_amigos", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(grupos|grupo|equipes|times|squads)\b/, /\bmeus grupos\b/]) && hasAnyPattern(normalized, [/\b(lista|listar|quais|mostrar|mostra|ver)\b/])) {
+    addToolNames(selected, "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(renome|editar|edita|atualiza|atualizar|adiciona|adicionar|remove|remover|vincula|vincular)\b/]) && mentionsExplicitGroup) {
+    addToolNames(selected, "atualizar_grupo", "listar_grupos", "listar_amigos", "list_group_members");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(deleta|deletar|apaga|apagar|exclui|excluir)\b/]) && mentionsExplicitGroup) {
+    addToolNames(selected, "deletar_grupo", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(sair|saindo|deixar|deixa)\b/]) && mentionsExplicitGroup) {
+    addToolNames(selected, "sair_do_grupo", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(membros|participantes|quem ta|quem esta|integrantes)\b/])) {
+    addToolNames(selected, "list_group_members", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(historico|moviment|mudou|mudancas|alteracoes)\b/]) && mentionsGroupContext) {
+    addToolNames(selected, "list_group_history", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(mensagens|mensagem|chat|conversa)\b/]) && mentionsGroupContext) {
+    addToolNames(selected, "list_group_messages", "listar_grupos");
+  }
+
+  if (hasAnyPattern(normalized, [/\b(avisa|avisar|comunica|comunicar|manda mensagem|publica|publicar)\b/]) && mentionsGroupContext) {
+    addToolNames(selected, "avisar_no_grupo", "listar_grupos");
+  }
+
+  if (mentionsComment && mentionsTask) {
+    if (hasAnyPattern(normalized, [/\b(lista|listar|ver|mostrar|mostra)\b/])) {
+      addToolNames(selected, "listar_mensagens_tarefa", "buscar_tarefas");
+    }
+
+    if (hasAnyPattern(normalized, [/\b(comenta|comentar|adiciona|adicionar|responde|responder|manda)\b/])) {
+      addToolNames(selected, "comentar_tarefa", "buscar_tarefas");
+    }
+
+    if (hasAnyPattern(normalized, [/\b(edita|editar|corrige|corrigir)\b/])) {
+      addToolNames(selected, "editar_comentario_tarefa", "listar_mensagens_tarefa");
+    }
+
+    if (hasAnyPattern(normalized, [/\b(deleta|deletar|apaga|apagar|remove|remover|exclui|excluir)\b/])) {
+      addToolNames(selected, "deletar_comentario_tarefa", "listar_mensagens_tarefa");
+    }
+  }
+
+  if (selected.size === 0) {
+    if (mentionsGroupContext) {
+      addToolNames(selected, "buscar_tarefas", "listar_grupos", "list_group_members", "avisar_no_grupo");
+    } else {
+      addToolNames(
+        selected,
+        "criar_tarefa",
+        "buscar_tarefas",
+        "marcar_concluida",
+        "atualizar_tarefa",
+        "mover_para_grupo",
+        "listar_grupos",
+      );
+    }
+  }
+
+  return Array.from(selected);
+}
+
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -726,9 +1008,28 @@ async function resolveCreateTaskGroup(
   };
 }
 
-export function getToolDeclarations(_message: string, _sourceGroupId?: string) {
-  // Estrategia simples: sempre expor o catalogo completo e deixar o modelo decidir.
-  return Object.values(allToolDeclarations);
+export function getToolDeclarations(params: {
+  message: string;
+  sourceGroupId?: string;
+  preferredToolNames?: string[];
+}) {
+  const selectedToolNames = new Set<string>();
+
+  for (const toolName of inferToolNamesFromMessage(params.message, params.sourceGroupId)) {
+    addToolNames(selectedToolNames, toolName);
+  }
+
+  for (const toolName of params.preferredToolNames ?? []) {
+    addToolNames(selectedToolNames, toolName);
+  }
+
+  if (selectedToolNames.size === 0) {
+    return [];
+  }
+
+  return Array.from(selectedToolNames)
+    .map((name) => allToolDeclarations[name])
+    .filter(Boolean);
 }
 
 export async function buildRuntimeContext(params: {
@@ -736,6 +1037,7 @@ export async function buildRuntimeContext(params: {
   message: string;
   sourceGroupId?: string;
   recentUserMessages: string[];
+  assistantState?: AssistantConversationState | null;
 }): Promise<AssistantRuntimeContext> {
   const { groups } = await assistantUseCases.listGroups.execute(params.userId);
   const userGroups = groups as any[];
@@ -745,6 +1047,15 @@ export async function buildRuntimeContext(params: {
     : null;
   const mentionedInMessage = findMentionedGroup(userGroups, params.message);
   const preferredGroup = sourceGroup ?? mentionedInMessage ?? null;
+  const interactionSignals = buildInteractionSignals(
+    params.message,
+    params.recentUserMessages,
+    params.sourceGroupId,
+  );
+  const { followUpHint, suggestedToolNames } = inferFollowUpFromState(
+    params.message,
+    params.assistantState,
+  );
 
   return {
     sourceGroupId: params.sourceGroupId,
@@ -752,6 +1063,16 @@ export async function buildRuntimeContext(params: {
     preferredGroupName: preferredGroup?.name,
     rawUserMessage: params.message,
     recentUserMessages: params.recentUserMessages.slice(-8),
+    interactionSignals,
+    followUpHint,
+    contextSummary: buildContextSummary({
+      preferredGroupName: preferredGroup?.name,
+      sourceGroupId: params.sourceGroupId,
+      interactionSignals,
+      followUpHint,
+    }),
+    suggestedToolNames,
+    pendingState: params.assistantState ?? null,
   };
 }
 

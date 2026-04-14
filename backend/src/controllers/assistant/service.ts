@@ -2,15 +2,23 @@ import { env } from "../../env/index.js";
 import { prisma } from "../../utils/prismaClient.js";
 import { aiClient } from "./client.js";
 import {
+  ELISA_STATE_PREFIX,
   GREETING_PATTERN,
   MAX_CONTEXT_MESSAGES,
+  MAX_TEXT_PER_MESSAGE,
+  MAX_THREAD_CONTEXT_CHARS,
   MAX_TOOL_ROUNDS,
   MODEL_NAME,
   SYSTEM_INSTRUCTION,
 } from "./config.js";
 import { compactText } from "./helpers.js";
 import { buildRetryQuestion, buildRuntimeContext, getToolDeclarations, runTool } from "./tools.js";
-import type { AssistantAction, AssistantProcessParams, ToolFailure } from "./types.js";
+import type {
+  AssistantAction,
+  AssistantConversationState,
+  AssistantProcessParams,
+  ToolFailure,
+} from "./types.js";
 import { assistantUseCases } from "./use-cases.js";
 
 class ToolExecutionFailed extends Error {
@@ -48,10 +56,114 @@ function toModelRole(role: "USER" | "ASSISTANT") {
 }
 
 function buildThreadContents(history: Array<{ role: "USER" | "ASSISTANT"; content: string }>) {
-  return history.map((item) => ({
+  const selectedHistory = history.slice(-MAX_CONTEXT_MESSAGES);
+  const compacted: Array<{ role: "USER" | "ASSISTANT"; content: string }> = [];
+  let usedChars = 0;
+
+  for (let index = selectedHistory.length - 1; index >= 0; index -= 1) {
+    const item = selectedHistory[index];
+    const remainingChars = MAX_THREAD_CONTEXT_CHARS - usedChars;
+    if (remainingChars <= 32) break;
+
+    const content = compactText(item.content, Math.min(MAX_TEXT_PER_MESSAGE, remainingChars));
+    usedChars += content.length;
+    compacted.push({ role: item.role, content });
+  }
+
+  return compacted.reverse().map((item) => ({
     role: toModelRole(item.role),
-    parts: [{ text: compactText(item.content, 1000) }],
+    parts: [{ text: item.content }],
   }));
+}
+
+function sanitizeStoredArgs(args: unknown) {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return undefined;
+
+  const sanitized = { ...(args as Record<string, unknown>) };
+  if (sanitized.confirm === false) {
+    delete sanitized.confirm;
+  }
+
+  return sanitized;
+}
+
+function encodeAssistantState(state: AssistantConversationState) {
+  return `${ELISA_STATE_PREFIX}${JSON.stringify(state)}`;
+}
+
+function parseAssistantState(content?: string | null): AssistantConversationState | null {
+  if (!content || !content.startsWith(ELISA_STATE_PREFIX)) return null;
+
+  try {
+    const parsed = JSON.parse(content.slice(ELISA_STATE_PREFIX.length));
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as AssistantConversationState;
+  } catch {
+    return null;
+  }
+}
+
+async function loadLatestAssistantState(threadId?: string | null) {
+  if (!threadId) return null;
+
+  const stateMessage = await prisma.assistantMessage.findFirst({
+    where: {
+      threadId,
+      role: "TOOL",
+      content: { startsWith: ELISA_STATE_PREFIX },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return parseAssistantState(stateMessage?.content);
+}
+
+async function persistAssistantState(threadId: string, state: AssistantConversationState) {
+  await prisma.assistantMessage.create({
+    data: {
+      threadId,
+      role: "TOOL",
+      content: encodeAssistantState(state),
+    },
+  });
+}
+
+function buildSystemInstruction(runtime: { contextSummary?: string }) {
+  if (!runtime.contextSummary) {
+    return SYSTEM_INSTRUCTION;
+  }
+
+  return `${SYSTEM_INSTRUCTION.trim()}\nContexto operacional desta rodada:\n- ${runtime.contextSummary}`;
+}
+
+function buildAssistantState(params: {
+  failure?: ToolFailure;
+  reply: string;
+  previousUserMessage: string;
+  sourceGroupId?: string;
+}): AssistantConversationState {
+  if (!params.failure) {
+    return {
+      status: "idle",
+      createdAt: new Date().toISOString(),
+      sourceGroupId: params.sourceGroupId,
+    };
+  }
+
+  const errorText = params.failure.result.error || "";
+  const kind = errorText.startsWith("CONFIRM_REQUIRED|") ? "confirmation" : "clarification";
+
+  return {
+    status: "pending",
+    kind,
+    toolNames: [params.failure.tool],
+    assistantPrompt: params.reply,
+    previousUserMessage: params.previousUserMessage,
+    args: sanitizeStoredArgs(params.failure.args),
+    candidates: params.failure.result.candidates?.slice(0, 6),
+    sourceGroupId: params.sourceGroupId,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 function sanitizeMentionPrompt(message: string) {
@@ -161,6 +273,9 @@ export async function processAssistantMessage({
   const thread = shouldPersist
     ? await getOrCreateThread(userId)
     : await prisma.assistantThread.findUnique({ where: { userId }, select: { id: true } });
+  const latestAssistantState = (!skipThreadHistory && thread?.id)
+    ? await loadLatestAssistantState(thread.id)
+    : null;
 
   let userMessage: any = null;
   if (shouldPersist && thread) {
@@ -192,7 +307,7 @@ export async function processAssistantMessage({
   if (!shouldPersist || skipThreadHistory) {
     contents.push({
       role: "user",
-      parts: [{ text: compactText(message, 1000) }],
+      parts: [{ text: compactText(message, MAX_TEXT_PER_MESSAGE) }],
     });
   }
 
@@ -208,22 +323,34 @@ export async function processAssistantMessage({
     message,
     sourceGroupId,
     recentUserMessages: recentUserMessages.slice(-8),
+    assistantState: latestAssistantState,
   });
-  const toolDeclarations = getToolDeclarations(message, sourceGroupId);
+  const toolDeclarations = runtime.followUpHint?.includes("Nao execute a acao")
+    ? []
+    : getToolDeclarations({
+      message,
+      sourceGroupId,
+      preferredToolNames: runtime.suggestedToolNames,
+    });
+  const systemInstruction = buildSystemInstruction(runtime);
+  const modelConfig = {
+    systemInstruction,
+    ...(toolDeclarations.length > 0
+      ? { tools: [{ functionDeclarations: toolDeclarations }] }
+      : {}),
+    temperature: 0.2,
+  };
 
   let currentResponse: any = await aiClient.models.generateContent({
     model: MODEL_NAME,
     contents,
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      tools: [{ functionDeclarations: toolDeclarations }],
-      temperature: 0.3,
-    },
+    config: modelConfig,
   });
 
   let finalText: string | undefined = extractTextFromResponse(currentResponse);
   const actions: AssistantAction[] = [];
   const toolFailures: Array<{ tool: string; error: string; errorId?: string }> = [];
+  let lastToolFailure: ToolFailure | undefined;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const functionCalls = currentResponse?.functionCalls ?? [];
@@ -249,6 +376,7 @@ export async function processAssistantMessage({
       }
     } catch (err: any) {
       if (err instanceof ToolExecutionFailed) {
+        lastToolFailure = err.failure;
         toolFailures.push({
           tool: err.failure.tool,
           error: err.failure.result.error || "Falha sem detalhe.",
@@ -283,11 +411,7 @@ export async function processAssistantMessage({
     currentResponse = await aiClient.models.generateContent({
       model: MODEL_NAME,
       contents,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ functionDeclarations: toolDeclarations }],
-        temperature: 0.3,
-      },
+      config: modelConfig,
     });
 
     finalText = extractTextFromResponse(currentResponse) ?? finalText;
@@ -309,6 +433,13 @@ export async function processAssistantMessage({
         content: safeText,
       },
     });
+
+    await persistAssistantState(thread.id, buildAssistantState({
+      failure: lastToolFailure,
+      reply: safeText,
+      previousUserMessage: message,
+      sourceGroupId,
+    }));
   }
 
   let postedGroupMessage: any = null;
