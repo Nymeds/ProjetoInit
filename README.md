@@ -1,4 +1,4 @@
-# ProjetoInit — To-Do App (Backend + Frontend + Mobile)
+# Init Tasks — Full-Stack Task & Group Management Platform (Backend + Frontend + Mobile)
 
 ![Descrição da imagem](./images/image.png)
 
