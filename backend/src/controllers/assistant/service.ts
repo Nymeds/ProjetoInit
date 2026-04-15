@@ -21,6 +21,11 @@ import type {
 } from "./types.js";
 import { assistantUseCases } from "./use-cases.js";
 
+/**
+ * Erro especializado para o loop de ferramentas.
+ * Em vez de perder contexto numa excecao generica, carregamos junto o resultado
+ * da ferramenta que falhou para transformar a falha em uma pergunta util.
+ */
 class ToolExecutionFailed extends Error {
   failure: ToolFailure;
 
@@ -31,6 +36,11 @@ class ToolExecutionFailed extends Error {
   }
 }
 
+/**
+ * Extrai apenas o texto livre da resposta do provedor.
+ * A API pode retornar texto, chamadas de funcao ou ambos; aqui ignoramos tudo
+ * que nao for texto puro para montar a resposta final ao usuario.
+ */
 function extractTextFromResponse(response: any): string | undefined {
   const parts = response?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return undefined;
@@ -43,6 +53,10 @@ function extractTextFromResponse(response: any): string | undefined {
   return text || undefined;
 }
 
+/**
+ * Recupera ou cria a thread persistente da ELISA para o usuario atual.
+ * Essa thread e a memoria "longa" da conversa no chat privado.
+ */
 async function getOrCreateThread(userId: string) {
   return prisma.assistantThread.upsert({
     where: { userId },
@@ -51,10 +65,17 @@ async function getOrCreateThread(userId: string) {
   });
 }
 
+/**
+ * Traduz o enum interno do banco para o papel esperado pelo modelo.
+ */
 function toModelRole(role: "USER" | "ASSISTANT") {
   return role === "USER" ? "user" : "model";
 }
 
+/**
+ * Compacta o historico salvo no banco para o formato aceito pelo modelo,
+ * respeitando limites de quantidade e de caracteres.
+ */
 function buildThreadContents(history: Array<{ role: "USER" | "ASSISTANT"; content: string }>) {
   const selectedHistory = history.slice(-MAX_CONTEXT_MESSAGES);
   const compacted: Array<{ role: "USER" | "ASSISTANT"; content: string }> = [];
@@ -76,6 +97,10 @@ function buildThreadContents(history: Array<{ role: "USER" | "ASSISTANT"; conten
   }));
 }
 
+/**
+ * Remove sinais tecnicos dos argumentos antes de salvar um estado interno.
+ * Exemplo: um `confirm: false` nao precisa ser perpetuado na memoria.
+ */
 function sanitizeStoredArgs(args: unknown) {
   if (!args || typeof args !== "object" || Array.isArray(args)) return undefined;
 
@@ -87,10 +112,18 @@ function sanitizeStoredArgs(args: unknown) {
   return sanitized;
 }
 
+/**
+ * Serializa o estado interno da conversa usando um prefixo reservado.
+ * Esse prefixo permite distinguir memoria tecnica de mensagens humanas.
+ */
 function encodeAssistantState(state: AssistantConversationState) {
   return `${ELISA_STATE_PREFIX}${JSON.stringify(state)}`;
 }
 
+/**
+ * Faz o processo inverso de `encodeAssistantState`.
+ * Se o conteudo nao for um estado valido, retorna `null` sem derrubar o fluxo.
+ */
 function parseAssistantState(content?: string | null): AssistantConversationState | null {
   if (!content || !content.startsWith(ELISA_STATE_PREFIX)) return null;
 
@@ -103,6 +136,10 @@ function parseAssistantState(content?: string | null): AssistantConversationStat
   }
 }
 
+/**
+ * Busca a memoria interna mais recente da thread.
+ * Hoje essa memoria guarda principalmente pendencias de confirmacao e follow-up.
+ */
 async function loadLatestAssistantState(threadId?: string | null) {
   if (!threadId) return null;
 
@@ -118,6 +155,11 @@ async function loadLatestAssistantState(threadId?: string | null) {
   return parseAssistantState(stateMessage?.content);
 }
 
+/**
+ * Persiste um snapshot tecnico do estado da conversa.
+ * Esse registro nao aparece no historico do front, mas ajuda a ELISA a entender
+ * respostas curtas como "sim" ou "nao".
+ */
 async function persistAssistantState(threadId: string, state: AssistantConversationState) {
   await prisma.assistantMessage.create({
     data: {
@@ -128,6 +170,10 @@ async function persistAssistantState(threadId: string, state: AssistantConversat
   });
 }
 
+/**
+ * Enriquecimento final do prompt de sistema com contexto operacional sintetico.
+ * O prompt base continua fixo, mas cada rodada pode receber um resumo diferente.
+ */
 function buildSystemInstruction(runtime: { contextSummary?: string }) {
   if (!runtime.contextSummary) {
     return SYSTEM_INSTRUCTION;
@@ -136,6 +182,11 @@ function buildSystemInstruction(runtime: { contextSummary?: string }) {
   return `${SYSTEM_INSTRUCTION.trim()}\nContexto operacional desta rodada:\n- ${runtime.contextSummary}`;
 }
 
+/**
+ * Monta o estado interno que sera salvo apos a resposta da ELISA.
+ * Quando houve falha/ambiguidade, salvamos a pendencia; quando nao houve, a
+ * conversa volta ao estado "idle".
+ */
 function buildAssistantState(params: {
   failure?: ToolFailure;
   reply: string;
@@ -166,23 +217,40 @@ function buildAssistantState(params: {
   };
 }
 
+/**
+ * Remove a mencao "elisa" da frase original quando o usuario fala com a
+ * assistente dentro de um grupo.
+ */
 function sanitizeMentionPrompt(message: string) {
   return message.replace(/\belisa\b[:,\-]?\s*/i, "").trim() || message.trim();
 }
 
+/**
+ * Detecta um cumprimento simples para responder rapido, sem custo de modelo.
+ */
 function isGreetingOnlyToElisa(message: string) {
   return GREETING_PATTERN.test(sanitizeMentionPrompt(message));
 }
 
+/**
+ * Resposta padrao para saudacoes simples no chat de grupo.
+ */
 function createGreetingReply() {
   return "ELISA: Oi! Estou por aqui. Me diga o que voce precisa.";
 }
 
+/**
+ * Garante padronizacao visual das mensagens publicadas pela assistente em grupo.
+ */
 function normalizeElisaContent(content: string) {
   const trimmed = content.trim();
   return /^elisa:/i.test(trimmed) ? trimmed : `ELISA: ${trimmed}`;
 }
 
+/**
+ * Publica uma mensagem da ELISA em um grupo e, se houver socket.io, emite o
+ * evento em tempo real para atualizar os clientes conectados.
+ */
 export async function sendElisaMessageToGroup(params: {
   groupId: string;
   userId: string;
@@ -214,12 +282,20 @@ export async function sendElisaMessageToGroup(params: {
   return payload;
 }
 
+/**
+ * Placeholder para uma futura memoria resumida de grupos.
+ * Hoje existe como ponto de extensao para nao espalhar essa responsabilidade.
+ */
 export async function maybeStoreGroupSummaryMemory(_params: {
   groupId: string;
 }) {
   return;
 }
 
+/**
+ * Placeholder para comportamento proativo da ELISA em grupos.
+ * A ideia e analisar mensagens humanas e sugerir/automatizar acoes de tarefa.
+ */
 export async function maybePromptTaskActionInGroup(_params: {
   groupId: string;
   userId: string;
@@ -229,6 +305,9 @@ export async function maybePromptTaskActionInGroup(_params: {
   return;
 }
 
+/**
+ * Placeholder para tratar confirmacoes feitas em grupo apos uma pergunta da ELISA.
+ */
 export async function maybeHandleTaskConfirmationInGroup(_params: {
   groupId: string;
   userId: string;
@@ -238,6 +317,10 @@ export async function maybeHandleTaskConfirmationInGroup(_params: {
   return false;
 }
 
+/**
+ * Placeholder para continuar um fluxo pendente em grupo sem precisar reiniciar
+ * toda a interpretacao da conversa.
+ */
 export async function maybeHandleAssistantFollowUpInGroup(_params: {
   groupId: string;
   userId: string;
@@ -247,6 +330,11 @@ export async function maybeHandleAssistantFollowUpInGroup(_params: {
   return false;
 }
 
+/**
+ * Pipeline principal da ELISA.
+ * Ele valida acesso, carrega historico, monta contexto, chama o modelo, executa
+ * ferramentas, persiste resposta/memoria e opcionalmente publica no grupo.
+ */
 export async function processAssistantMessage({
   userId,
   message,
@@ -467,6 +555,11 @@ export async function processAssistantMessage({
   };
 }
 
+/**
+ * Entrada especializada para quando a ELISA e mencionada dentro de um chat de grupo.
+ * Esse fluxo pula historico privado, trata saudacao simples e publica a resposta
+ * automaticamente no grupo de origem.
+ */
 export async function processAssistantMentionInGroup(params: {
   userId: string;
   groupId: string;

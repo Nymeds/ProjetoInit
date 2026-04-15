@@ -468,6 +468,9 @@ const allToolDeclarations: Record<string, any> = {
 const TASK_ENTITY_PATTERN = /\b(tarefa|tarefas|todo|todos|atividade|atividades|item|itens)\b/;
 const GROUP_ENTITY_PATTERN = /\b(grupo|grupos|equipe|time|squad|projeto|projetos)\b/;
 
+/**
+ * Conta palavras de forma simples para detectar mensagens muito curtas.
+ */
 function countWords(value: string) {
   return value
     .trim()
@@ -476,10 +479,16 @@ function countWords(value: string) {
     .length;
 }
 
+/**
+ * Testa uma lista de regexes ate encontrar a primeira correspondencia.
+ */
 function hasAnyPattern(text: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+/**
+ * Adiciona nomes de ferramentas ao conjunto final apenas se elas existirem no catalogo.
+ */
 function addToolNames(target: Set<string>, ...toolNames: Array<string | undefined>) {
   for (const name of toolNames) {
     if (name && allToolDeclarations[name]) {
@@ -488,6 +497,9 @@ function addToolNames(target: Set<string>, ...toolNames: Array<string | undefine
   }
 }
 
+/**
+ * Resume candidatos ambiguos em formato legivel para prompts de follow-up.
+ */
 function summarizeCandidates(candidates?: ToolCandidate[]) {
   if (!Array.isArray(candidates) || candidates.length === 0) return "";
 
@@ -501,6 +513,11 @@ function summarizeCandidates(candidates?: ToolCandidate[]) {
     .join(", ");
 }
 
+/**
+ * Extrai sinais leves de comportamento do usuario com base nas mensagens recentes.
+ * Esses sinais ajudam a ELISA a inferir se o usuario costuma usar frases curtas,
+ * se fala muito de grupos, planejamento ou colaboracao.
+ */
 function buildInteractionSignals(
   currentMessage: string,
   recentUserMessages: string[],
@@ -534,6 +551,10 @@ function buildInteractionSignals(
   return Array.from(signals).slice(0, 4);
 }
 
+/**
+ * Interpreta a mensagem atual como possivel continuacao de uma pendencia anterior.
+ * Aqui nascem pistas como "o usuario confirmou" ou "o usuario recusou".
+ */
 function inferFollowUpFromState(
   message: string,
   assistantState?: AssistantConversationState | null,
@@ -597,6 +618,10 @@ function inferFollowUpFromState(
   };
 }
 
+/**
+ * Compacta o contexto operacional da rodada em uma unica string curta.
+ * Esse resumo e injetado no prompt de sistema para baratear contexto.
+ */
 function buildContextSummary(runtime: {
   preferredGroupName?: string;
   sourceGroupId?: string;
@@ -622,6 +647,10 @@ function buildContextSummary(runtime: {
   return fragments.length > 0 ? fragments.join(" | ") : undefined;
 }
 
+/**
+ * Faz uma primeira triagem de quais ferramentas realmente precisam ser expostas
+ * ao modelo para a mensagem atual.
+ */
 function inferToolNamesFromMessage(message: string, sourceGroupId?: string) {
   const normalized = normalizeText(message);
   const selected = new Set<string>();
@@ -745,10 +774,16 @@ function inferToolNamesFromMessage(message: string, sourceGroupId?: string) {
   return Array.from(selected);
 }
 
+/**
+ * Escapa texto para montar regexes seguras a partir de nomes digitados pelo usuario.
+ */
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Tenta identificar se algum grupo do usuario foi citado nominalmente na mensagem.
+ */
 function findMentionedGroup(groups: any[], text: string) {
   const normalizedText = normalizeText(text);
   if (!normalizedText) return null;
@@ -767,15 +802,25 @@ function findMentionedGroup(groups: any[], text: string) {
   return null;
 }
 
+/**
+ * Normaliza emails antes de comparar ou salvar convites de grupo.
+ */
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+/**
+ * Padroniza mensagens que a ELISA publica em grupos.
+ */
 function normalizeElisaContent(content: string) {
   const trimmed = content.trim();
   return /^elisa:/i.test(trimmed) ? trimmed : `ELISA: ${trimmed}`;
 }
 
+/**
+ * Extrai o ultimo numero encontrado no titulo da tarefa.
+ * Esse numero e usado, por exemplo, em comandos como "mover as pares".
+ */
 function extractTaskNumberFromTitle(title: string): number | null {
   const matches = title.match(/\d+/g);
   if (!matches || matches.length === 0) return null;
@@ -784,6 +829,9 @@ function extractTaskNumberFromTitle(title: string): number | null {
   return Number.isFinite(lastValue) ? lastValue : null;
 }
 
+/**
+ * Traduz sinonomos de paridade para um valor canonico.
+ */
 function parseParity(parity?: "even" | "odd" | "par" | "impar") {
   if (!parity) return undefined;
   if (parity === "par") return "even";
@@ -791,6 +839,9 @@ function parseParity(parity?: "even" | "odd" | "par" | "impar") {
   return parity;
 }
 
+/**
+ * Converte uma tarefa de dominio em um candidato curto para mensagens de ambiguidade.
+ */
 function toTaskCandidate(task: any): ToolCandidate {
   return {
     id: task.id,
@@ -799,6 +850,9 @@ function toTaskCandidate(task: any): ToolCandidate {
   };
 }
 
+/**
+ * Converte o retorno bruto de uma tarefa para o formato padrao de ferramentas.
+ */
 function toToolTask(todo: any, group: { id: string; name: string } | null = null) {
   return {
     id: todo.id,
@@ -809,11 +863,17 @@ function toToolTask(todo: any, group: { id: string; name: string } | null = null
   };
 }
 
+/**
+ * Detecta comandos que explicitamente pedem para remover o vinculo com grupo.
+ */
 function isNoGroupRequest(text: string) {
   const normalized = normalizeText(text);
   return /\bsem grupo\b|\bfora de grupo\b/.test(normalized);
 }
 
+/**
+ * Tenta inferir uma descricao minima para uma tarefa quando o usuario so informa o titulo.
+ */
 function inferTaskDescription(title: string, runtime: AssistantRuntimeContext) {
   const normalizedTitle = normalizeText(title);
   const contextCandidates = [
@@ -836,11 +896,17 @@ function inferTaskDescription(title: string, runtime: AssistantRuntimeContext) {
   return `Descricao inferida automaticamente para a tarefa "${title}".`;
 }
 
+/**
+ * Lista todas as tarefas visiveis ao usuario considerando ownership e grupos.
+ */
 async function listVisibleTodos(userId: string) {
   const { todos } = await assistantUseCases.selectTodos.execute({ userId });
   return todos;
 }
 
+/**
+ * Garante que a tarefa ainda esta visivel para o usuario antes de operar nela.
+ */
 async function ensureTodoVisible(userId: string, taskId: number) {
   const todos = await listVisibleTodos(userId);
   const selected = todos.find((todo) => todo.id === taskId);
@@ -855,6 +921,11 @@ type ResolveGroupResult = {
   ambiguousCandidates?: ToolCandidate[];
 };
 
+/**
+ * Resolve um grupo do usuario por id, nome ou fallback de contexto.
+ * Quando encontra mais de um possivel grupo, devolve candidatos para a ELISA
+ * pedir desambiguacao em vez de agir no grupo errado.
+ */
 async function resolveUserGroup(
   userId: string,
   args: { groupId?: string; groupName?: string },
@@ -903,6 +974,9 @@ async function resolveUserGroup(
   return { group: null };
 }
 
+/**
+ * Construtor padrao de erro para operacoes sensiveis que exigem confirmacao humana.
+ */
 function buildSensitiveConfirmationError(actionDescription: string): ToolResult {
   return {
     ok: false,
@@ -910,6 +984,10 @@ function buildSensitiveConfirmationError(actionDescription: string): ToolResult 
   };
 }
 
+/**
+ * Monta dicas curtas de membros e grupos existentes para ajudar a IA quando o
+ * usuario pede criacao de grupo sem informar pessoas suficientes.
+ */
 async function buildGroupCreationSuggestions(userId: string) {
   const [{ friends }, { groups }] = await Promise.all([
     assistantUseCases.listAcceptedFriends.execute(userId),
@@ -930,6 +1008,9 @@ async function buildGroupCreationSuggestions(userId: string) {
   return chunks.length > 0 ? ` Sugestoes -> ${chunks.join(" | ")}.` : "";
 }
 
+/**
+ * Traduz eventos tecnicos do historico do grupo para frases legiveis.
+ */
 function describeGroupHistoryEvent(event: any) {
   const taskTitle = event.taskTitleSnapshot || event.todo?.title || "Tarefa";
   const actorName = event.actor?.name || event.actor?.email || "Usuario";
@@ -953,6 +1034,11 @@ type TaskGroupResolution = {
   error?: ToolResult;
 };
 
+/**
+ * Decide em qual grupo uma nova tarefa deve nascer.
+ * A ordem de preferencia e: pedido explicito do usuario -> contexto do grupo atual
+ * -> grupo inferido na conversa -> heuristica baseada na quantidade de grupos.
+ */
 async function resolveCreateTaskGroup(
   userId: string,
   args: z.infer<typeof createTaskArgsSchema>,
@@ -1008,6 +1094,10 @@ async function resolveCreateTaskGroup(
   };
 }
 
+/**
+ * Devolve apenas as declaracoes de ferramentas relevantes para a rodada atual.
+ * Essa selecao reduz custo, ruido no prompt e chamadas desnecessarias do modelo.
+ */
 export function getToolDeclarations(params: {
   message: string;
   sourceGroupId?: string;
@@ -1032,6 +1122,9 @@ export function getToolDeclarations(params: {
     .filter(Boolean);
 }
 
+/**
+ * Monta o contexto sintetico consumido tanto pelo modelo quanto pelas ferramentas.
+ */
 export async function buildRuntimeContext(params: {
   userId: string;
   message: string;
@@ -1076,6 +1169,10 @@ export async function buildRuntimeContext(params: {
   };
 }
 
+/**
+ * Transforma falhas tecnicas das ferramentas em perguntas curtas e acionaveis.
+ * Em vez de expor stack trace, a ELISA pede exatamente o dado que faltou.
+ */
 export function buildRetryQuestion(failure: ToolFailure): string {
   const errorText = failure.result.error || "Nao consegui concluir essa acao.";
   if (errorText.startsWith(SENSITIVE_CONFIRMATION_PREFIX)) {
@@ -1113,6 +1210,11 @@ export function buildRetryQuestion(failure: ToolFailure): string {
   return `${errorText} Pode me passar os dados que faltam?`;
 }
 
+/**
+ * Executor central das ferramentas expostas ao modelo.
+ * Cada branch valida argumentos, resolve entidades, chama casos de uso do
+ * dominio e normaliza o retorno para o formato `ToolResult`.
+ */
 export async function runTool(
   call: { name: string; args: unknown },
   userId: string,

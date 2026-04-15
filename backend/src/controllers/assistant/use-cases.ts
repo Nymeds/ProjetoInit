@@ -28,7 +28,11 @@ const usersRepository = new PrismaUsersRepository();
 const messagesRepository = new PrismaMessagesRepository();
 const friendsRepository = new PrismaFriendsRepository();
 
-// Singletons reutilizados pelo modulo da IA.
+/**
+ * Fachada de casos de uso reutilizada pelo modulo da ELISA.
+ * A assistente nao conversa direto com repositorios: ela sempre passa por
+ * regras de negocio ja existentes no backend para manter consistencia.
+ */
 export const assistantUseCases = {
   createTodo: new CreateTodoUseCase(todosRepository, groupsRepository),
   selectTodos: new SelectTodosUseCase(todosRepository),
@@ -53,4 +57,7 @@ export const assistantUseCases = {
   listAcceptedFriends: new ListAcceptedFriendsUseCase(friendsRepository),
 };
 
+/**
+ * Alias de tipo util para tipar funcoes e testes que dependem desse catalogo.
+ */
 export type AssistantUseCases = typeof assistantUseCases;

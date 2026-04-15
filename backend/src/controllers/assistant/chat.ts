@@ -11,12 +11,22 @@ import {
   sendElisaMessageToGroup,
 } from "./service.js";
 
+/**
+ * Schema do endpoint principal de chat da ELISA.
+ * Valida a mensagem, opcionalmente o grupo de origem e se a resposta deve ser
+ * repostada no grupo automaticamente.
+ */
 const chatBodySchema = z.object({
   message: z.string().min(1, "Mensagem obrigatoria"),
   groupId: z.string().min(1).optional(),
   autoPostToGroup: z.boolean().optional(),
 });
 
+/**
+ * Controller HTTP principal da assistente.
+ * Ele valida a entrada, resolve o usuario autenticado e delega o trabalho real
+ * para o pipeline `processAssistantMessage`.
+ */
 export async function assistantChat(request: FastifyRequest, reply: FastifyReply) {
   try {
     const { message, groupId, autoPostToGroup } = chatBodySchema.parse(request.body || {});
@@ -47,6 +57,10 @@ export async function assistantChat(request: FastifyRequest, reply: FastifyReply
   }
 }
 
+/**
+ * Reexporta funcoes do service para que outros pontos do backend (como sockets)
+ * possam importar deste mesmo modulo quando desejarem uma unica porta de entrada.
+ */
 export {
   maybeHandleAssistantFollowUpInGroup,
   maybeHandleTaskConfirmationInGroup,

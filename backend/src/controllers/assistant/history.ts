@@ -2,16 +2,25 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { ELISA_STATE_PREFIX, INTERNAL_GROUP_ORCHESTRATION_PREFIXES } from "./config.js";
 import { prisma } from "../../utils/prismaClient.js";
 
+/**
+ * Identifica mensagens tecnicas que fazem parte da orquestracao interna da ELISA.
+ * Essas mensagens existem para memoria/controle, mas nao devem aparecer ao usuario.
+ */
 function isInternalAssistantMessage(content: string) {
   if (content.startsWith(ELISA_STATE_PREFIX)) return true;
   return INTERNAL_GROUP_ORCHESTRATION_PREFIXES.some((prefix) => content.startsWith(prefix));
 }
 
+/**
+ * Retorna o historico "limpo" da conversa com a assistente.
+ * O endpoint remove mensagens TOOL e sinais internos para o front receber apenas
+ * o que faz sentido mostrar como conversa humana.
+ */
 export async function assistantHistory(request: FastifyRequest, reply: FastifyReply) {
   try {
     const userId = (request.user as { sub: string }).sub;
 
-    // Busca o historico do usuario para manter a memoria da ELISA
+    // Busca a thread inteira porque a filtragem de mensagens internas e feita aqui.
     const thread = await prisma.assistantThread.findUnique({
       where: { userId },
       include: {
